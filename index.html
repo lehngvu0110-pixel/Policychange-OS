@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PolicyChange OS — Trọng tài kiểm soát tài liệu khi thay đổi quy định</title>
+<style>
+:root{
+  --bg:#f4f5f8; --bg-2:#e9ecf1; --panel:#fff; --panel-2:#fafbfc;
+  --ink:#11141a; --ink-2:#39424f; --muted:#6a7381;
+  --line:#e4e7ed; --line-2:#cfd5de;
+  --brand:#2447d6; --brand-2:#5a78f5; --brand-soft:#edf1ff;
+  --auto:#0b7248; --auto-soft:#e3f4ec; --auto-line:#9fd8bd;
+  --u1:#87560a;   --u1-soft:#fcf2da;   --u1-line:#e7c680;
+  --u2:#9c3a0d;   --u2-soft:#fdeee4;   --u2-line:#eeae84;
+  --u3:#8d1a4b;   --u3-soft:#fbe8f0;   --u3-line:#e79bbd;
+  --del:#ad241d;  --del-soft:#fdeceb;
+  --shadow:0 1px 2px rgba(15,20,30,.05), 0 3px 12px rgba(15,20,30,.05);
+  --shadow-lg:0 2px 6px rgba(15,20,30,.07), 0 14px 36px rgba(15,20,30,.10);
+  --r:14px; --r-sm:10px; --r-xs:7px;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d0f14; --bg-2:#161a22; --panel:#14181f; --panel-2:#181d25;
+    --ink:#eceef3; --ink-2:#c2c9d4; --muted:#8d97a6;
+    --line:#242a34; --line-2:#333b47;
+    --brand:#7d9bff; --brand-2:#9db3ff; --brand-soft:#18203a;
+    --auto:#5ed6a1; --auto-soft:#0f2a20; --auto-line:#1e523c;
+    --u1:#ecc271;  --u1-soft:#282010;  --u1-line:#4d3d18;
+    --u2:#f3a87f;  --u2-soft:#2a1b12;  --u2-line:#553220;
+    --u3:#f291b6;  --u3-soft:#2a1520;  --u3-line:#552a3c;
+    --del:#ff8f85; --del-soft:#2a1312;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 3px 12px rgba(0,0,0,.25);
+    --shadow-lg:0 2px 6px rgba(0,0,0,.35), 0 14px 36px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d0f14; --bg-2:#161a22; --panel:#14181f; --panel-2:#181d25;
+  --ink:#eceef3; --ink-2:#c2c9d4; --muted:#8d97a6;
+  --line:#242a34; --line-2:#333b47;
+  --brand:#7d9bff; --brand-2:#9db3ff; --brand-soft:#18203a;
+  --auto:#5ed6a1; --auto-soft:#0f2a20; --auto-line:#1e523c;
+  --u1:#ecc271;  --u1-soft:#282010;  --u1-line:#4d3d18;
+  --u2:#f3a87f;  --u2-soft:#2a1b12;  --u2-line:#553220;
+  --u3:#f291b6;  --u3-soft:#2a1520;  --u3-line:#552a3c;
+  --del:#ff8f85; --del-soft:#2a1312;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 3px 12px rgba(0,0,0,.25);
+  --shadow-lg:0 2px 6px rgba(0,0,0,.35), 0 14px 36px rgba(0,0,0,.4);
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1140px;margin:0 auto;padding:0 20px 90px}
+@media(max-width:560px){.wrap{padding:0 16px 70px}}
+
+/* ---------- Header ---------- */
+header.top{
+  position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--panel) 88%,transparent);
+  backdrop-filter:saturate(180%) blur(14px);-webkit-backdrop-filter:saturate(180%) blur(14px);
+  border-bottom:1px solid var(--line);
+}
+header.top::before{content:"";display:block;height:3px;background:linear-gradient(90deg,var(--brand),var(--u3) 45%,var(--u1) 75%,var(--auto))}
+header.top .wrap{padding:13px 20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.logo{font-weight:750;font-size:18px;letter-spacing:-.02em;white-space:nowrap}
+.logo span{color:var(--brand)}
+.tagline{color:var(--muted);font-size:12.5px;line-height:1.45;flex:1;min-width:200px;border-left:1px solid var(--line-2);padding-left:16px}
+@media(max-width:700px){.tagline{border-left:0;padding-left:0;flex-basis:100%}}
+.themebtn{margin-left:auto;background:var(--panel);border:1px solid var(--line-2);color:var(--muted);border-radius:999px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:600}
+.themebtn:hover{color:var(--ink);border-color:var(--brand)}
+
+/* ---------- Start-here card ---------- */
+.howto{
+  background:linear-gradient(135deg,var(--brand-soft),color-mix(in srgb,var(--brand-soft) 40%,var(--panel)));
+  border:1px solid color-mix(in srgb,var(--brand) 22%,var(--line));
+  border-radius:var(--r);padding:16px 18px;margin:24px 0 8px;font-size:14.5px;line-height:1.6;
+  box-shadow:var(--shadow);
+}
+.howto .eyebrow{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--brand);margin-bottom:5px}
+.howto b{color:var(--ink);font-weight:700}
+.howto kbd{font:600 13px/1 var(--mono);background:var(--panel);border:1px solid var(--line-2);border-bottom-width:2px;border-radius:6px;padding:3px 7px;white-space:nowrap}
+
+/* ---------- Section heading ---------- */
+h2{
+  display:flex;align-items:center;gap:11px;
+  font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);
+  margin:38px 0 14px;font-weight:700;
+}
+h2::after{content:"";flex:1;height:1px;background:var(--line)}
+.hnum{
+  display:inline-grid;place-items:center;width:23px;height:23px;flex:none;
+  background:var(--brand);color:#fff;border-radius:7px;
+  font:800 12px/1 system-ui;letter-spacing:0;
+}
+
+/* ---------- Panels & cards ---------- */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:840px){.grid2{grid-template-columns:1fr;gap:6px}}
+
+.card{
+  border:1px solid var(--line);border-left-width:3px;border-left-color:var(--line-2);
+  border-radius:var(--r-sm);padding:14px 15px;margin-bottom:10px;background:var(--panel);
+  box-shadow:var(--shadow);transition:box-shadow .15s ease, transform .15s ease;
+}
+.card:hover{box-shadow:var(--shadow-lg)}
+.card.ok{border-left-color:var(--auto)}
+.card.esc-U1{border-left-color:var(--u1)}
+.card.esc-U2{border-left-color:var(--u2)}
+.card.esc-U3{border-left-color:var(--u3)}
+.card.done{opacity:.55}
+#queue .card{padding:16px 17px}
+.cardhead{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:9px}
+.docid{font:600 11.5px/1.5 var(--mono);background:var(--bg-2);border-radius:var(--r-xs);padding:3px 8px;color:var(--ink-2)}
+.doctitle{font-weight:650;font-size:14px}
+.meta{font-size:12px;color:var(--muted);margin-left:auto}
+.tierbadge{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:var(--r-xs);padding:2px 7px;white-space:nowrap}
+
+/* ---------- Tags & pills ---------- */
+.tag{font:800 10.5px/1.6 system-ui;letter-spacing:.06em;border-radius:var(--r-xs);padding:2px 8px;text-transform:uppercase}
+.tag.auto{background:var(--auto-soft);color:var(--auto)}
+.tag.U1{background:var(--u1-soft);color:var(--u1)}
+.tag.U2{background:var(--u2-soft);color:var(--u2)}
+.tag.U3{background:var(--u3-soft);color:var(--u3)}
+.pill{display:inline-block;font:800 11px/1.7 system-ui;letter-spacing:.05em;border-radius:999px;padding:1px 11px;white-space:nowrap}
+.pill.pass{background:var(--auto-soft);color:var(--auto);box-shadow:inset 0 0 0 1px var(--auto-line)}
+.pill.fail{background:var(--del-soft);color:var(--del);box-shadow:inset 0 0 0 1px var(--del)}
+
+/* ---------- Stat tiles ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin-bottom:16px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-sm);padding:13px 14px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.stat::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--line-2)}
+.stat.auto::before{background:var(--auto)} .stat.u1::before{background:var(--u1)}
+.stat.u2::before{background:var(--u2)}   .stat.u3::before{background:var(--u3)}
+.stat b{display:block;font:750 27px/1.1 system-ui;letter-spacing:-.03em;font-variant-numeric:tabular-nums;margin-bottom:3px}
+.stat.auto b{color:var(--auto)} .stat.u1 b{color:var(--u1)}
+.stat.u2 b{color:var(--u2)}     .stat.u3 b{color:var(--u3)}
+.stat .lbl{font-size:12.5px;font-weight:600;color:var(--ink-2);line-height:1.35}
+.stat .sub2{font-size:11.5px;color:var(--muted);margin-top:3px}
+
+/* ---------- Form ---------- */
+label{display:block;font-size:11.5px;color:var(--muted);margin:14px 0 5px;font-weight:700;letter-spacing:.02em}
+select,input[type=text],textarea{
+  width:100%;padding:10px 12px;border:1px solid var(--line-2);border-radius:var(--r-sm);
+  background:var(--panel-2);color:var(--ink);font:inherit;font-size:14px;transition:border-color .15s, box-shadow .15s;
+}
+select:focus,input[type=text]:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 16%,transparent)}
+input[readonly]{background:var(--bg-2);color:var(--muted)}
+textarea{resize:vertical;min-height:84px;font-family:var(--mono);font-size:13px;line-height:1.55}
+
+button{
+  font:inherit;font-weight:600;cursor:pointer;border-radius:var(--r-sm);
+  border:1px solid var(--line-2);background:var(--panel);color:var(--ink);padding:9px 15px;
+  transition:border-color .15s, background .15s, transform .08s;
+}
+button:hover{border-color:var(--brand);color:var(--brand)}
+button:active{transform:translateY(1px)}
+button.primary{
+  background:linear-gradient(180deg,var(--brand-2),var(--brand));
+  border-color:transparent;color:#fff;font-weight:700;
+  box-shadow:0 1px 2px rgba(20,40,120,.25), 0 4px 14px color-mix(in srgb,var(--brand) 32%,transparent);
+}
+button.primary:hover{color:#fff;filter:brightness(1.07)}
+button.danger{color:var(--del);border-color:color-mix(in srgb,var(--del) 45%,var(--line-2))}
+button.danger:hover{background:var(--del-soft);border-color:var(--del);color:var(--del)}
+button:disabled{opacity:.42;cursor:not-allowed;transform:none;filter:none;box-shadow:none}
+.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+
+/* ---------- Diff ---------- */
+.diff{
+  font:12.5px/1.75 var(--mono);background:var(--panel-2);border:1px solid var(--line);
+  border-radius:var(--r-xs);padding:10px 12px;margin:9px 0;white-space:pre-wrap;word-break:break-word;
+}
+.diff .ln{color:var(--muted);user-select:none}
+.diff .old{background:var(--del-soft);color:var(--del);text-decoration:line-through;padding:1px 3px;border-radius:4px}
+.diff .new{background:var(--auto-soft);color:var(--auto);padding:1px 3px;border-radius:4px;font-weight:700}
+
+.why{font-size:13px;color:var(--muted);margin:6px 0;line-height:1.55}
+.why b{color:var(--ink-2);font-weight:700}
+.cite{font-size:12px;color:var(--muted);font-style:italic}
+
+/* ---------- Escalation question ---------- */
+.qbox{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:13px 14px;margin:10px 0;font-size:14.5px;line-height:1.62}
+.qbox .qlabel{font:800 10.5px/1.6 system-ui;letter-spacing:.09em;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+#queue .row button{flex:1 1 240px;text-align:left;padding:11px 14px;line-height:1.45}
+.plain{font-size:13px;background:var(--brand-soft);border-radius:var(--r-xs);padding:9px 12px;margin-top:10px;color:var(--ink-2);line-height:1.55}
+.plain b{color:var(--brand);font-weight:700}
+
+/* ---------- Tables ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel)}
+table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+.tablewrap table{min-width:720px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}
+thead th{font:700 10.5px/1.6 system-ui;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);background:var(--panel-2);border-bottom:1px solid var(--line-2);position:sticky;top:0}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--panel-2)}
+td.mono{font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--muted)}
+td .sub{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.5}
+.badge{display:inline-block;margin-left:10px;font:700 11px/1.7 system-ui;color:var(--brand);background:var(--brand-soft);border-radius:999px;padding:1px 10px;white-space:nowrap;vertical-align:1px}
+@media(max-width:520px){.tagline{display:none}}
+td.bad{color:var(--del);font-weight:700}
+.hash{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+
+/* ---------- Verify ---------- */
+.vbanner{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:16px 20px;border-radius:var(--r);margin-bottom:16px;border:1px solid}
+.vbanner.ok{background:var(--auto-soft);border-color:var(--auto-line)}
+.vbanner.bad{background:var(--del-soft);border-color:var(--del)}
+.vscore{font:750 34px/1 system-ui;letter-spacing:-.035em;font-variant-numeric:tabular-nums}
+.vbanner.ok .vscore{color:var(--auto)} .vbanner.bad .vscore{color:var(--del)}
+.vlabel{font-weight:700;font-size:15px}
+.vbanner.ok .vlabel{color:var(--auto)} .vbanner.bad .vlabel{color:var(--del)}
+.vts{font:11.5px/1.5 var(--mono);color:var(--muted);margin-top:3px;overflow-wrap:anywhere}
+.suite{margin-bottom:20px}
+.suitehead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px}
+.suitetitle{font-weight:650;font-size:13.5px}
+
+/* ---------- Misc ---------- */
+.empty{color:var(--muted);font-size:14px;padding:26px 18px;text-align:center;border:1px dashed var(--line-2);border-radius:var(--r-sm);background:var(--panel-2)}
+.subhead{font-weight:650;font-size:13.5px;margin:18px 0 8px}
+.docbody{font:12.5px/1.8 var(--mono);white-space:pre-wrap;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-xs);padding:12px 14px;max-height:280px;overflow:auto;margin-top:10px}
+details.panel{padding:14px 16px;margin-bottom:9px;transition:box-shadow .15s}
+details.panel:hover{box-shadow:var(--shadow-lg)}
+details summary{cursor:pointer;font-size:13.5px;color:var(--ink-2);list-style:none;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"▸";color:var(--muted);font-size:11px;transition:transform .15s;display:inline-block}
+details[open] summary::before{transform:rotate(90deg)}
+.verifyhead{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:8px}
+.note{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.6}
+.kbd{font:12px var(--mono);background:var(--bg-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+.foot{margin-top:40px;border-top:1px solid var(--line);padding-top:18px;font-size:12.5px;color:var(--muted);line-height:1.7}
+.foot b{color:var(--ink-2)}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="logo">PolicyChange<span>OS</span></div>
+    <div class="tagline">Trọng tài kiểm soát tài liệu khi quy định thay đổi<span class="badge">MLAI Hackathon 2026 · Bảng 1 OrganizationAI · Đề A</span></div>
+    <button class="themebtn" id="themebtn" type="button">Giao diện</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+<div class="howto">
+  <div class="eyebrow">Bắt đầu ở đây</div>
+  Bấm <kbd>▶ Chạy thay đổi mẫu</kbd> ở mục 1 để xem hệ thống lan truyền một thay đổi quy định qua toàn bộ kho tài liệu —
+  <b>tự sửa các vị trí thường quy</b> và <b>chỉ hỏi người ở đúng chỗ cần hỏi</b>.
+  Sau đó bấm <kbd>▶ Verify</kbd> ở mục 5 để chạy toàn bộ bộ kiểm thử tự động.
+</div>
+
+<h2><span class="hnum">1</span>Thay đổi quy định đầu vào</h2>
+<div class="panel">
+  <div class="grid2">
+    <div>
+      <label for="ruleSel">Quy định gốc được sửa</label>
+      <select id="ruleSel"></select>
+
+      <label for="oldVal">Giá trị hiện hành</label>
+      <input type="text" id="oldVal" readonly>
+
+      <label for="newVal">Giá trị mới</label>
+      <input type="text" id="newVal" placeholder="ví dụ: 5 ngày">
+
+      <label for="issuerSel">Cấp ban hành thay đổi</label>
+      <select id="issuerSel">
+        <option value="1">Chuyên viên / đơn vị tác nghiệp</option>
+        <option value="2" selected>Trưởng phòng / Trưởng đơn vị</option>
+        <option value="3">Hiệu trưởng / Hội đồng Trường</option>
+      </select>
+    </div>
+    <div>
+      <label for="freeText">Hoặc nhập bằng câu tiếng Việt tự do</label>
+      <textarea id="freeText" placeholder="Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành."></textarea>
+      <div class="row" style="margin-top:8px">
+        <button type="button" id="parseBtn">Phân tích câu lệnh</button>
+        <span class="note" id="parseMsg"></span>
+      </div>
+      <details style="margin-top:12px">
+        <summary>Thêm tài liệu mới vào kho (dành cho giám khảo)</summary>
+        <label for="newDocTitle">Tên tài liệu</label>
+        <input type="text" id="newDocTitle" placeholder="Hướng dẫn nội bộ Khoa X">
+        <label for="newDocTier">Cấp ban hành</label>
+        <select id="newDocTier">
+          <option value="1">Cấp 1 — tài liệu tác nghiệp</option>
+          <option value="2" selected>Cấp 2 — quy trình cấp Phòng/Ban</option>
+          <option value="3">Cấp 3 — quy định cấp Trường</option>
+        </select>
+        <label for="newDocBody">Nội dung (mỗi dòng một điều khoản)</label>
+        <textarea id="newDocBody" placeholder="Sinh viên nộp đơn phúc khảo trong 7 ngày kể từ ngày công bố điểm."></textarea>
+        <div class="row" style="margin-top:8px">
+          <button type="button" id="addDocBtn">Thêm vào kho</button>
+          <span class="note" id="addDocMsg"></span>
+        </div>
+      </details>
+    </div>
+  </div>
+  <div class="row" style="margin-top:16px">
+    <button class="primary" type="button" id="runBtn">▶ Chạy thay đổi mẫu</button>
+    <button type="button" id="resetBtn">Khôi phục kho tài liệu gốc</button>
+    <span class="note" id="runMsg"></span>
+  </div>
+</div>
+
+<h2><span class="hnum">2</span>Kết quả phân xử</h2>
+<div id="summary"></div>
+<div id="proposals"><div class="empty">Chưa chạy phân tích nào.</div></div>
+
+<h2><span class="hnum">3</span>Hàng đợi chuyển tiếp — chờ người quyết định</h2>
+<div id="queue"><div class="empty">Không có hồ sơ nào cần người xử lý.</div></div>
+
+<h2><span class="hnum">4</span>Ban hành &amp; sổ nhật ký kiểm toán</h2>
+<div class="panel">
+  <div class="row">
+    <button class="primary" type="button" id="commitBtn" disabled>Ban hành các thay đổi đã duyệt</button>
+    <span class="note" id="commitMsg">Chuỗi băm SHA-256 nối tiếp, chỉ ghi thêm. Hoàn tác tạo bản ghi mới chứ không xoá vết.</span>
+  </div>
+  <div id="ledger" style="margin-top:12px"><div class="empty">Sổ nhật ký trống.</div></div>
+</div>
+
+<h2><span class="hnum">5</span>Verify — bộ kiểm thử tự động</h2>
+<div class="panel">
+  <div class="row">
+    <button class="primary" type="button" id="verifyAllBtn">▶ Verify — chạy toàn bộ</button>
+    <button type="button" id="verifyReqBtn">Verify → 4 ca bắt buộc</button>
+    <button type="button" id="verifyEscBtn">Verify → Escalation (5 ca / 90 giây)</button>
+  </div>
+  <div class="note">Bộ kiểm thử chạy trên một bản sao sạch của kho tài liệu, độc lập với trạng thái đang thao tác ở trên — kết quả không phụ thuộc vào việc bạn đã ban hành thay đổi nào.</div>
+  <div id="verifyOut" style="margin-top:12px"><div class="empty">Chưa chạy kiểm thử.</div></div>
+</div>
+
+<h2><span class="hnum">6</span>Kho tài liệu hiện hành</h2>
+<div id="docs"></div>
+
+<p class="foot">
+  Dữ liệu trong bản demo này là <b>dữ liệu tổng hợp</b> do nhóm tự soạn, mô phỏng hệ thống văn bản của một trường đại học. Không sử dụng văn bản thật của bất kỳ đơn vị nào.
+  Bộ phân tích câu lệnh tiếng Việt và toàn bộ động cơ phân loại ở Sprint 1 là <b>tiền định (rule-based)</b>, chạy hoàn toàn trong trình duyệt, không gọi mô hình ngôn ngữ.
+</p>
+
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   SHA-256 (thuần JS, chạy được cả khi mở bằng file://)
+   ============================================================ */
+const SHA_K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+
+function sha256Hex(str){
+  const bytes = new TextEncoder().encode(str);
+  const bitLen = bytes.length*8;
+  const withPad = new Uint8Array((((bytes.length+9)+63)>>6)<<6);
+  withPad.set(bytes); withPad[bytes.length]=0x80;
+  const dv = new DataView(withPad.buffer);
+  dv.setUint32(withPad.length-4, bitLen>>>0, false);
+  dv.setUint32(withPad.length-8, Math.floor(bitLen/4294967296), false);
+  let h=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const w=new Uint32Array(64);
+  const rotr=(x,n)=>(x>>>n)|(x<<(32-n));
+  for(let i=0;i<withPad.length;i+=64){
+    for(let t=0;t<16;t++) w[t]=dv.getUint32(i+t*4,false);
+    for(let t=16;t<64;t++){
+      const s0=rotr(w[t-15],7)^rotr(w[t-15],18)^(w[t-15]>>>3);
+      const s1=rotr(w[t-2],17)^rotr(w[t-2],19)^(w[t-2]>>>10);
+      w[t]=(w[t-16]+s0+w[t-7]+s1)>>>0;
+    }
+    let [a,b,c,d,e,f,g,hh]=h;
+    for(let t=0;t<64;t++){
+      const S1=rotr(e,6)^rotr(e,11)^rotr(e,25);
+      const ch=(e&f)^(~e&g);
+      const t1=(hh+S1+ch+SHA_K[t]+w[t])>>>0;
+      const S0=rotr(a,2)^rotr(a,13)^rotr(a,22);
+      const maj=(a&b)^(a&c)^(b&c);
+      const t2=(S0+maj)>>>0;
+      hh=g; g=f; f=e; e=(d+t1)>>>0; d=c; c=b; b=a; a=(t1+t2)>>>0;
+    }
+    h=[(h[0]+a)>>>0,(h[1]+b)>>>0,(h[2]+c)>>>0,(h[3]+d)>>>0,(h[4]+e)>>>0,(h[5]+f)>>>0,(h[6]+g)>>>0,(h[7]+hh)>>>0];
+  }
+  return h.map(x=>x.toString(16).padStart(8,"0")).join("");
+}
+
+/* ============================================================
+   SỔ ĐĂNG KÝ QUY ĐỊNH (Policy Registry)
+   Mỗi quy định = một giá trị có hiệu lực + các cụm từ neo nó vào văn bản.
+   ============================================================ */
+const RULES = [
+  { id:"R-PK-01", name:"Thời hạn sinh viên nộp đơn phúc khảo", value:"7 ngày", tier:3,
+    source:"Điều 24.1 Quy định công tác học vụ", owner:"Phòng Đào tạo",
+    aliases:["phúc khảo","chấm lại bài thi","đề nghị chấm lại"] },
+  { id:"R-KN-01", name:"Thời hạn đơn vị phản hồi đơn khiếu nại của người học", value:"7 ngày", tier:3,
+    source:"Điều 31.1 Quy định công tác học vụ", owner:"Phòng Thanh tra – Pháp chế",
+    aliases:["khiếu nại","tố cáo","đơn thư"] },
+  { id:"R-XN-01", name:"Thời gian cấp giấy xác nhận sinh viên", value:"3 ngày", tier:2,
+    source:"Bước 4 Quy trình cấp giấy xác nhận sinh viên", owner:"Phòng Công tác Sinh viên",
+    aliases:["xác nhận sinh viên","giấy xác nhận"] },
+  { id:"R-DK-01", name:"Khối lượng đăng ký tối đa mỗi học kỳ", value:"24 tín chỉ", tier:3,
+    source:"Điều 37.1 Quy định công tác học vụ", owner:"Phòng Đào tạo",
+    aliases:["đăng ký học phần","khối lượng học tập","tín chỉ tối đa"] },
+  { id:"R-TC-01", name:"Hạn mức tạm ứng do Trưởng đơn vị duyệt", value:"10 triệu", tier:3,
+    source:"Điều 12.1 Quy chế chi tiêu nội bộ", owner:"Phòng Kế hoạch – Tài chính",
+    aliases:["tạm ứng","hoàn ứng","đề nghị ứng"] },
+  { id:"R-TC-02", name:"Ngưỡng khoản chi phải có hai chữ ký kiểm soát", value:"10 triệu", tier:3,
+    source:"Điều 19.2 Quy chế chi tiêu nội bộ", owner:"Phòng Kế hoạch – Tài chính",
+    aliases:["hai chữ ký","đồng ký","kiểm soát chi"] }
+];
+
+/* ============================================================
+   KHO TÀI LIỆU (dữ liệu tổng hợp)
+   tier 1 = tài liệu tác nghiệp · 2 = quy trình cấp Phòng/Ban · 3 = quy định cấp Trường
+   ============================================================ */
+const TIER_LABEL = {1:"Cấp 1 · tài liệu tác nghiệp", 2:"Cấp 2 · quy trình cấp Phòng/Ban", 3:"Cấp 3 · quy định cấp Trường"};
+const TIER_APPROVER = {1:"Chuyên viên phụ trách", 2:"Trưởng đơn vị chủ quản", 3:"Hiệu trưởng / Hội đồng Trường"};
+
+const BASE_DOCS = [
+  { id:"QD-01", title:"Quy định về công tác học vụ", owner:"Hội đồng Trường", tier:3, version:"3.2", lines:[
+    "Điều 24. Phúc khảo bài thi kết thúc học phần",
+    "24.1. Sinh viên có nguyện vọng phúc khảo nộp đơn tại Phòng Đào tạo trong thời hạn 7 ngày kể từ ngày công bố điểm.",
+    "24.2. Kết quả phúc khảo được công bố chậm nhất 15 ngày kể từ ngày hết hạn nhận đơn.",
+    "Điều 37. Khối lượng học tập",
+    "37.1. Sinh viên đăng ký học phần tối đa 24 tín chỉ trong một học kỳ chính."
+  ]},
+  { id:"QT-02", title:"Quy trình tổ chức chấm phúc khảo bài thi", owner:"Phòng Đào tạo", tier:2, version:"1.4", lines:[
+    "B1. Tiếp nhận đơn phúc khảo của sinh viên trong 7 ngày kể từ ngày công bố điểm; quá hạn thì từ chối tiếp nhận.",
+    "B2. Chuyên viên lập danh sách đề nghị chấm lại, chuyển Khoa trong 2 ngày làm việc.",
+    "B3. Khoa tổ chức chấm lại bài thi và gửi kết quả về Phòng Đào tạo.",
+    "B4. Công bố kết quả phúc khảo và cập nhật điểm trên hệ thống.",
+    "Ghi chú: Mốc 7 ngày nộp đơn phúc khảo tại B1 được tính theo ngày lịch, không trừ ngày nghỉ."
+  ]},
+  { id:"BM-03", title:"Đơn đề nghị phúc khảo bài thi (BM-ĐT-07)", owner:"Phòng Đào tạo", tier:2, version:"2.0", lines:[
+    "Kính gửi: Phòng Đào tạo, Trường Đại học Bách Khoa.",
+    "Lưu ý: Đơn phúc khảo chỉ hợp lệ khi nộp trong 7 ngày kể từ ngày công bố điểm học phần.",
+    "Sinh viên ký tên và ghi rõ họ tên ở cuối đơn."
+  ]},
+  { id:"HD-04", title:"Hướng dẫn sinh viên — Hỏi đáp về điểm và phúc khảo", owner:"Cổng thông tin sinh viên", tier:1, version:"5.1", lines:[
+    "Hỏi: Em muốn phúc khảo thì nộp đơn ở đâu và trong bao lâu?",
+    "Đáp: Em nộp đơn phúc khảo tại quầy Một cửa trong vòng 7 ngày kể từ ngày công bố điểm.",
+    "Hỏi: Nếu em phát hiện sai sót sau khi đã hết hạn thì sao?",
+    "Đáp: Em liên hệ trực tiếp giảng viên phụ trách. Phòng thi chỉ lưu bài trong 7 ngày trước khi chuyển kho lưu trữ."
+  ]},
+  { id:"CL-05", title:"Checklist tiếp nhận hồ sơ tại quầy Một cửa", owner:"Phòng Công tác Sinh viên", tier:1, version:"1.9", lines:[
+    "[ ] Kiểm tra thẻ sinh viên còn hiệu lực.",
+    "[ ] Với đơn phúc khảo: đối chiếu ngày công bố điểm, còn trong hạn 7 ngày thì nhận.",
+    "[ ] Với giấy xác nhận sinh viên: hẹn trả kết quả sau 3 ngày làm việc.",
+    "[ ] Ghi số biên nhận vào sổ theo dõi."
+  ]},
+  { id:"EM-06", title:"Mẫu thư tự động gửi sinh viên", owner:"Phòng Đào tạo", tier:1, version:"1.2", lines:[
+    "[PHUC_KHAO_NHAN_DON] Nhà trường đã nhận đơn phúc khảo của bạn.",
+    "[PHUC_KHAO_TU_CHOI] Đơn phúc khảo của bạn nộp quá thời hạn 7 ngày kể từ ngày công bố điểm nên không đủ điều kiện tiếp nhận.",
+    "[XAC_NHAN_SV] Giấy xác nhận sinh viên của bạn sẽ được trả sau 3 ngày làm việc."
+  ]},
+  { id:"QT-07", title:"Quy trình tiếp nhận và giải quyết khiếu nại của người học", owner:"Phòng Thanh tra – Pháp chế", tier:2, version:"2.3", lines:[
+    "B1. Bộ phận Một cửa tiếp nhận đơn khiếu nại và vào sổ trong ngày.",
+    "B2. Đơn vị được phân công phải có văn bản phản hồi người khiếu nại trong 7 ngày làm việc kể từ ngày nhận đơn.",
+    "B3. Trường hợp phức tạp, đơn vị báo cáo Ban Giám hiệu để gia hạn."
+  ]},
+  { id:"QT-08", title:"Quy trình cấp giấy xác nhận sinh viên", owner:"Phòng Công tác Sinh viên", tier:2, version:"1.1", lines:[
+    "B1. Sinh viên nộp yêu cầu cấp giấy xác nhận sinh viên trực tuyến hoặc tại quầy.",
+    "B2. Chuyên viên kiểm tra tình trạng học vụ.",
+    "B3. Trả kết quả trong 3 ngày làm việc kể từ ngày tiếp nhận."
+  ]},
+  { id:"QD-13", title:"Quy chế chi tiêu nội bộ", owner:"Hiệu trưởng", tier:3, version:"4.0", lines:[
+    "Điều 12. Thẩm quyền duyệt tạm ứng",
+    "12.1. Trưởng đơn vị được duyệt đề nghị tạm ứng có giá trị đến 10 triệu đồng.",
+    "Điều 19. Kiểm soát chi",
+    "19.2. Khoản chi từ 10 triệu đồng trở lên phải có hai chữ ký kiểm soát trước khi giải ngân."
+  ]},
+  { id:"QT-11", title:"Quy trình tạm ứng và hoàn ứng kinh phí hoạt động", owner:"Phòng Kế hoạch – Tài chính", tier:2, version:"3.5", lines:[
+    "B1. Đơn vị lập giấy đề nghị tạm ứng kèm dự toán chi tiết.",
+    "B2. Khoản tạm ứng đến 10 triệu đồng do Trưởng đơn vị duyệt; vượt mức này chuyển Phòng Kế hoạch – Tài chính.",
+    "B3. Hoàn ứng chậm nhất 10 ngày làm việc sau khi kết thúc hoạt động.",
+    "Ghi chú: Hạn mức tạm ứng 10 triệu đồng tại B2 áp dụng cho một lần đề nghị, không cộng dồn trong tháng."
+  ]},
+  { id:"BM-12", title:"Giấy đề nghị tạm ứng (BM-TC-03)", owner:"Phòng Kế hoạch – Tài chính", tier:2, version:"1.6", lines:[
+    "Kính gửi: Phòng Kế hoạch – Tài chính.",
+    "Tôi đề nghị được tạm ứng số tiền: ................................ đồng.",
+    "Lưu ý: đề nghị tạm ứng đến 10 triệu đồng chỉ cần chữ ký Trưởng đơn vị.",
+    "Người đề nghị ký và ghi rõ họ tên."
+  ]},
+  { id:"HD-14", title:"Hướng dẫn thanh toán dành cho câu lạc bộ và Đoàn – Hội", owner:"Văn phòng Đoàn – Hội", tier:1, version:"2.2", lines:[
+    "1. Ban chủ nhiệm câu lạc bộ lập đề nghị tạm ứng gửi Văn phòng Đoàn trước hoạt động 5 ngày.",
+    "2. Khoản tạm ứng đến 10 triệu đồng được Trưởng đơn vị duyệt trực tiếp, không cần trình thêm cấp trên.",
+    "3. Khoản chi từ 10 triệu đồng trở lên bắt buộc phải có hai chữ ký kiểm soát.",
+    "4. Ví dụ: hoạt động dự toán 10.000.000 thì ban chủ nhiệm cần chuẩn bị đầy đủ chứng từ gốc."
+  ]}
+];
+
+/* ============================================================
+   CHUẨN HOÁ GIÁ TRỊ & TÌM VỊ TRÍ XUẤT HIỆN TRONG VĂN BẢN
+   ============================================================ */
+function escRe(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
+
+function parseValue(v){
+  v = String(v||"").trim();
+  const m = v.match(/^([\d.,]+)\s*(triệu|tr|tỉ|tỷ|nghìn|ngàn)?\s*(.*)$/i);
+  if(!m) return { raw:v, num:null, unit:"" };
+  let num = parseFloat(m[1].replace(/\./g,"").replace(/,/g,"."));
+  const scale = { "triệu":1e6, "tr":1e6, "tỉ":1e9, "tỷ":1e9, "nghìn":1e3, "ngàn":1e3 }[(m[2]||"").toLowerCase()];
+  if(scale) num *= scale;
+  if(!isFinite(num)) num = null;
+  let unit = (m[3]||"").trim().toLowerCase();
+  if(/^(đồng|vnđ|vnd)$/.test(unit)) unit = "";
+  return { raw:v, num, unit };
+}
+
+function valueRegex(v){
+  const p = parseValue(v);
+  if(p.num===null) return new RegExp(escRe(p.raw), "gi");
+  const alts = new Set();
+  const n = p.num;
+  alts.add(String(n));
+  if(n>=1000) alts.add(n.toLocaleString("de-DE"));
+  if(n<10) alts.add("0"+n);
+  if(n>=1e6 && n%1e6===0){ const m=n/1e6; alts.add(m+" triệu"); alts.add(m+"triệu"); alts.add(m+" tr"); }
+  if(n>=1e3 && n<1e6 && n%1e3===0){ alts.add((n/1e3)+" nghìn"); }
+  const numPart = "(?:"+[...alts].sort((a,b)=>b.length-a.length).map(escRe).join("|")+")";
+  const unitPart = p.unit
+    ? "\\s*"+p.unit.split(/\s+/).map(escRe).join("\\s+")+"(?:\\s+làm\\s+việc)?"
+    : "(?:\\s*(?:đồng|VNĐ|VND))?";
+  try {
+    return new RegExp("(?<![\\d.,])"+numPart+unitPart, "gi");
+  } catch(e) {
+    // Trình duyệt cũ không hỗ trợ lookbehind — lùi về biến thể không có ràng buộc trái.
+    return new RegExp("\\b"+numPart+unitPart, "gi");
+  }
+}
+
+function renderValue(templateMatch, newValue){
+  // Giữ nguyên hậu tố đơn vị mà văn bản đang dùng (đồng / làm việc) nếu giá trị mới không nêu.
+  const p = parseValue(newValue);
+  let out = p.raw;
+  if(/(?:đồng|VNĐ|VND)\s*$/i.test(templateMatch) && !/(?:đồng|VNĐ|VND)/i.test(out)) out += " đồng";
+  if(/làm\s+việc/i.test(templateMatch) && !/làm\s+việc/i.test(out)) out += " làm việc";
+  return out;
+}
+
+/* ============================================================
+   ĐỘNG CƠ PHÂN XỬ TIỀN ĐỊNH
+   Thứ tự kiểm tra: U2 (thuộc quy định khác) → U3 (vượt thẩm quyền) → U1 (không neo) → tự động.
+   ============================================================ */
+function ownersOfLine(line){
+  const low = line.toLowerCase();
+  return RULES.filter(r => r.aliases.some(a => low.includes(a.toLowerCase())));
+}
+
+function analyze(change, docs){
+  const t0 = performance.now();
+  const rule = change.rule;
+  const re = valueRegex(change.oldValue);
+  const props = [];
+  let seq = 0;
+
+  for(const doc of docs){
+    doc.lines.forEach((line, li) => {
+      re.lastIndex = 0;
+      let m, hits = [];
+      while((m = re.exec(line)) !== null){ hits.push({ index:m.index, text:m[0] }); if(m.index===re.lastIndex) re.lastIndex++; }
+      if(!hits.length) return;
+
+      const owners = ownersOfLine(line);
+      const ownerIds = owners.map(o=>o.id);
+      const foreign = owners.filter(o => o.id !== (rule ? rule.id : null) && parseValue(o.value).num === parseValue(change.oldValue).num);
+      const isTarget = rule ? ownerIds.includes(rule.id) : false;
+
+      let outcome, cat, reason, plain;
+      if(foreign.length && !isTarget){
+        outcome="ESCALATE"; cat="U2";
+        reason = "Dòng này được neo vào "+foreign[0].id+" — "+foreign[0].name+" ("+foreign[0].source+"), không phải quy định đang sửa. Giá trị trùng nhau chỉ là ngẫu nhiên.";
+        plain = "Chỗ này viết cùng một con số nhưng nói về chuyện khác. Sửa ở đây là vô tình đổi luôn một quy định thứ hai mà không ai yêu cầu.";
+      } else if(doc.tier > change.issuerTier){
+        outcome="ESCALATE"; cat="U3";
+        reason = "Tài liệu thuộc "+TIER_LABEL[doc.tier]+", do "+doc.owner+" ban hành — cao hơn cấp ban hành thay đổi ("+TIER_APPROVER[change.issuerTier]+").";
+        plain = "Văn bản này do cấp trên ký ban hành. Người ra thay đổi lần này không có quyền sửa, phải trình đúng cấp.";
+      } else if(owners.length===0){
+        outcome="ESCALATE"; cat="U1";
+        reason = "Không có cụm từ nào trong dòng neo con số này vào một quy định đã đăng ký, nên chưa xác định được nó có thuộc "+(rule?rule.id:"quy định được sửa")+" hay không.";
+        plain = "Ở dòng này con số đứng trơ một mình, không có chữ nào cho biết nó là hạn mức nào. Đoán bừa thì rủi ro nên hỏi lại người phụ trách.";
+      } else {
+        outcome="AUTO_PATCH"; cat=null;
+        reason = "Dòng có cụm từ neo vào "+rule.id+" và tài liệu ở "+TIER_LABEL[doc.tier]+", nằm trong thẩm quyền của "+TIER_APPROVER[change.issuerTier]+".";
+        plain = "Đây là chỗ nhắc lại đúng quy định vừa đổi, sửa máy móc được nên hệ thống tự sửa.";
+      }
+
+      const newLine = line.replace(re, (mm)=>renderValue(mm, change.newValue));
+      props.push({
+        id: "P"+(++seq),
+        docId: doc.id, docTitle: doc.title, docOwner: doc.owner, docTier: doc.tier,
+        lineIndex: li, line, newLine, hits, outcome, category: cat, reason, plain,
+        citation: rule ? (rule.id+" — "+rule.source) : "—",
+        decided: false, accepted: false, decisionLabel: null
+      });
+    });
+  }
+
+  const elapsed = performance.now() - t0;
+  return { props, elapsedMs: Math.round(elapsed*100)/100 };
+}
+
+function escalationQuestion(p, change){
+  const rule = change.rule;
+  const who = TIER_APPROVER[p.docTier];
+  if(p.category==="U1"){
+    return {
+      q: "Tài liệu "+p.docId+" — "+p.docTitle+", dòng "+(p.lineIndex+1)+": “"+p.line.trim()+"”. Giá trị “"+change.oldValue+"” ở đây không gắn với quy định nào trong sổ đăng ký. "+
+         "Chuyên viên phụ trách tài liệu quyết định: giá trị này có thuộc "+(rule?rule.name.toLowerCase():"quy định vừa sửa")+" không?",
+      a: "Có — sửa thành “"+change.newValue+"”",
+      b: "Không — giữ nguyên “"+change.oldValue+"”"
+    };
+  }
+  if(p.category==="U2"){
+    const low = p.line.toLowerCase();
+    const other = RULES.find(r => r.id!==(rule?rule.id:null) && r.aliases.some(a=>low.includes(a.toLowerCase())));
+    return {
+      q: "Dòng "+(p.lineIndex+1)+" của "+p.docId+" đang diễn đạt "+(other?other.id+" — "+other.name:"một quy định khác")+", hiện vẫn giữ giá trị "+(other?other.value:change.oldValue)+". "+
+         "Sửa ở đây sẽ thay đổi cả quy định đó. "+(other?other.owner:who)+" quyết định: có sửa kèm không?",
+      a: "Không — chỉ sửa "+(rule?rule.id:"quy định đích")+", giữ nguyên dòng này",
+      b: "Có — sửa cả "+(other?other.id:"quy định kia")+" và ghi nhận là sửa đổi có chủ đích"
+    };
+  }
+  return {
+    q: p.docId+" — "+p.docTitle+" do "+p.docOwner+" ban hành ở "+TIER_LABEL[p.docTier]+", cao hơn cấp ra thay đổi lần này ("+TIER_APPROVER[change.issuerTier]+"). "+
+       "Hệ thống đã khoá quyền sửa. "+TIER_APPROVER[p.docTier]+" quyết định: xử lý thế nào?",
+    a: "Từ chối — giữ nguyên, yêu cầu ban hành quyết định sửa đổi đúng cấp",
+    b: "Chấp thuận sửa ngay và ghi nhận ngoại lệ có phê duyệt"
+  };
+}
+
+/* ============================================================
+   TRẠNG THÁI ỨNG DỤNG
+   ============================================================ */
+function cloneDocs(src){ return src.map(d=>({ ...d, lines:[...d.lines] })); }
+
+let docs = cloneDocs(BASE_DOCS);
+let current = null;      // { change, props, elapsedMs }
+let ledger = [];
+let ledgerSeq = 0;
+
+const $ = id => document.getElementById(id);
+
+/* ---------- Giao diện sáng/tối ---------- */
+$("themebtn").addEventListener("click", ()=>{
+  const now = document.documentElement.getAttribute("data-theme");
+  const next = now==="dark" ? "light" : (now==="light" ? "dark" :
+    (window.matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark"));
+  document.documentElement.setAttribute("data-theme", next);
+});
+
+/* ---------- Khởi tạo form ---------- */
+function initForm(){
+  const sel = $("ruleSel");
+  sel.innerHTML = RULES.map(r=>'<option value="'+r.id+'">'+r.id+" — "+r.name+" (hiện: "+r.value+")</option>").join("");
+  sel.value = "R-PK-01";
+  syncRule();
+  sel.addEventListener("change", syncRule);
+}
+function syncRule(){
+  const r = RULES.find(x=>x.id===$("ruleSel").value);
+  $("oldVal").value = r.value;
+  if(!$("newVal").value) $("newVal").value = r.id==="R-PK-01" ? "5 ngày" : "";
+}
+
+/* ---------- Bộ phân tích câu lệnh tiếng Việt (tiền định) ---------- */
+function parseFreeText(text){
+  const t = text.trim();
+  if(!t) return { ok:false, msg:"Chưa nhập nội dung." };
+
+  let oldV=null, newV=null;
+  let m = t.match(/từ\s+([^,;]+?)\s+(?:thành|lên|xuống|còn|sang)\s+([^,;.]+)/i);
+  if(m){ oldV=m[1].trim(); newV=m[2].trim(); }
+  if(!oldV){
+    m = t.match(/([\d.,]+\s*(?:triệu|tr|nghìn)?\s*[\p{L}]*)\s*(?:->|→|=>)\s*([\d.,]+\s*(?:triệu|tr|nghìn)?\s*[\p{L}]*)/u);
+    if(m){ oldV=m[1].trim(); newV=m[2].trim(); }
+  }
+  if(!oldV || !newV) return { ok:false, msg:"Không nhận ra cặp giá trị cũ → mới. Hãy viết dạng “từ 7 ngày xuống 5 ngày” hoặc “7 ngày → 5 ngày”." };
+
+  let issuerTier = 2;
+  if(/hiệu trưởng|hội đồng trường|phó hiệu trưởng/i.test(t)) issuerTier = 3;
+  else if(/chuyên viên|tổ\s|bộ phận|văn phòng/i.test(t)) issuerTier = 1;
+
+  const low = t.toLowerCase();
+  const oldNum = parseValue(oldV).num;
+  const candidates = RULES
+    .map(r => ({ r, score: r.aliases.filter(a=>low.includes(a.toLowerCase())).length, valueMatch: parseValue(r.value).num === oldNum }))
+    .filter(c => c.valueMatch && c.score>0)
+    .sort((a,b)=>b.score-a.score);
+
+  if(!candidates.length){
+    const anyValue = RULES.some(r => parseValue(r.value).num === oldNum);
+    return { ok:false, msg: anyValue
+      ? "Có nhiều quy định đang mang giá trị “"+oldV+"”. Câu lệnh chưa nêu rõ quy định nào — hãy chọn ở ô bên trái."
+      : "Không có quy định nào trong sổ đăng ký đang mang giá trị “"+oldV+"”. Hệ thống từ chối xử lý để tránh sửa nhầm." };
+  }
+  return { ok:true, ruleId:candidates[0].r.id, oldValue:oldV, newValue:newV, issuerTier };
+}
+
+$("parseBtn").addEventListener("click", ()=>{
+  const res = parseFreeText($("freeText").value);
+  const el = $("parseMsg");
+  if(!res.ok){ el.textContent = "✗ " + res.msg; el.style.color="var(--del)"; return; }
+  $("ruleSel").value = res.ruleId; syncRule();
+  $("newVal").value = res.newValue;
+  $("issuerSel").value = String(res.issuerTier);
+  el.style.color = "var(--auto)";
+  el.textContent = "✓ Nhận diện: "+res.ruleId+" · "+res.oldValue+" → "+res.newValue+" · cấp ban hành "+res.issuerTier;
+});
+
+/* ---------- Thêm tài liệu mới ---------- */
+$("addDocBtn").addEventListener("click", ()=>{
+  const title = $("newDocTitle").value.trim();
+  const body  = $("newDocBody").value.trim();
+  const msg = $("addDocMsg");
+  if(!title || !body){ msg.style.color="var(--del)"; msg.textContent="✗ Cần cả tên tài liệu và nội dung."; return; }
+  const n = docs.filter(d=>d.id.startsWith("NEW-")).length + 1;
+  docs.push({ id:"NEW-"+String(n).padStart(2,"0"), title, owner:"Do giám khảo nhập", tier:Number($("newDocTier").value),
+              version:"1.0", lines: body.split(/\n+/).map(s=>s.trim()).filter(Boolean) });
+  msg.style.color="var(--auto)"; msg.textContent="✓ Đã thêm vào kho. Chạy lại phân tích để quét tài liệu này.";
+  $("newDocTitle").value=""; $("newDocBody").value="";
+  renderDocs();
+});
+
+/* ---------- Chạy phân tích ---------- */
+$("runBtn").addEventListener("click", run);
+$("resetBtn").addEventListener("click", ()=>{
+  docs = cloneDocs(BASE_DOCS); current=null; ledger=[]; ledgerSeq=0;
+  $("proposals").innerHTML = '<div class="empty">Chưa chạy phân tích nào.</div>';
+  $("summary").innerHTML = ""; $("queue").innerHTML = '<div class="empty">Không có hồ sơ nào cần người xử lý.</div>';
+  $("ledger").innerHTML = '<div class="empty">Sổ nhật ký trống.</div>';
+  $("commitBtn").disabled = true; $("runMsg").textContent = "";
+  renderDocs();
+});
+
+function buildChange(){
+  const rule = RULES.find(r=>r.id===$("ruleSel").value);
+  const newValue = $("newVal").value.trim();
+  if(!newValue) return { error:"Chưa nhập giá trị mới." };
+  if(parseValue(newValue).num === parseValue(rule.value).num) return { error:"Giá trị mới trùng với giá trị hiện hành." };
+  return { change:{ rule, oldValue:rule.value, newValue, issuerTier:Number($("issuerSel").value) } };
+}
+
+function run(){
+  const b = buildChange();
+  const msg = $("runMsg");
+  if(b.error){ msg.style.color="var(--del)"; msg.textContent="✗ "+b.error; return; }
+  const res = analyze(b.change, docs);
+  current = { change:b.change, props:res.props, elapsedMs:res.elapsedMs };
+  msg.style.color="var(--muted)";
+  msg.textContent = "Quét "+docs.length+" tài liệu trong "+res.elapsedMs+" ms.";
+  renderAll();
+}
+
+/* ---------- Hiển thị ---------- */
+function diffHtml(p, change){
+  const re = valueRegex(change.oldValue);
+  const before = p.line.replace(re, mm => '<span class="old">'+mm+"</span>");
+  const after  = p.line.replace(re, mm => '<span class="new">'+renderValue(mm, change.newValue)+"</span>");
+  return '<div class="diff"><span class="ln">− dòng '+(p.lineIndex+1)+"  </span>"+before+
+         '<br><span class="ln">+ dòng '+(p.lineIndex+1)+"  </span>"+after+"</div>";
+}
+
+function renderAll(){ renderSummary(); renderProposals(); renderQueue(); renderDocs(); updateCommit(); }
+
+function renderSummary(){
+  if(!current){ $("summary").innerHTML=""; return; }
+  const p = current.props;
+  const n = c => p.filter(x=>x.category===c).length;
+  const auto = p.filter(x=>x.outcome==="AUTO_PATCH").length;
+  const pct = p.length ? Math.round(auto/p.length*100) : 0;
+  const tile = (cls,val,lbl,sub) =>
+    '<div class="stat '+cls+'"><b>'+val+'</b><div class="lbl">'+lbl+'</div><div class="sub2">'+sub+'</div></div>';
+  $("summary").innerHTML =
+    '<div class="stats">'+
+    tile("", p.length, "vị trí bị ảnh hưởng", docs.length+" tài liệu · "+current.elapsedMs+" ms")+
+    tile("auto", auto, "tự động xử lý", pct+"% khối lượng, không hỏi người")+
+    tile("u1", n("U1"), "U1 · chưa rõ dữ kiện", "hỏi chuyên viên phụ trách")+
+    tile("u2", n("U2"), "U2 · ngoài phạm vi", "hỏi đơn vị chủ quản")+
+    tile("u3", n("U3"), "U3 · vượt thẩm quyền", "hỏi cấp ban hành tài liệu")+
+    "</div>";
+}
+
+function renderProposals(){
+  const host = $("proposals");
+  if(!current || !current.props.length){
+    host.innerHTML = '<div class="empty">Không tìm thấy vị trí nào mang giá trị “'+(current?current.change.oldValue:"")+'”. Hệ thống không đề xuất thay đổi nào.</div>';
+    return;
+  }
+  const c = current.change;
+  host.innerHTML = current.props.map(p=>{
+    const tagCls = p.outcome==="AUTO_PATCH" ? "auto" : p.category;
+    const tagTxt = p.outcome==="AUTO_PATCH" ? "Tự động sửa" : "Chuyển tiếp · "+p.category;
+    const cardCls = p.outcome==="AUTO_PATCH" ? "ok" : "esc-"+p.category;
+    return '<div class="card '+cardCls+(p.decided?" done":"")+'">'+
+      '<div class="cardhead"><span class="docid">'+p.docId+'</span><span class="doctitle">'+p.docTitle+'</span>'+
+      '<span class="tierbadge">'+TIER_LABEL[p.docTier]+'</span>'+
+      '<span class="tag '+tagCls+'">'+tagTxt+'</span>'+
+      '<span class="meta">'+p.docOwner+'</span></div>'+
+      diffHtml(p,c)+
+      '<div class="why"><b>Căn cứ máy:</b> '+p.reason+'</div>'+
+      '<div class="cite">Trích dẫn: '+p.citation+'</div>'+
+      (p.decided?'<div class="why" style="margin-top:6px">✔ Đã quyết: '+p.decisionLabel+"</div>":"")+
+    "</div>";
+  }).join("");
+}
+
+function renderQueue(){
+  const host = $("queue");
+  if(!current){ host.innerHTML='<div class="empty">Không có hồ sơ nào cần người xử lý.</div>'; return; }
+  const pend = current.props.filter(p=>p.outcome==="ESCALATE" && !p.decided);
+  if(!pend.length){ host.innerHTML='<div class="empty">Không còn hồ sơ nào chờ quyết định.</div>'; return; }
+  const c = current.change;
+  host.innerHTML = pend.map(p=>{
+    const q = escalationQuestion(p, c);
+    return '<div class="card esc-'+p.category+'">'+
+      '<div class="cardhead"><span class="docid">'+p.docId+'</span><span class="tag '+p.category+'">'+p.category+'</span>'+
+      '<span class="meta">Người quyết định: '+TIER_APPROVER[p.docTier]+'</span></div>'+
+      '<div class="qbox"><div class="qlabel">Câu hỏi chuyển tiếp — một lượt, quyết dứt điểm</div>'+q.q+"</div>"+
+      '<div class="row"><button type="button" data-p="'+p.id+'" data-act="a">'+q.a+'</button>'+
+      '<button type="button" data-p="'+p.id+'" data-act="b">'+q.b+"</button></div>"+
+      '<div class="plain"><b>Giải thích cho người không chuyên:</b> '+p.plain+"</div>"+
+    "</div>";
+  }).join("");
+  host.querySelectorAll("button[data-p]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const p = current.props.find(x=>x.id===btn.dataset.p);
+      const q = escalationQuestion(p, current.change);
+      const act = btn.dataset.act;
+      p.decided = true;
+      p.decisionLabel = (act==="a" ? q.a : q.b);
+      // Nút A của U1 và nút B của U2/U3 là các lựa chọn dẫn tới việc sửa dòng.
+      p.accepted = (p.category==="U1") ? (act==="a") : (act==="b");
+      renderAll();
+    });
+  });
+}
+
+function renderDocs(){
+  $("docs").innerHTML = docs.map(d=>
+    '<details class="panel" style="margin-bottom:8px"><summary><span class="docid">'+d.id+"</span> "+
+    d.title+' <span class="tierbadge">'+TIER_LABEL[d.tier]+"</span> · v"+d.version+" · "+d.owner+"</summary>"+
+    '<div class="docbody">'+d.lines.map((l,i)=>String(i+1).padStart(2," ")+"  "+l).join("\n")+"</div></details>"
+  ).join("");
+}
+
+function updateCommit(){
+  if(!current){ $("commitBtn").disabled = true; return; }
+  const n = current.props.filter(p => !p.applied && (p.outcome==="AUTO_PATCH" || (p.decided && p.accepted))).length;
+  $("commitBtn").disabled = n===0;
+  $("commitBtn").textContent = "Ban hành "+n+" thay đổi đã duyệt";
+}
+
+/* ---------- Ban hành + sổ kiểm toán ---------- */
+function appendLedger(entry){
+  const prev = ledger.length ? ledger[ledger.length-1].hash : "0".repeat(64);
+  const payload = [++ledgerSeq, entry.ts, entry.actor, entry.docId, entry.action, entry.from, entry.to, entry.basis, prev].join("|");
+  ledger.push({ seq:ledgerSeq, ...entry, prevHash:prev, hash:sha256Hex(payload) });
+}
+
+$("commitBtn").addEventListener("click", ()=>{
+  if(!current) return;
+  const c = current.change;
+  const ts = new Date().toISOString();
+  let applied = 0;
+  current.props.forEach(p=>{
+    const doApply = p.outcome==="AUTO_PATCH" || (p.decided && p.accepted);
+    if(!doApply || p.applied) return;
+    const doc = docs.find(d=>d.id===p.docId);
+    if(!doc || doc.lines[p.lineIndex] !== p.line) return;
+    doc.lines[p.lineIndex] = p.newLine;
+    doc.version = bumpVersion(doc.version);
+    p.applied = true; applied++;
+    appendLedger({
+      ts, actor: p.outcome==="AUTO_PATCH" ? "AI · động cơ tiền định" : "Người · "+TIER_APPROVER[p.docTier],
+      docId: p.docId, lineIndex: p.lineIndex, action:"PATCH dòng "+(p.lineIndex+1),
+      from: p.line, to: p.newLine,
+      basis: p.citation + " · " + (p.category ? p.category+" — "+p.decisionLabel : "tự động, trong thẩm quyền"),
+      propId: p.id
+    });
+  });
+  current.props.filter(p=>p.decided && !p.accepted && !p.logged).forEach(p=>{
+    p.logged = true;
+    appendLedger({ ts, actor:"Người · "+TIER_APPROVER[p.docTier], docId:p.docId,
+      action:"TỪ CHỐI SỬA dòng "+(p.lineIndex+1), from:p.line, to:p.line,
+      basis: p.category+" — "+p.decisionLabel, propId:p.id });
+  });
+  $("commitMsg").textContent = "Đã ban hành "+applied+" thay đổi lúc "+ts+".";
+  renderAll(); renderLedger();
+});
+
+function bumpVersion(v){
+  const m = String(v).match(/^(\d+)\.(\d+)$/);
+  return m ? m[1]+"."+(Number(m[2])+1) : v;
+}
+
+function renderLedger(){
+  const host = $("ledger");
+  if(!ledger.length){ host.innerHTML='<div class="empty">Sổ nhật ký trống. Ban hành một thay đổi để sinh bản ghi đầu tiên.</div>'; return; }
+  host.innerHTML =
+    '<div class="tablewrap"><table>'+
+    '<colgroup><col style="width:42px"><col style="width:150px"><col style="width:190px"><col style="width:86px"><col style="width:150px"><col><col style="width:112px"><col style="width:96px"></colgroup>'+
+    "<thead><tr><th>#</th><th>Thời điểm</th><th>Tác nhân</th><th>Tài liệu</th>"+
+    "<th>Hành động</th><th>Căn cứ</th><th>Băm SHA-256</th><th></th></tr></thead><tbody>"+
+    ledger.map(e=>'<tr><td class="num">'+e.seq+'</td><td class="num">'+e.ts.replace("T"," ").slice(0,19)+"</td>"+
+      "<td>"+e.actor+'</td><td class="mono">'+e.docId+"</td><td>"+e.action+"</td><td>"+e.basis+"</td>"+
+      '<td class="hash">'+e.hash.slice(0,14)+"…</td><td>"+
+      (e.action.startsWith("PATCH") && !e.reverted ? '<button class="danger" type="button" data-undo="'+e.seq+'">Hoàn tác</button>' : "")+
+      "</td></tr>").join("")+"</tbody></table></div>"+
+    '<div class="note">Mỗi bản ghi băm SHA-256 trên nội dung của chính nó nối với băm của bản ghi liền trước. Sửa lén một dòng bất kỳ sẽ làm gãy toàn bộ chuỗi phía sau.</div>';
+
+  host.querySelectorAll("button[data-undo]").forEach(b=>{
+    b.addEventListener("click", ()=>undo(Number(b.dataset.undo)));
+  });
+}
+
+function undo(seq){
+  const e = ledger.find(x=>x.seq===seq);
+  if(!e || e.reverted) return;
+  const doc = docs.find(d=>d.id===e.docId);
+  if(doc && doc.lines[e.lineIndex] === e.to){ doc.lines[e.lineIndex] = e.from; doc.version = bumpVersion(doc.version); }
+  e.reverted = true;
+  if(current){ const p = current.props.find(x=>x.id===e.propId); if(p) p.applied = false; }
+  appendLedger({ ts:new Date().toISOString(), actor:"Người · "+TIER_APPROVER[doc?doc.tier:1],
+    docId:e.docId, action:"HOÀN TÁC bản ghi #"+seq, from:e.to, to:e.from,
+    basis:"Thu hồi thay đổi đã ban hành; bản ghi gốc giữ nguyên trong sổ", propId:e.propId });
+  renderAll(); renderLedger();
+}
+
+/* ============================================================
+   VERIFY HARNESS — chạy trên bản sao sạch, độc lập trạng thái
+   ============================================================ */
+const SUITE_REQUIRED = [
+  { id:"TC-01", desc:"Thay đổi hợp lệ, tài liệu cấp dưới có neo quy định → tự xử lý",
+    change:{ ruleId:"R-PK-01", newValue:"5 ngày", issuerTier:2 }, at:{ docId:"QT-02", lineIndex:0 },
+    expect:{ outcome:"AUTO_PATCH", category:null } },
+  { id:"TC-02", desc:"Vị trí trùng giá trị nhưng thuộc quy định khác → phải từ chối sửa, chuyển tiếp",
+    change:{ ruleId:"R-PK-01", newValue:"5 ngày", issuerTier:2 }, at:{ docId:"QT-07", lineIndex:1 },
+    expect:{ outcome:"ESCALATE", category:"U2" } },
+  { id:"TC-03", desc:"Tài liệu do cấp trên ban hành → khoá quyền sửa, chuyển tiếp",
+    change:{ ruleId:"R-PK-01", newValue:"5 ngày", issuerTier:2 }, at:{ docId:"QD-01", lineIndex:1 },
+    expect:{ outcome:"ESCALATE", category:"U3" } },
+  { id:"TC-04", desc:"Câu lệnh tham chiếu giá trị không có trong sổ đăng ký → từ chối xử lý",
+    freeText:"Đổi hạn nộp hồ sơ từ 42 ngày xuống 30 ngày.",
+    expect:{ refuse:true } }
+];
+
+const SUITE_ESCALATION = [
+  { id:"ESC-01", desc:"Thường quy — quy trình cấp Phòng, dòng có neo",
+    change:{ ruleId:"R-PK-01", newValue:"5 ngày", issuerTier:2 }, at:{ docId:"QT-02", lineIndex:4 },
+    expect:{ outcome:"AUTO_PATCH", category:null } },
+  { id:"ESC-02", desc:"Thường quy — biểu mẫu cấp Phòng",
+    change:{ ruleId:"R-PK-01", newValue:"5 ngày", issuerTier:2 }, at:{ docId:"BM-03", lineIndex:1 },
+    expect:{ outcome:"AUTO_PATCH", category:null } },
+  { id:"ESC-03", desc:"Thường quy — checklist tác nghiệp",
+    change:{ ruleId:"R-PK-01", newValue:"5 ngày", issuerTier:2 }, at:{ docId:"CL-05", lineIndex:1 },
+    expect:{ outcome:"AUTO_PATCH", category:null } },
+  { id:"ESC-04", desc:"Chuyển tiếp — con số không neo vào quy định nào (U1)",
+    change:{ ruleId:"R-PK-01", newValue:"5 ngày", issuerTier:2 }, at:{ docId:"HD-04", lineIndex:3 },
+    expect:{ outcome:"ESCALATE", category:"U1" } },
+  { id:"ESC-05", desc:"Chuyển tiếp — quy chế do Hiệu trưởng ban hành, vượt thẩm quyền (U3)",
+    change:{ ruleId:"R-TC-01", newValue:"15 triệu", issuerTier:2 }, at:{ docId:"QD-13", lineIndex:1 },
+    expect:{ outcome:"ESCALATE", category:"U3" } }
+];
+
+function runCase(tc){
+  const t0 = performance.now();
+  let actual, ok;
+  if(tc.freeText){
+    const r = parseFreeText(tc.freeText);
+    actual = r.ok ? "Đã tạo đề xuất" : "REFUSE";
+    ok = tc.expect.refuse ? !r.ok : r.ok;
+    return { id:tc.id, desc:tc.desc, expected:"REFUSE", actual, category:"—",
+             ms:Math.round((performance.now()-t0)*100)/100, ok, detail: r.ok?"":"Lý do từ chối: "+r.msg };
+  }
+  const rule = RULES.find(r=>r.id===tc.change.ruleId);
+  const change = { rule, oldValue:rule.value, newValue:tc.change.newValue, issuerTier:tc.change.issuerTier };
+  const fresh = cloneDocs(BASE_DOCS);
+  const { props } = analyze(change, fresh);
+  const p = props.find(x=>x.docId===tc.at.docId && x.lineIndex===tc.at.lineIndex);
+  const expTxt = tc.expect.outcome + (tc.expect.category ? " / "+tc.expect.category : "");
+  if(!p) return { id:tc.id, desc:tc.desc, expected:expTxt, actual:"không tìm thấy", category:"—",
+                  ms:Math.round((performance.now()-t0)*100)/100, ok:false,
+                  detail:("Vị trí: "+tc.at.docId+" dòng "+(tc.at.lineIndex+1)) };
+  ok = p.outcome===tc.expect.outcome && (p.category||null)===(tc.expect.category||null);
+  return { id:tc.id, desc:tc.desc, expected:expTxt, actual:p.outcome+(p.category?" / "+p.category:""),
+           category:p.category||"—", ms:Math.round((performance.now()-t0)*100)/100, ok,
+           detail:("Vị trí: "+tc.at.docId+" dòng "+(tc.at.lineIndex+1)) };
+}
+
+function renderVerify(sections){
+  const ts = new Date().toISOString();
+  let total=0, passed=0;
+  const html = sections.map(sec=>{
+    const rows = sec.cases.map(runCase);
+    const p = rows.filter(r=>r.ok).length;
+    total += rows.length; passed += p;
+    return '<div class="suite">'+
+      '<div class="suitehead"><span class="suitetitle">'+sec.title+'</span>'+
+      '<span class="pill '+(p===rows.length?"pass":"fail")+'">'+p+"/"+rows.length+" PASS</span></div>"+
+      '<div class="tablewrap"><table>'+
+      '<colgroup><col style="width:82px"><col><col style="width:136px"><col style="width:136px"><col style="width:82px"><col style="width:92px"></colgroup>'+
+      "<thead><tr><th>Mã ca</th><th>Nội dung</th><th>Kỳ vọng</th><th>Thực tế</th><th>Độ trễ</th><th>Kết quả</th></tr></thead><tbody>"+
+      rows.map(r=>'<tr><td class="mono">'+r.id+"</td>"+
+        "<td>"+r.desc+(r.detail?'<div class="sub">'+r.detail+"</div>":"")+"</td>"+
+        '<td class="mono">'+r.expected+"</td>"+
+        '<td class="mono'+(r.ok?"":" bad")+'">'+r.actual+"</td>"+
+        '<td class="num">'+r.ms+" ms</td>"+
+        '<td><span class="pill '+(r.ok?"pass":"fail")+'">'+(r.ok?"PASS":"FAIL")+"</span></td></tr>").join("")+
+      "</tbody></table></div></div>";
+  }).join("");
+
+  const allOk = passed===total;
+  $("verifyOut").innerHTML =
+    '<div class="vbanner '+(allOk?"ok":"bad")+'">'+
+      '<div class="vscore">'+passed+"/"+total+"</div>"+
+      '<div><div class="vlabel">'+(allOk?"Tất cả ca kiểm thử đạt":"Có ca không đạt")+"</div>"+
+      '<div class="vts">Chạy lúc '+ts+" · bản sao sạch của kho tài liệu</div></div>"+
+    "</div>"+html+
+    '<div class="note">Mỗi ca chạy lại toàn bộ động cơ trên kho tài liệu gốc rồi đối chiếu với kỳ vọng — không có kết quả nào được ghi sẵn trong mã nguồn.</div>';
+}
+
+$("verifyAllBtn").addEventListener("click", ()=>renderVerify([
+  { title:"Bộ 4 ca bắt buộc (có ca mà hành vi đúng là từ chối / chuyển tiếp)", cases:SUITE_REQUIRED },
+  { title:"Bộ Escalation 90 giây — 3 ca thường quy, 2 ca chuyển tiếp", cases:SUITE_ESCALATION }
+]));
+$("verifyReqBtn").addEventListener("click", ()=>renderVerify([
+  { title:"Bộ 4 ca bắt buộc", cases:SUITE_REQUIRED } ]));
+$("verifyEscBtn").addEventListener("click", ()=>renderVerify([
+  { title:"Bộ Escalation 90 giây — 3 ca thường quy, 2 ca chuyển tiếp", cases:SUITE_ESCALATION } ]));
+
+/* ---------- Khởi động ---------- */
+initForm();
+renderDocs();
+</script>
+</body>
+</html>
