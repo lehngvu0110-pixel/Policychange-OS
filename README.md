@@ -95,14 +95,15 @@ Thay đổi quy định ──┐
               Ban hành + Sổ kiểm toán SHA-256 nối chuỗi + Hoàn tác
 ```
 
-**Thành phần thực tế (đã chạy được):** toàn bộ sơ đồ trên. Chạy hoàn toàn trong trình duyệt, không máy chủ,
-không gọi mô hình ngôn ngữ.
+**Thành phần thực tế (đã chạy được):** phân tích tiền định, semantic evidence validation, graph, deterministic prover,
+commit, audit và undo chạy trong trình duyệt. Provider adapter đã có nhưng **chưa cấu hình provider sống**;
+phân tích câu lệnh dùng deterministic fallback. Ca semantic review trong guided demo dùng fixture mock được gắn nhãn,
+đi qua validator thật.
 
 **Thành phần giả lập:** kho 12 tài liệu và sổ 6 quy định là **dữ liệu tổng hợp do nhóm tự soạn**, mô phỏng
 hệ thống văn bản của một trường đại học. Không dùng văn bản thật của bất kỳ đơn vị nào.
 
-**Chưa có ở Sprint 1:** lớp mô hình ngôn ngữ để đọc câu lệnh tiếng Việt viết tự do hơn và để gợi ý cụm từ
-neo cho quy định mới; kết nối kho tài liệu thật (Google Drive / SharePoint); xử lý tài liệu dạng ảnh quét.
+**Chưa có:** kết nối model provider thật; kết nối kho tài liệu thật (Google Drive / SharePoint); xử lý tài liệu dạng ảnh quét.
 
 ## Vì sao động cơ là tiền định chứ không phải mô hình ngôn ngữ
 
@@ -114,6 +115,19 @@ Ba lý do, theo thứ tự quan trọng:
 
 Lớp mô hình ngôn ngữ được dự kiến bổ sung ở Sprint 2 **bên ngoài đường ra quyết định**: dùng để hiểu câu
 lệnh và diễn đạt câu hỏi, không dùng để phân loại.
+
+## MLAI Demo
+
+Mở ứng dụng qua GitHub Pages hoặc `python3 -m http.server 8080`, rồi vào phần **MLAI guided demo** ở đầu trang.
+Provider chưa được cấu hình: bước hiểu yêu cầu sẽ ghi rõ **deterministic fallback**; ca mơ hồ ghi rõ **fixture/mock**.
+
+1. Bấm **Run safe/date demo**. Hệ thống phân tích yêu cầu `R-PK-01 · 7 ngày → 5 ngày`, hiển thị policy, phạm vi một registry entry, request basis, graph và proof thật, rồi ban hành qua commit handler hiện có.
+2. Quan sát `DEMO-7D`: hạn đổi thành 5 ngày, ngày `17/07/2025` được giữ nguyên. Mở audit entry để xem before/after và proof reference; bấm **Hoàn tác** ngay trong ledger để khôi phục dòng và thêm reversal event.
+3. Bấm **Try global-scope refusal**. Yêu cầu đổi mọi deadline bị từ chối trước analysis; nội dung và ledger không đổi.
+4. Bấm **Load ambiguity fixture · mock**. Graph và evidence đến từ fixture `semantic-ambiguous` qua semantic validator thật. Xem `REVIEW · semantic hold`, sau đó chọn **Duyệt đề xuất này** hoặc **Giữ nguyên dòng**; quyết định engine `AUTO_PATCH` vẫn hiển thị riêng.
+5. Xem benchmark snapshot, rồi tái lập đầy đủ bằng `node bench/run.cjs`.
+
+To reproduce interactively, use an HTTP server rather than `file://`; this also avoids browser restrictions on local-file access. The browser Verify harness is a separate check from the Node regression suites. Benchmark figures are measurements on the included synthetic fixtures only, not real-world error rates.
 
 ## Giới hạn đã biết
 
@@ -133,3 +147,19 @@ BUILD_LOG.md    nhật ký phát triển
 docs/QT-KSTL-01_Quy-trinh-kiem-soat-tai-lieu.md
                 tài liệu quy định của quy trình được chọn (yêu cầu bắt buộc của Đề A)
 ```
+
+## Phase 5 benchmark (synthetic, offline)
+
+The benchmark in `bench/` compares three deliberately different systems on the same authored fixtures:
+
+- `naive`: replaces every matching numeric token without policy or document checks.
+- `llmOnly`: follows a fixture-specified mock model response; it has no registry or deterministic prover.
+- `policyChangeOS`: loads the current browser implementation from `index.html`, runs the deterministic request fallback, analysis, semantic evidence validation where supplied, prover, and existing commit handler. It does not connect to a live model.
+
+Run it from the repository root with `node bench/run.cjs`. Add `--json` for machine-readable output. Run the benchmark contract tests with `node tests/benchmark.test.cjs`.
+
+All 26 cases are synthetic. `bench/fixtures.json` contains the explicit input and manually authored ground truth for each case, including expected mutations and engine classifications. These fixtures are demonstrations of behavior, not a statistically representative sample and not evidence of real-world performance. The LLM-only responses are mocks, not model outputs.
+
+Metrics are computed from fixture ground truth. Correct decision rate compares outcome, review category, human-review flag, and refusal flag. Correct mutation rate requires the exact expected mutation set. False auto-patch rate is the number of cases with at least one automatic mutation that includes an unapproved mutation, divided by all cases with at least one automatic mutation; it is `n/a` if that denominator is zero. Unsafe mutation count counts unapproved mutation tuples. Correct refusal rate is measured only over fixtures whose ground truth requires refusal; correct escalation rate only over fixtures requiring human review. Missed safe automation rate is the fraction of fixtures with expected safe mutations where at least one expected mutation was missed. PolicyChange-OS also reports engine classification accuracy against the explicitly authored per-line engine decisions.
+
+The harness does not report inferential statistics or claim generalization. It does not measure provider latency (there is no live provider), and it does not benchmark undo. It adapts the actual browser code through a Node VM harness; browser rendering and interactive Verify are outside this benchmark. The retained date fixture is now a regression check: structured numeric components are excluded from candidate matching and independently rejected by the prover's replacement recheck, while a genuine deadline on the same line remains patchable.

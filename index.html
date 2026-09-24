@@ -143,6 +143,29 @@ h2::after{content:"";flex:1;height:1px;background:var(--line)}
 .stat .lbl{font-size:12.5px;font-weight:600;color:var(--ink-2);line-height:1.35}
 .stat .sub2{font-size:11.5px;color:var(--muted);margin-top:3px}
 
+/* ---------- Derived Policy Impact Graph ---------- */
+.impact-policy{padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel-2);margin-bottom:10px}
+.impact-card{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px;margin:9px 0;background:var(--panel)}
+.impact-chain{display:grid;grid-template-columns:minmax(150px,1fr) auto minmax(180px,1.4fr) minmax(150px,1fr);gap:9px;align-items:stretch}
+.impact-node{border:1px solid var(--line);border-radius:var(--r-xs);padding:10px;background:var(--panel-2);overflow-wrap:anywhere}
+.impact-node b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:4px}
+.impact-decision{font-weight:750;color:var(--brand)}
+.impact-arrow{align-self:center;color:var(--muted);font-size:11px;text-align:center}
+.impact-evidence-list,.impact-audit-list{margin-top:9px}
+.impact-evidence,.impact-audit{font-size:12px;line-height:1.5;border-top:1px solid var(--line);padding:7px 2px}
+.impact-badge{display:inline-block;font:700 10px/1.5 var(--mono);padding:1px 6px;border:1px solid var(--line-2);border-radius:5px;color:var(--ink-2)}
+.impact-muted{font-size:11.5px;color:var(--muted);margin-top:3px;overflow-wrap:anywhere}
+@media(max-width:760px){.impact-chain{grid-template-columns:1fr}.impact-arrow{padding:1px}}
+.demo-track{display:flex;flex-wrap:wrap;gap:7px;margin:7px 0 12px}
+.demo-stage{font:750 10px/1.5 var(--mono);letter-spacing:.04em;color:var(--ink-2);background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:4px 8px}
+.demo-note{font-size:12px;line-height:1.5;color:var(--muted);margin:7px 0}
+.demo-result{min-height:34px;padding:9px 11px;border-left:3px solid var(--brand);background:var(--panel-2);margin-top:10px;font-size:12px;line-height:1.5}
+.demo-understanding{font-size:12px;line-height:1.55;margin-top:8px}
+.demo-benchmark{border-top:1px solid var(--line);margin-top:12px;padding-top:9px;font-size:12px;line-height:1.6}
+.demo-benchmark b{color:var(--ink-2)}
+.tag.review{background:var(--u2-soft);color:var(--u2)}
+.card.reviewHold{border-left-color:var(--u2)}
+
 /* ---------- Form ---------- */
 label{display:block;font-size:11.5px;color:var(--muted);margin:14px 0 5px;font-weight:700;letter-spacing:.02em}
 select,input[type=text],textarea{
@@ -255,6 +278,29 @@ details[open] summary::before{transform:rotate(90deg)}
   Sau đó bấm <kbd>▶ Verify</kbd> ở mục 5 để chạy toàn bộ bộ kiểm thử tự động.
 </div>
 
+<section class="panel" id="mlaDemo" aria-labelledby="mlaDemoTitle">
+  <div class="cardhead"><b id="mlaDemoTitle">MLAI guided demo · 3–5 phút</b><span class="note">Dữ liệu tổng hợp · không có model provider trực tiếp</span></div>
+  <div class="demo-track" aria-label="Kiến trúc demo">
+    <span class="demo-stage">UNDERSTAND</span><span class="demo-stage">DISCOVER</span>
+    <span class="demo-stage">PROVE</span><span class="demo-stage">AUTO / REVIEW / ESCALATE / REFUSE</span>
+    <span class="demo-stage">AUDIT / UNDO</span>
+  </div>
+  <p class="demo-note">AI extraction hiện dùng parser tiền định dự phòng vì provider chưa được cấu hình. Ca review dùng fixture mock được ghi nhãn rõ; bộ kiểm tra ngữ nghĩa, engine, prover, commit và undo vẫn là luồng thật.</p>
+  <div class="row">
+    <button class="primary" type="button" id="demoSafeBtn">Run safe/date demo</button>
+    <button type="button" id="demoReviewBtn">Load ambiguity fixture · mock</button>
+    <button type="button" id="demoRefusalBtn">Try global-scope refusal</button>
+  </div>
+  <div class="demo-understanding" id="demoUnderstanding"><b>UNDERSTAND</b> · Chọn một kịch bản để xem cách hiểu yêu cầu và nguồn dữ liệu.</div>
+  <div class="demo-result" id="demoStatus" role="status" aria-live="polite">Sẵn sàng. Demo safe/date sẽ chạy phân tích và ban hành qua handler hiện có; Hoàn tác vẫn dùng nút trong sổ audit.</div>
+  <div class="demo-benchmark">
+    <b>Benchmark snapshot · 26 fixture tổng hợp</b><br>
+    PolicyChange-OS: False Auto-Patch <b>0/13 (0%)</b> · Correct Decision <b>100%</b> · Correct Mutation <b>100%</b> · Correct Refusal <b>100%</b> · Correct Escalation <b>100%</b>.<br>
+    Baseline: Naive replacement <b>16/25</b> false auto-patches · LLM-only mock <b>13/18</b> · PolicyChange-OS <b>0/13</b>.<br>
+    <span class="note">Đo trên fixture tổng hợp đi kèm, không phải tỷ lệ lỗi thực tế. Tái lập: <code>node bench/run.cjs</code>.</span>
+  </div>
+</section>
+
 <h2><span class="hnum">1</span>Thay đổi quy định đầu vào</h2>
 <div class="panel">
   <div class="grid2">
@@ -282,6 +328,10 @@ details[open] summary::before{transform:rotate(90deg)}
         <button type="button" id="parseBtn">Phân tích câu lệnh</button>
         <span class="note" id="parseMsg"></span>
       </div>
+      <div class="row" style="margin-top:8px">
+        <button type="button" id="aiParseBtn">AI bóc tách / dự phòng tiền định</button>
+        <span class="note" id="aiParseMsg" role="status" aria-live="polite">AI không khả dụng: chưa cấu hình nhà cung cấp. Dùng nút trên để phân tích tiền định như hiện tại.</span>
+      </div>
       <details style="margin-top:12px">
         <summary>Thêm tài liệu mới vào kho (dành cho giám khảo)</summary>
         <label for="newDocTitle">Tên tài liệu</label>
@@ -306,11 +356,19 @@ details[open] summary::before{transform:rotate(90deg)}
     <button type="button" id="resetBtn">Khôi phục kho tài liệu gốc</button>
     <span class="note" id="runMsg"></span>
   </div>
+  <div class="row" style="margin-top:8px">
+    <button type="button" id="semanticBtn" disabled>Kiểm tra liên kết ngữ nghĩa</button>
+    <span class="note" id="semanticMsg" role="status" aria-live="polite">Chưa chạy phân tích.</span>
+  </div>
 </div>
 
 <h2><span class="hnum">2</span>Kết quả phân xử</h2>
 <div id="summary"></div>
 <div id="proposals"><div class="empty">Chưa chạy phân tích nào.</div></div>
+<section class="panel" id="impactGraphPanel" style="margin-top:14px">
+  <div class="cardhead"><b>Policy Impact Graph</b><span class="note" id="impactGraphStatus">Chạy phân tích để tạo đồ thị từ trạng thái thực.</span></div>
+  <div id="impactGraph"><div class="empty">Chưa có kết quả phân tích để biểu diễn.</div></div>
+</section>
 
 <h2><span class="hnum">3</span>Hàng đợi chuyển tiếp — chờ người quyết định</h2>
 <div id="queue"><div class="empty">Không có hồ sơ nào cần người xử lý.</div></div>
@@ -345,6 +403,11 @@ details[open] summary::before{transform:rotate(90deg)}
 
 </div>
 
+<script src="./js/policy-ai.js"></script>
+<script src="./js/semantic-discovery.js"></script>
+<script src="./js/policy-impact-graph.js"></script>
+<script src="./js/policy-prover.js"></script>
+<script src="./js/policy-demo.js"></script>
 <script>
 "use strict";
 
@@ -538,6 +601,17 @@ function valueRegex(v){
   }
 }
 
+function isStructuredNumericOccurrence(line, index, text){
+  const numeric = String(text||"").match(/^[\d.,]+/);
+  if(!numeric) return false;
+  const before = index > 0 ? line[index-1] : "";
+  const after = line[index+numeric[0].length] || "";
+  if(/[\d/]/.test(before) || /[\d/]/.test(after)) return true;
+  const beforePrevious = index > 1 ? line[index-2] : "";
+  const afterNext = line[index+numeric[0].length+1] || "";
+  return (/[.,]/.test(before) && /\d/.test(beforePrevious)) || (/[.,]/.test(after) && /\d/.test(afterNext));
+}
+
 function renderValue(templateMatch, newValue){
   // Giữ nguyên hậu tố đơn vị mà văn bản đang dùng (đồng / làm việc) nếu giá trị mới không nêu.
   const p = parseValue(newValue);
@@ -567,7 +641,10 @@ function analyze(change, docs){
     doc.lines.forEach((line, li) => {
       re.lastIndex = 0;
       let m, hits = [];
-      while((m = re.exec(line)) !== null){ hits.push({ index:m.index, text:m[0] }); if(m.index===re.lastIndex) re.lastIndex++; }
+      while((m = re.exec(line)) !== null){
+        if(!isStructuredNumericOccurrence(line,m.index,m[0])) hits.push({ index:m.index, text:m[0] });
+        if(m.index===re.lastIndex) re.lastIndex++;
+      }
       if(!hits.length) return;
 
       const owners = ownersOfLine(line);
@@ -594,7 +671,7 @@ function analyze(change, docs){
         plain = "Đây là chỗ nhắc lại đúng quy định vừa đổi, sửa máy móc được nên hệ thống tự sửa.";
       }
 
-      const newLine = line.replace(re, (mm)=>renderValue(mm, change.newValue));
+      const newLine = line.replace(re, (mm,index)=>isStructuredNumericOccurrence(line,index,mm) ? mm : renderValue(mm, change.newValue));
       props.push({
         id: "P"+(++seq),
         docId: doc.id, docTitle: doc.title, docOwner: doc.owner, docTier: doc.tier,
@@ -717,6 +794,164 @@ $("parseBtn").addEventListener("click", ()=>{
   el.textContent = "✓ Nhận diện: "+res.ruleId+" · "+res.oldValue+" → "+res.newValue+" · cấp ban hành "+res.issuerTier;
 });
 
+/* ---------- Ranh giới trích xuất AI (hiện chưa cấu hình provider) ---------- */
+const policyAIAdapter = PolicyChangeAI.createUnavailableAdapter();
+const semanticAIAdapter = PolicyChangeSemanticDiscovery.createUnavailableAdapter();
+
+function policyValueKey(value){
+  const parsed = parseValue(value);
+  if(parsed.num===null) return null;
+  return JSON.stringify([parsed.num, parsed.unit]);
+}
+
+function showAIExtractionResult(result){
+  const el = $("aiParseMsg");
+  if(result.status==="ai_candidate" || result.status==="deterministic_fallback"){
+    const change = result.change;
+    const rule = RULES.find(r=>r.id===change.ruleId);
+    if(!rule) return;
+    $("ruleSel").value = rule.id; syncRule();
+    $("newVal").value = change.newValue;
+    $("issuerSel").value = String(change.issuerTier);
+    if(result.status==="ai_candidate"){
+      el.textContent = "AI candidate đã qua kiểm tra cấu trúc và sổ đăng ký; chưa phân loại. Bấm Chạy để qua động cơ tiền định.";
+      el.style.color = "var(--u2)";
+    } else {
+      const reason = result.aiStatus==="unavailable" ? "AI không khả dụng" :
+        (result.aiStatus==="rejected" ? "AI candidate bị từ chối" :
+        (result.aiStatus==="ambiguous" ? "AI candidate mơ hồ" :
+        (result.aiStatus==="timeout" ? "AI hết thời gian chờ" : "AI provider gặp lỗi")));
+      el.textContent = reason+"; đã dùng parser tiền định: "+rule.id+" · "+change.oldValue+" → "+change.newValue+" · cấp "+change.issuerTier+". Bấm Chạy để qua động cơ tiền định.";
+      el.style.color = "var(--muted)";
+    }
+    return;
+  }
+  el.style.color = "var(--del)";
+  const aiState = result.aiStatus==="unavailable" ? "AI không khả dụng. " :
+    (result.aiStatus==="rejected" ? "AI candidate bị từ chối. " :
+    (result.aiStatus==="ambiguous" ? "AI candidate mơ hồ. " :
+    (result.aiStatus==="timeout" ? "AI hết thời gian chờ. " :
+    (result.aiStatus==="provider_failure" ? "AI provider gặp lỗi. " :
+    (result.aiStatus==="candidate" ? "AI candidate cần thêm dữ kiện. " : "")))));
+  if(result.status==="clarification"){
+    el.textContent = aiState+"Cần làm rõ: "+result.reason;
+  } else {
+    el.textContent = aiState+"Từ chối xử lý: "+result.reason;
+  }
+}
+
+function renderDemoUnderstanding(result, requestText){
+  const host = $("demoUnderstanding");
+  if(result.status === "ai_candidate" || result.status === "deterministic_fallback"){
+    const change = result.change;
+    const rule = RULES.find(item=>item.id===change.ruleId);
+    if(!rule){ host.textContent = "UNDERSTAND · Policy không còn trong registry."; return; }
+    const source = result.status === "ai_candidate"
+      ? "AI candidate · validated, chưa authorization"
+      : "Deterministic fallback · provider unavailable, không có live model inference";
+    host.innerHTML = '<b>UNDERSTAND · '+source+'</b><br>'+
+      'Policy: '+escapeSemanticHtml(rule.id+" — "+rule.name)+' · value: '+escapeSemanticHtml(change.oldValue)+
+      ' → '+escapeSemanticHtml(change.newValue)+' · scope: single registered policy · issuer tier: '+escapeSemanticHtml(change.issuerTier)+
+      '<br>Request basis (raw user text): “'+escapeSemanticHtml(requestText)+'”';
+    return;
+  }
+  host.innerHTML = '<b>UNDERSTAND · '+escapeSemanticHtml(result.status.toUpperCase())+'</b><br>'+
+    escapeSemanticHtml(result.reason || "No supported change was extracted.");
+}
+
+async function resolvePolicyRequest(requestText){
+  const el = $("aiParseMsg");
+  el.textContent = "Đang kiểm tra đề xuất; nếu AI không khả dụng, sẽ dùng parser tiền định.";
+  el.style.color = "var(--muted)";
+  const result = await PolicyChangeAI.resolveRequest({
+    requestText,
+    registry: RULES,
+    adapter: policyAIAdapter,
+    parseDeterministically: parseFreeText,
+    normalizeValue: policyValueKey
+  });
+  showAIExtractionResult(result);
+  renderDemoUnderstanding(result, requestText);
+  return result;
+}
+
+$("aiParseBtn").addEventListener("click", async ()=>{
+  const requestText = $("freeText").value;
+  await resolvePolicyRequest(requestText);
+});
+
+$("demoSafeBtn").addEventListener("click", async ()=>{
+  const scenario = PolicyChangeDemo.getSafeDateScenario();
+  $("resetBtn").click();
+  $("commitMsg").textContent = "";
+  docs = [scenario.document];
+  renderDocs();
+  $("freeText").value = scenario.requestText;
+  $("newVal").value = "";
+  const extracted = await resolvePolicyRequest(scenario.requestText);
+  if(extracted.status !== "deterministic_fallback"){
+    $("demoStatus").textContent = "Demo stopped before analysis: expected deterministic fallback, got "+extracted.status+".";
+    return;
+  }
+  run();
+  const proposal = current && current.props.find(item=>item.docId===scenario.document.id && item.lineIndex===0);
+  const proof = proposal ? proveProposal(proposal) : null;
+  if(!proposal || proposal.outcome !== "AUTO_PATCH" || !proof || !proof.allowed){
+    $("demoStatus").textContent = "Demo stopped before commit: the actual engine/prover did not authorize the expected safe case.";
+    return;
+  }
+  $("commitBtn").click();
+  const issued = ledger.find(item=>item.propId===proposal.id && item.action.startsWith("PATCH"));
+  const liveDoc = docs.find(item=>item.id===scenario.document.id);
+  if(!issued || !liveDoc || liveDoc.lines[0] !== proposal.newLine){
+    $("demoStatus").textContent = "Unexpected post-commit state. Stop this scenario and inspect the proposal and ledger.";
+    return;
+  }
+  $("demoStatus").textContent = "AUTO_PATCH · real deterministic proof "+proof.proofId+" passed; committed the exact clause through the existing handler. The live document shows 5 days and preserves 17/07/2025. Audit entry #"+issued.seq+" is in the ledger. Click its Hoàn tác button to restore the original line and append a reversal event.";
+});
+
+$("demoReviewBtn").addEventListener("click", async ()=>{
+  const scenario = PolicyChangeDemo.getAmbiguityScenario();
+  $("resetBtn").click();
+  $("commitMsg").textContent = "";
+  docs = [{ ...scenario.document, title:"Fixture · ambiguous appeal guidance", owner:"Phòng Đào tạo", version:"1.0" }];
+  renderDocs();
+  $("freeText").value = scenario.requestText;
+  $("newVal").value = "";
+  const extracted = await resolvePolicyRequest(scenario.requestText);
+  if(extracted.status !== "deterministic_fallback"){
+    $("demoStatus").textContent = "Review fixture stopped before analysis: deterministic fallback returned "+extracted.status+".";
+    return;
+  }
+  run();
+  const proposal = current && current.props.find(item=>item.docId===scenario.document.id && item.lineIndex===0);
+  if(!proposal || proposal.outcome !== "AUTO_PATCH"){
+    $("demoStatus").textContent = "Review fixture stopped: the actual engine did not produce its expected AUTO_PATCH candidate.";
+    return;
+  }
+  const result = await discoverSemanticEvidence(PolicyChangeDemo.createAmbiguityFixtureAdapter(), "fixture_mock");
+  const held = current && current.props.some(item=>item.semanticHold);
+  if(result.status !== "complete" || !held){
+    $("demoStatus").textContent = "Review fixture unavailable: fixture evidence did not validate into a human hold.";
+    return;
+  }
+  $("demoStatus").textContent = "REVIEW · benchmark fixture mock, not live model output. The actual semantic validator accepted possibly_related evidence; the deterministic engine still says AUTO_PATCH, while the semantic hold blocks commit until a human approves or keeps the line unchanged.";
+});
+
+$("demoRefusalBtn").addEventListener("click", async ()=>{
+  const beforeDocs = JSON.stringify(docs);
+  const beforeLedgerLength = ledger.length;
+  const requestText = "Change every 7-day deadline to 5 days.";
+  $("freeText").value = requestText;
+  const result = await resolvePolicyRequest(requestText);
+  const unchanged = JSON.stringify(docs) === beforeDocs && ledger.length === beforeLedgerLength;
+  if(result.status !== "refusal" || !unchanged){
+    $("demoStatus").textContent = "Unexpected global-scope demo result. No additional action was taken.";
+    return;
+  }
+  $("demoStatus").textContent = "REFUSE · the request targets every deadline instead of one registered policy. Extraction stopped before analysis; document contents and audit ledger are unchanged.";
+});
+
 /* ---------- Thêm tài liệu mới ---------- */
 $("addDocBtn").addEventListener("click", ()=>{
   const title = $("newDocTitle").value.trim();
@@ -739,6 +974,8 @@ $("resetBtn").addEventListener("click", ()=>{
   $("summary").innerHTML = ""; $("queue").innerHTML = '<div class="empty">Không có hồ sơ nào cần người xử lý.</div>';
   $("ledger").innerHTML = '<div class="empty">Sổ nhật ký trống.</div>';
   $("commitBtn").disabled = true; $("runMsg").textContent = "";
+  $("semanticBtn").disabled = true; $("semanticMsg").textContent = "Chưa chạy phân tích.";
+  renderImpactGraph();
   renderDocs();
 });
 
@@ -755,11 +992,69 @@ function run(){
   const msg = $("runMsg");
   if(b.error){ msg.style.color="var(--del)"; msg.textContent="✗ "+b.error; return; }
   const res = analyze(b.change, docs);
-  current = { change:b.change, props:res.props, elapsedMs:res.elapsedMs };
+  current = { change:b.change, props:res.props, elapsedMs:res.elapsedMs, requestText:$('freeText').value, semanticResult:null };
+  $("semanticBtn").disabled = false;
+  $("semanticMsg").textContent = "Chưa kiểm tra ngữ nghĩa; kết quả hiện tại chỉ dựa trên động cơ tiền định.";
   msg.style.color="var(--muted)";
   msg.textContent = "Quét "+docs.length+" tài liệu trong "+res.elapsedMs+" ms.";
   renderAll();
 }
+
+function matchesCurrentOldValue(line, oldValue){
+  const re = valueRegex(oldValue);
+  re.lastIndex = 0;
+  return re.test(line);
+}
+
+function escapeSemanticHtml(value){
+  return String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+async function discoverSemanticEvidence(adapter=semanticAIAdapter, source="provider"){
+  if(!current) return;
+  const analysisAtStart = current;
+  const button = $("semanticBtn");
+  const status = $("semanticMsg");
+  button.disabled = true;
+  status.textContent = "Đang kiểm tra tập ứng viên đã được động cơ tiền định phát hiện…";
+  status.style.color = "var(--muted)";
+  current.semanticResult = { status:"pending", rejected:[] };
+  renderImpactGraph();
+  const result = await PolicyChangeSemanticDiscovery.discoverSemantics({
+    requestText: current.requestText,
+    change: current.change,
+    props: current.props,
+    docs,
+    registry: RULES,
+    matchesOldValue: matchesCurrentOldValue,
+    adapter
+  });
+  if(current !== analysisAtStart) return result;
+  current.props = result.props;
+  current.semanticStatus = result.status;
+  current.semanticSource = source;
+  current.semanticResult = { status:result.status, valid:result.status==="complete" ? result.valid : [], rejected:result.rejected };
+  if(result.status === "complete"){
+    const holds = current.props.filter(p=>p.semanticHold).length;
+    const sourceLabel = source === "fixture_mock" ? "Fixture/mock (không phải model sống): " : "";
+    status.textContent = sourceLabel + "Đã kiểm tra " + result.candidateSet.candidates.length + " ứng viên; " + result.valid.length + " bằng chứng hợp lệ; " + holds + " vị trí cần người rà soát.";
+  } else if(result.status === "unavailable"){
+    status.textContent = "AI ngữ nghĩa không khả dụng; giữ nguyên toàn bộ kết quả tiền định.";
+  } else if(result.status === "timeout"){
+    status.textContent = "AI ngữ nghĩa hết thời gian chờ; giữ nguyên toàn bộ kết quả tiền định.";
+  } else if(result.status === "provider_failure"){
+    status.textContent = "AI ngữ nghĩa gặp lỗi; giữ nguyên toàn bộ kết quả tiền định.";
+  } else if(result.status === "rejected"){
+    status.textContent = "Bằng chứng AI bị từ chối; giữ nguyên toàn bộ kết quả tiền định.";
+  } else {
+    status.textContent = "Không có ứng viên đủ điều kiện cho khám phá ngữ nghĩa.";
+  }
+  renderAll();
+  button.disabled = false;
+  return result;
+}
+
+$("semanticBtn").addEventListener("click", ()=>discoverSemanticEvidence());
 
 /* ---------- Hiển thị ---------- */
 function diffHtml(p, change){
@@ -770,13 +1065,111 @@ function diffHtml(p, change){
          '<br><span class="ln">+ dòng '+(p.lineIndex+1)+"  </span>"+after+"</div>";
 }
 
-function renderAll(){ renderSummary(); renderProposals(); renderQueue(); renderDocs(); updateCommit(); }
+function renderAll(){ renderSummary(); renderProposals(); renderQueue(); renderDocs(); updateCommit(); renderImpactGraph(); }
+
+function impactGraphFormMatchesAnalysis(){
+  return !!current &&
+    $("ruleSel").value === current.change.rule.id &&
+    $("newVal").value.trim() === current.change.newValue &&
+    Number($("issuerSel").value) === current.change.issuerTier &&
+    $("freeText").value === current.requestText;
+}
+
+function renderImpactGraph(){
+  const status = $("impactGraphStatus");
+  const host = $("impactGraph");
+  if(!current){
+    status.textContent = "Chạy phân tích để tạo đồ thị từ trạng thái thực.";
+    host.innerHTML = '<div class="empty">Chưa có kết quả phân tích để biểu diễn.</div>';
+    return;
+  }
+  if(!impactGraphFormMatchesAnalysis()){
+    status.textContent = "Yêu cầu đã thay đổi; chạy lại phân tích để đồng bộ đồ thị.";
+    host.innerHTML = '<div class="empty">Đồ thị cũ được ẩn cho tới khi có kết quả phân tích của yêu cầu hiện tại.</div>';
+    return;
+  }
+
+  const graph = PolicyChangeImpactGraph.buildImpactGraph({
+    change:current.change, props:current.props, docs, registry:RULES,
+    semanticResult:current.semanticResult, ledger
+  });
+  const nodes = new Map(graph.nodes.map(node=>[node.id,node]));
+  const incoming = (type,target)=>graph.edges.filter(edge=>edge.type===type && edge.target===target);
+  const outgoing = (type,source)=>graph.edges.filter(edge=>edge.type===type && edge.source===source);
+  const policy = graph.nodes.find(node=>node.type==="POLICY");
+  const extras = graph.nodes.filter(node=>node.type==="DEPENDENCY" && !outgoing("DEPENDENCY_TO_DECISION",node.id));
+  const extrasHtml = extras.map(item=>
+    '<div class="impact-evidence"><span class="impact-badge">'+escapeSemanticHtml(item.evidenceState)+'</span> '+
+    escapeSemanticHtml(item.reason || item.explanation || "AI evidence state")+'</div>'
+  ).join("");
+  const decisions = graph.nodes.filter(node=>node.type==="DECISION");
+  const cards = decisions.map(decision=>{
+    const documentNode = nodes.get(PolicyChangeImpactGraph.ids.document(decision.documentId));
+    const clauseNode = nodes.get(PolicyChangeImpactGraph.ids.clause(decision.documentId,decision.lineIndex));
+    const evidence = incoming("DEPENDENCY_TO_DECISION",decision.id).map(edge=>nodes.get(edge.source)).filter(Boolean);
+    const audit = outgoing("DECISION_TO_AUDIT",decision.id).map(edge=>nodes.get(edge.target)).filter(Boolean);
+    const decisionLabel = decision.category
+      ? decision.outcome+" · "+decision.category
+      : decision.outcome;
+    const clauseView = clauseNode
+      ? '<div class="impact-node"><b>Clause · dòng '+(clauseNode.lineIndex+1)+'</b><div>“'+escapeSemanticHtml(clauseNode.quote)+'”</div>'+
+        (decision.proposedLine?'<div class="impact-muted">Engine candidate: “'+escapeSemanticHtml(decision.proposedLine)+'”</div>':"")+
+        (!clauseNode.matchesAnalysisSnapshot?'<div class="impact-muted">Nội dung hiện tại khác dòng đã phân tích; bằng chứng cũ không nối vào clause hiện tại.</div>':"")+'</div>'
+      : '<div class="impact-node impact-muted">Tài liệu hoặc dòng hiện tại chưa tồn tại; clause không được tạo.</div>';
+    const evidenceView = evidence.map(item=>
+      '<div class="impact-evidence"><span class="impact-badge">'+escapeSemanticHtml(item.evidenceState)+'</span> '+
+      '<b>'+escapeSemanticHtml(item.relationship)+'</b>'+
+      (item.quote?' · “'+escapeSemanticHtml(item.quote)+'”':"")+
+      (item.explanation?'<div class="impact-muted">'+escapeSemanticHtml(item.explanation)+'</div>':"")+
+      (item.currentClauseMatch===false?'<div class="impact-muted">Không trỏ tới đúng dòng hiện tại.</div>':"")+'</div>'
+    ).join("") || '<div class="impact-muted">Không có dependency evidence cho quyết định này.</div>';
+    const auditView = audit.map(item=>
+      '<div class="impact-audit"><span class="impact-badge">'+(item.reverted?"REVERT":"AUDIT")+'</span> #'+
+      escapeSemanticHtml(item.sequence)+' · '+escapeSemanticHtml(item.action)+' · '+escapeSemanticHtml(item.actor||"")+
+      (item.basis?' <span class="impact-muted">— '+escapeSemanticHtml(item.basis)+'</span>':"")+'</div>'
+    ).join("") || '<div class="impact-muted">Chưa có issue/undo event trong audit ledger.</div>';
+    const hasPolicyClause = clauseNode && graph.edges.some(edge=>
+      edge.type==="POLICY_TO_CLAUSE" && edge.target===clauseNode.id
+    );
+    return '<article class="impact-card"><div class="impact-chain">'+
+      '<div class="impact-node"><b>Decision</b><div class="impact-decision">'+escapeSemanticHtml(decisionLabel)+'</div>'+
+      '<div class="impact-muted">Engine: '+escapeSemanticHtml(decision.reason||"")+'</div>'+
+      '<div>Prover: '+escapeSemanticHtml(decision.prover.status)+(decision.prover.proofId?' · '+escapeSemanticHtml(decision.prover.proofId):"")+
+      (decision.prover.reasons.length?' · '+escapeSemanticHtml(decision.prover.reasons.join(' ')):"")+'</div>'+
+      '<div>Human review: '+escapeSemanticHtml(decision.humanReview.status)+
+      (decision.humanReview.decisionLabel?' · '+escapeSemanticHtml(decision.humanReview.decisionLabel):"")+'</div>'+
+      '<div>Issue state: '+escapeSemanticHtml(decision.issueState)+'</div></div>'+
+      '<div class="impact-arrow">'+(hasPolicyClause?"policy → clause → ":"")+"clause → document ← evidence"+'</div>'+
+      clauseView+
+      '<div class="impact-node"><b>Document</b><div>'+escapeSemanticHtml(documentNode?documentNode.documentId:decision.documentId)+
+      (documentNode?' · '+escapeSemanticHtml(documentNode.title)+' · '+escapeSemanticHtml(documentNode.version||""):" · missing")+'</div></div>'+
+      '</div><div class="impact-evidence-list"><b>Dependencies / evidence</b>'+evidenceView+'</div>'+
+      '<div class="impact-audit-list"><b>Human review / audit / undo</b>'+auditView+'</div></article>';
+  }).join("");
+  const policyHtml = policy
+    ? '<div class="impact-policy"><b>Policy</b> · '+escapeSemanticHtml(policy.ruleId)+' — '+escapeSemanticHtml(policy.name)+
+      ' · '+escapeSemanticHtml(policy.value)+' → '+escapeSemanticHtml(policy.proposedValue)+'</div>'
+    : '<div class="impact-muted">Policy record is absent from the current registry; no policy node or policy edge was created.</div>';
+  const resultState = current.semanticResult && current.semanticResult.status
+    ? " · semantic: "+current.semanticResult.status+(current.semanticSource==="fixture_mock" ? " · fixture/mock, not live model output" : "")
+    : "";
+  status.textContent = graph.nodes.length+" nodes · "+graph.edges.length+" evidence-supported edges · derived from current analysis, registry, documents and ledger"+resultState+".";
+  host.innerHTML = policyHtml + extrasHtml + (cards || '<div class="empty">Không có decision node trong kết quả phân tích hiện tại.</div>');
+}
+
+["ruleSel","newVal","issuerSel","freeText"].forEach(id=>{
+  const element = $(id);
+  element.addEventListener(id==="freeText" || id==="newVal" ? "input" : "change", ()=>{
+    renderImpactGraph();
+  });
+});
 
 function renderSummary(){
   if(!current){ $("summary").innerHTML=""; return; }
   const p = current.props;
   const n = c => p.filter(x=>x.category===c).length;
-  const auto = p.filter(x=>x.outcome==="AUTO_PATCH").length;
+  const auto = p.filter(x=>x.outcome==="AUTO_PATCH" && (!x.semanticHold || x.semanticHoldApproved) &&
+    PolicyChangeDemo.proofForDisplay(x, proveProposal).allowed).length;
   const pct = p.length ? Math.round(auto/p.length*100) : 0;
   const tile = (cls,val,lbl,sub) =>
     '<div class="stat '+cls+'"><b>'+val+'</b><div class="lbl">'+lbl+'</div><div class="sub2">'+sub+'</div></div>';
@@ -798,9 +1191,30 @@ function renderProposals(){
   }
   const c = current.change;
   host.innerHTML = current.props.map(p=>{
-    const tagCls = p.outcome==="AUTO_PATCH" ? "auto" : p.category;
-    const tagTxt = p.outcome==="AUTO_PATCH" ? "Tự động sửa" : "Chuyển tiếp · "+p.category;
-    const cardCls = p.outcome==="AUTO_PATCH" ? "ok" : "esc-"+p.category;
+    const proof = p.outcome==="AUTO_PATCH" ? PolicyChangeDemo.proofForDisplay(p, proveProposal) : null;
+    const tagCls = p.semanticHold ? "review" : (p.outcome==="AUTO_PATCH" ? "auto" : p.category);
+    const tagTxt = p.outcome==="AUTO_PATCH"
+      ? (p.applied
+        ? "ISSUED · AUTO_PATCH"
+        : p.semanticHold
+        ? (p.semanticHoldReviewed ? (p.semanticHoldApproved ? "REVIEW · người duyệt" : "REVIEW · giữ nguyên") : "REVIEW · semantic hold")
+        : (proof && !proof.allowed ? "Prover chặn · cần rà soát" : "AUTO_PATCH"))
+      : "Chuyển tiếp · "+p.category;
+    const cardCls = p.semanticHold ? "reviewHold" : (p.outcome==="AUTO_PATCH" ? "ok" : "esc-"+p.category);
+    const semantic = Array.isArray(p.semanticEvidence) ? p.semanticEvidence.map(e=>
+      '<div class="why"><b>'+(current.semanticSource==="fixture_mock" ? "Fixture/mock evidence (not live)" : "AI evidence")+' · '+escapeSemanticHtml(e.relation)+':</b> “'+escapeSemanticHtml(e.quote)+'” — '+escapeSemanticHtml(e.explanation)+'</div>'
+    ).join("") : "";
+    const holdStatus = p.semanticHold && p.semanticHoldReviewed
+      ? '<div class="why">'+(p.semanticHoldApproved ? "Người rà soát đã duyệt; chờ ban hành." : "Người rà soát đã chọn giữ nguyên.")+'</div>'
+      : "";
+    const holdActions = p.semanticHold && !p.semanticHoldReviewed
+      ? '<div class="row"><button type="button" data-semantic-review="approve" data-p="'+p.id+'">Duyệt đề xuất này</button><button type="button" data-semantic-review="reject" data-p="'+p.id+'">Giữ nguyên dòng</button></div>'
+      : "";
+    const proofStatus = proof
+      ? '<div class="why"><b>Prover:</b> '+(proof.allowed
+        ? 'đã xác nhận '+proof.checks.filter(check=>check.passed).length+' điều kiện · '+escapeSemanticHtml(proof.proofId)
+        : 'chặn cập nhật — '+escapeSemanticHtml(proof.reasons.join(' ')))+'</div>'
+      : "";
     return '<div class="card '+cardCls+(p.decided?" done":"")+'">'+
       '<div class="cardhead"><span class="docid">'+p.docId+'</span><span class="doctitle">'+p.docTitle+'</span>'+
       '<span class="tierbadge">'+TIER_LABEL[p.docTier]+'</span>'+
@@ -809,9 +1223,26 @@ function renderProposals(){
       diffHtml(p,c)+
       '<div class="why"><b>Căn cứ máy:</b> '+p.reason+'</div>'+
       '<div class="cite">Trích dẫn: '+p.citation+'</div>'+
+      semantic+proofStatus+holdStatus+holdActions+
       (p.decided?'<div class="why" style="margin-top:6px">✔ Đã quyết: '+p.decisionLabel+"</div>":"")+
     "</div>";
   }).join("");
+  host.querySelectorAll("button[data-semantic-review]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const p = current.props.find(x=>x.id===btn.dataset.p);
+      if(!p || !p.semanticHold || p.semanticHoldReviewed) return;
+      p.semanticHoldReviewed = true;
+      p.semanticHoldApproved = btn.dataset.semanticReview === "approve";
+      if(!p.semanticHoldApproved){
+        const ts = new Date().toISOString();
+        appendLedger({ ts, actor:"Người rà soát", docId:p.docId,
+          action:"GIỮ NGUYÊN dòng "+(p.lineIndex+1), from:p.line, to:p.line,
+          basis:"Rà soát bằng chứng ngữ nghĩa; không áp dụng patch tự động", propId:p.id });
+        renderLedger();
+      }
+      renderAll();
+    });
+  });
 }
 
 function renderQueue(){
@@ -855,9 +1286,21 @@ function renderDocs(){
 
 function updateCommit(){
   if(!current){ $("commitBtn").disabled = true; return; }
-  const n = current.props.filter(p => !p.applied && (p.outcome==="AUTO_PATCH" || (p.decided && p.accepted))).length;
+  const n = current.props.filter(p => !p.applied && PolicyChangeSemanticDiscovery.isPatchAllowed(p) &&
+    (p.outcome!=="AUTO_PATCH" || proveProposal(p).allowed)).length;
   $("commitBtn").disabled = n===0;
   $("commitBtn").textContent = "Ban hành "+n+" thay đổi đã duyệt";
+}
+
+function proveProposal(p){
+  if(!current || !p) return { allowed:false, reasons:["Không có phân tích hiện tại."] };
+  const doc = docs.find(item=>item.id===p.docId);
+  const proof = PolicyChangePolicyProver.proveAutomaticPatch(current.change, doc, p, {
+    registry:RULES, docs, analyze, parseValue, valueRegex, renderValue, ownersOfLine,
+    validatedEvidence:current.semanticResult && current.semanticResult.status==="complete" ? current.semanticResult.valid : []
+  });
+  p.proof = proof;
+  return proof;
 }
 
 /* ---------- Ban hành + sổ kiểm toán ---------- */
@@ -872,19 +1315,26 @@ $("commitBtn").addEventListener("click", ()=>{
   const c = current.change;
   const ts = new Date().toISOString();
   let applied = 0;
+  let proverHeld = 0;
   current.props.forEach(p=>{
-    const doApply = p.outcome==="AUTO_PATCH" || (p.decided && p.accepted);
-    if(!doApply || p.applied) return;
+    if(p.applied) return;
     const doc = docs.find(d=>d.id===p.docId);
-    if(!doc || doc.lines[p.lineIndex] !== p.line) return;
+    if(!doc) return;
+    const proof = p.outcome==="AUTO_PATCH" ? proveProposal(p) : null;
+    const doApply = PolicyChangeSemanticDiscovery.isPatchAllowed(p) && (p.outcome!=="AUTO_PATCH" || proof.allowed);
+    if(!doApply){ if(p.outcome==="AUTO_PATCH" && PolicyChangeSemanticDiscovery.isPatchAllowed(p)) proverHeld++; return; }
+    if(doc.lines[p.lineIndex] !== p.line) return;
     doc.lines[p.lineIndex] = p.newLine;
     doc.version = bumpVersion(doc.version);
     p.applied = true; applied++;
     appendLedger({
-      ts, actor: p.outcome==="AUTO_PATCH" ? "AI · động cơ tiền định" : "Người · "+TIER_APPROVER[p.docTier],
+      ts, actor: p.semanticHoldApproved ? "Người rà soát ngữ nghĩa" : (p.outcome==="AUTO_PATCH" ? "AI · động cơ tiền định" : "Người · "+TIER_APPROVER[p.docTier]),
       docId: p.docId, lineIndex: p.lineIndex, action:"PATCH dòng "+(p.lineIndex+1),
       from: p.line, to: p.newLine,
-      basis: p.citation + " · " + (p.category ? p.category+" — "+p.decisionLabel : "tự động, trong thẩm quyền"),
+      basis: p.citation + " · " + (p.semanticHoldApproved
+        ? "AUTO_PATCH được con người duyệt sau bằng chứng ngữ nghĩa"
+        : (p.category ? p.category+" — "+p.decisionLabel : "tự động, trong thẩm quyền")) +
+        (proof && proof.allowed ? " · deterministic proof "+proof.proofId+" · checks "+proof.checks.filter(check=>check.passed).map(check=>check.id).join(",") : ""),
       propId: p.id
     });
   });
@@ -894,7 +1344,7 @@ $("commitBtn").addEventListener("click", ()=>{
       action:"TỪ CHỐI SỬA dòng "+(p.lineIndex+1), from:p.line, to:p.line,
       basis: p.category+" — "+p.decisionLabel, propId:p.id });
   });
-  $("commitMsg").textContent = "Đã ban hành "+applied+" thay đổi lúc "+ts+".";
+  $("commitMsg").textContent = "Đã ban hành "+applied+" thay đổi"+(proverHeld ? "; prover chặn "+proverHeld+" đề xuất" : "")+" lúc "+ts+".";
   renderAll(); renderLedger();
 });
 
