@@ -316,8 +316,9 @@ details[open] summary::before{transform:rotate(90deg)}
 
       <label for="issuerSel">Cấp ban hành thay đổi</label>
       <select id="issuerSel">
+        <option value="" selected disabled>Chọn cấp ban hành</option>
         <option value="1">Chuyên viên / đơn vị tác nghiệp</option>
-        <option value="2" selected>Trưởng phòng / Trưởng đơn vị</option>
+        <option value="2">Trưởng phòng / Trưởng đơn vị</option>
         <option value="3">Hiệu trưởng / Hội đồng Trường</option>
       </select>
     </div>
@@ -404,6 +405,7 @@ details[open] summary::before{transform:rotate(90deg)}
 </div>
 
 <script src="./js/policy-ai.js"></script>
+<script src="./js/safe-html.js"></script>
 <script src="./js/semantic-discovery.js"></script>
 <script src="./js/policy-impact-graph.js"></script>
 <script src="./js/policy-prover.js"></script>
@@ -609,6 +611,9 @@ function isStructuredNumericOccurrence(line, index, text){
   if(/[\d/]/.test(before) || /[\d/]/.test(after)) return true;
   const beforePrevious = index > 1 ? line[index-2] : "";
   const afterNext = line[index+numeric[0].length+1] || "";
+  const prefix = line.slice(0,index);
+  const suffix = line.slice(index+numeric[0].length);
+  if(/\d\s*[-–—]\s*$/.test(prefix) || /^\s*[-–—]\s*\d/.test(suffix)) return true;
   return (/[.,]/.test(before) && /\d/.test(beforePrevious)) || (/[.,]/.test(after) && /\d/.test(afterNext));
 }
 
@@ -653,18 +658,22 @@ function analyze(change, docs){
       const isTarget = rule ? ownerIds.includes(rule.id) : false;
 
       let outcome, cat, reason, plain;
-      if(foreign.length && !isTarget){
+      if(foreign.length){
         outcome="ESCALATE"; cat="U2";
-        reason = "Dòng này được neo vào "+foreign[0].id+" — "+foreign[0].name+" ("+foreign[0].source+"), không phải quy định đang sửa. Giá trị trùng nhau chỉ là ngẫu nhiên.";
-        plain = "Chỗ này viết cùng một con số nhưng nói về chuyện khác. Sửa ở đây là vô tình đổi luôn một quy định thứ hai mà không ai yêu cầu.";
+        reason = "Dòng này cũng được neo vào "+foreign[0].id+" — "+foreign[0].name+" ("+foreign[0].source+"). Giá trị cũ trùng nhau; cần người rà soát để tránh đổi quy định ngoài phạm vi.";
+        plain = "Dòng này còn nhắc tới một quy định khác đang dùng cùng giá trị. Hệ thống giữ nguyên phân loại U2 và yêu cầu rà soát trước khi sửa.";
       } else if(doc.tier > change.issuerTier){
         outcome="ESCALATE"; cat="U3";
         reason = "Tài liệu thuộc "+TIER_LABEL[doc.tier]+", do "+doc.owner+" ban hành — cao hơn cấp ban hành thay đổi ("+TIER_APPROVER[change.issuerTier]+").";
         plain = "Văn bản này do cấp trên ký ban hành. Người ra thay đổi lần này không có quyền sửa, phải trình đúng cấp.";
-      } else if(owners.length===0){
+      } else if(owners.length===0 || !isTarget || owners.length>1){
         outcome="ESCALATE"; cat="U1";
-        reason = "Không có cụm từ nào trong dòng neo con số này vào một quy định đã đăng ký, nên chưa xác định được nó có thuộc "+(rule?rule.id:"quy định được sửa")+" hay không.";
-        plain = "Ở dòng này con số đứng trơ một mình, không có chữ nào cho biết nó là hạn mức nào. Đoán bừa thì rủi ro nên hỏi lại người phụ trách.";
+        reason = owners.length
+          ? "Dòng không có một neo độc quyền vào "+(rule?rule.id:"quy định được sửa")+"; cần xác nhận quy định nào sở hữu giá trị này trước khi sửa."
+          : "Không có cụm từ nào trong dòng neo con số này vào một quy định đã đăng ký, nên chưa xác định được nó có thuộc "+(rule?rule.id:"quy định được sửa")+" hay không.";
+        plain = owners.length
+          ? "Dòng này có thể nhắc nhiều quy định hoặc chỉ nhắc quy định khác. Người phụ trách cần xác nhận trước khi sửa."
+          : "Ở dòng này con số đứng trơ một mình, không có chữ nào cho biết nó là hạn mức nào. Đoán bừa thì rủi ro nên hỏi lại người phụ trách.";
       } else {
         outcome="AUTO_PATCH"; cat=null;
         reason = "Dòng có cụm từ neo vào "+rule.id+" và tài liệu ở "+TIER_LABEL[doc.tier]+", nằm trong thẩm quyền của "+TIER_APPROVER[change.issuerTier]+".";
@@ -763,9 +772,11 @@ function parseFreeText(text){
   }
   if(!oldV || !newV) return { ok:false, msg:"Không nhận ra cặp giá trị cũ → mới. Hãy viết dạng “từ 7 ngày xuống 5 ngày” hoặc “7 ngày → 5 ngày”." };
 
-  let issuerTier = 2;
+  let issuerTier = null;
   if(/hiệu trưởng|hội đồng trường|phó hiệu trưởng/i.test(t)) issuerTier = 3;
   else if(/chuyên viên|tổ\s|bộ phận|văn phòng/i.test(t)) issuerTier = 1;
+  else if(/trưởng phòng|trưởng đơn vị|ban giám hiệu/i.test(t)) issuerTier = 2;
+  if(issuerTier===null) return { ok:false, msg:"Chưa rõ cấp ban hành. Hãy nêu rõ cấp có thẩm quyền trước khi phân tích." };
 
   const low = t.toLowerCase();
   const oldNum = parseValue(oldV).num;
@@ -779,6 +790,9 @@ function parseFreeText(text){
     return { ok:false, msg: anyValue
       ? "Có nhiều quy định đang mang giá trị “"+oldV+"”. Câu lệnh chưa nêu rõ quy định nào — hãy chọn ở ô bên trái."
       : "Không có quy định nào trong sổ đăng ký đang mang giá trị “"+oldV+"”. Hệ thống từ chối xử lý để tránh sửa nhầm." };
+  }
+  if(candidates.length>1 && candidates[0].score===candidates[1].score){
+    return { ok:false, msg:"Câu lệnh có thể khớp với nhiều quy định. Chưa rõ policy đích — hãy chọn một quy định cụ thể." };
   }
   return { ok:true, ruleId:candidates[0].r.id, oldValue:oldV, newValue:newV, issuerTier };
 }
@@ -983,8 +997,10 @@ function buildChange(){
   const rule = RULES.find(r=>r.id===$("ruleSel").value);
   const newValue = $("newVal").value.trim();
   if(!newValue) return { error:"Chưa nhập giá trị mới." };
+  const issuerTier = Number($("issuerSel").value);
+  if(!Number.isInteger(issuerTier) || issuerTier<1 || issuerTier>3) return { error:"Hãy chọn cấp ban hành thay đổi." };
   if(parseValue(newValue).num === parseValue(rule.value).num) return { error:"Giá trị mới trùng với giá trị hiện hành." };
-  return { change:{ rule, oldValue:rule.value, newValue, issuerTier:Number($("issuerSel").value) } };
+  return { change:{ rule, oldValue:rule.value, newValue, issuerTier } };
 }
 
 function run(){
@@ -1007,7 +1023,7 @@ function matchesCurrentOldValue(line, oldValue){
 }
 
 function escapeSemanticHtml(value){
-  return String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  return PolicyChangeSafeHTML.escapeText(value);
 }
 
 async function discoverSemanticEvidence(adapter=semanticAIAdapter, source="provider"){
@@ -1059,8 +1075,20 @@ $("semanticBtn").addEventListener("click", ()=>discoverSemanticEvidence());
 /* ---------- Hiển thị ---------- */
 function diffHtml(p, change){
   const re = valueRegex(change.oldValue);
-  const before = p.line.replace(re, mm => '<span class="old">'+mm+"</span>");
-  const after  = p.line.replace(re, mm => '<span class="new">'+renderValue(mm, change.newValue)+"</span>");
+  const formatLine = (line, className, transform) => {
+    let html = "", cursor = 0;
+    re.lastIndex = 0;
+    let match;
+    while((match = re.exec(line)) !== null){
+      html += escapeSemanticHtml(line.slice(cursor,match.index));
+      html += '<span class="'+className+'">'+escapeSemanticHtml(transform(match[0]))+"</span>";
+      cursor = match.index + match[0].length;
+      if(match.index===re.lastIndex) re.lastIndex++;
+    }
+    return html + escapeSemanticHtml(line.slice(cursor));
+  };
+  const before = formatLine(p.line,"old",mm=>mm);
+  const after = formatLine(p.line,"new",mm=>renderValue(mm,change.newValue));
   return '<div class="diff"><span class="ln">− dòng '+(p.lineIndex+1)+"  </span>"+before+
          '<br><span class="ln">+ dòng '+(p.lineIndex+1)+"  </span>"+after+"</div>";
 }
@@ -1186,7 +1214,7 @@ function renderSummary(){
 function renderProposals(){
   const host = $("proposals");
   if(!current || !current.props.length){
-    host.innerHTML = '<div class="empty">Không tìm thấy vị trí nào mang giá trị “'+(current?current.change.oldValue:"")+'”. Hệ thống không đề xuất thay đổi nào.</div>';
+    host.innerHTML = '<div class="empty">Không tìm thấy vị trí nào mang giá trị “'+escapeSemanticHtml(current?current.change.oldValue:"")+'”. Hệ thống không đề xuất thay đổi nào.</div>';
     return;
   }
   const c = current.change;
@@ -1216,15 +1244,15 @@ function renderProposals(){
         : 'chặn cập nhật — '+escapeSemanticHtml(proof.reasons.join(' ')))+'</div>'
       : "";
     return '<div class="card '+cardCls+(p.decided?" done":"")+'">'+
-      '<div class="cardhead"><span class="docid">'+p.docId+'</span><span class="doctitle">'+p.docTitle+'</span>'+
+      '<div class="cardhead"><span class="docid">'+escapeSemanticHtml(p.docId)+'</span><span class="doctitle">'+escapeSemanticHtml(p.docTitle)+'</span>'+
       '<span class="tierbadge">'+TIER_LABEL[p.docTier]+'</span>'+
       '<span class="tag '+tagCls+'">'+tagTxt+'</span>'+
-      '<span class="meta">'+p.docOwner+'</span></div>'+
+      '<span class="meta">'+escapeSemanticHtml(p.docOwner)+'</span></div>'+
       diffHtml(p,c)+
-      '<div class="why"><b>Căn cứ máy:</b> '+p.reason+'</div>'+
-      '<div class="cite">Trích dẫn: '+p.citation+'</div>'+
+      '<div class="why"><b>Căn cứ máy:</b> '+escapeSemanticHtml(p.reason)+'</div>'+
+      '<div class="cite">Trích dẫn: '+escapeSemanticHtml(p.citation)+'</div>'+
       semantic+proofStatus+holdStatus+holdActions+
-      (p.decided?'<div class="why" style="margin-top:6px">✔ Đã quyết: '+p.decisionLabel+"</div>":"")+
+      (p.decided?'<div class="why" style="margin-top:6px">✔ Đã quyết: '+escapeSemanticHtml(p.decisionLabel)+"</div>":"")+
     "</div>";
   }).join("");
   host.querySelectorAll("button[data-semantic-review]").forEach(btn=>{
@@ -1254,12 +1282,12 @@ function renderQueue(){
   host.innerHTML = pend.map(p=>{
     const q = escalationQuestion(p, c);
     return '<div class="card esc-'+p.category+'">'+
-      '<div class="cardhead"><span class="docid">'+p.docId+'</span><span class="tag '+p.category+'">'+p.category+'</span>'+
+      '<div class="cardhead"><span class="docid">'+escapeSemanticHtml(p.docId)+'</span><span class="tag '+p.category+'">'+escapeSemanticHtml(p.category)+'</span>'+
       '<span class="meta">Người quyết định: '+TIER_APPROVER[p.docTier]+'</span></div>'+
-      '<div class="qbox"><div class="qlabel">Câu hỏi chuyển tiếp — một lượt, quyết dứt điểm</div>'+q.q+"</div>"+
-      '<div class="row"><button type="button" data-p="'+p.id+'" data-act="a">'+q.a+'</button>'+
-      '<button type="button" data-p="'+p.id+'" data-act="b">'+q.b+"</button></div>"+
-      '<div class="plain"><b>Giải thích cho người không chuyên:</b> '+p.plain+"</div>"+
+      '<div class="qbox"><div class="qlabel">Câu hỏi chuyển tiếp — một lượt, quyết dứt điểm</div>'+escapeSemanticHtml(q.q)+"</div>"+
+      '<div class="row"><button type="button" data-p="'+escapeSemanticHtml(p.id)+'" data-act="a">'+escapeSemanticHtml(q.a)+'</button>'+
+      '<button type="button" data-p="'+escapeSemanticHtml(p.id)+'" data-act="b">'+escapeSemanticHtml(q.b)+"</button></div>"+
+      '<div class="plain"><b>Giải thích cho người không chuyên:</b> '+escapeSemanticHtml(p.plain)+"</div>"+
     "</div>";
   }).join("");
   host.querySelectorAll("button[data-p]").forEach(btn=>{
@@ -1278,9 +1306,9 @@ function renderQueue(){
 
 function renderDocs(){
   $("docs").innerHTML = docs.map(d=>
-    '<details class="panel" style="margin-bottom:8px"><summary><span class="docid">'+d.id+"</span> "+
-    d.title+' <span class="tierbadge">'+TIER_LABEL[d.tier]+"</span> · v"+d.version+" · "+d.owner+"</summary>"+
-    '<div class="docbody">'+d.lines.map((l,i)=>String(i+1).padStart(2," ")+"  "+l).join("\n")+"</div></details>"
+    '<details class="panel" style="margin-bottom:8px"><summary><span class="docid">'+escapeSemanticHtml(d.id)+"</span> "+
+    escapeSemanticHtml(d.title)+' <span class="tierbadge">'+escapeSemanticHtml(TIER_LABEL[d.tier])+"</span> · v"+escapeSemanticHtml(d.version)+" · "+escapeSemanticHtml(d.owner)+"</summary>"+
+    '<div class="docbody">'+d.lines.map((l,i)=>String(i+1).padStart(2," ")+"  "+escapeSemanticHtml(l)).join("\n")+"</div></details>"
   ).join("");
 }
 
@@ -1361,9 +1389,9 @@ function renderLedger(){
     '<colgroup><col style="width:42px"><col style="width:150px"><col style="width:190px"><col style="width:86px"><col style="width:150px"><col><col style="width:112px"><col style="width:96px"></colgroup>'+
     "<thead><tr><th>#</th><th>Thời điểm</th><th>Tác nhân</th><th>Tài liệu</th>"+
     "<th>Hành động</th><th>Căn cứ</th><th>Băm SHA-256</th><th></th></tr></thead><tbody>"+
-    ledger.map(e=>'<tr><td class="num">'+e.seq+'</td><td class="num">'+e.ts.replace("T"," ").slice(0,19)+"</td>"+
-      "<td>"+e.actor+'</td><td class="mono">'+e.docId+"</td><td>"+e.action+"</td><td>"+e.basis+"</td>"+
-      '<td class="hash">'+e.hash.slice(0,14)+"…</td><td>"+
+    ledger.map(e=>'<tr><td class="num">'+escapeSemanticHtml(e.seq)+'</td><td class="num">'+escapeSemanticHtml(e.ts.replace("T"," ").slice(0,19))+"</td>"+
+      "<td>"+escapeSemanticHtml(e.actor)+'</td><td class="mono">'+escapeSemanticHtml(e.docId)+"</td><td>"+escapeSemanticHtml(e.action)+"</td><td>"+escapeSemanticHtml(e.basis)+"</td>"+
+      '<td class="hash">'+escapeSemanticHtml(e.hash.slice(0,14))+"…</td><td>"+
       (e.action.startsWith("PATCH") && !e.reverted ? '<button class="danger" type="button" data-undo="'+e.seq+'">Hoàn tác</button>' : "")+
       "</td></tr>").join("")+"</tbody></table></div>"+
     '<div class="note">Mỗi bản ghi băm SHA-256 trên nội dung của chính nó nối với băm của bản ghi liền trước. Sửa lén một dòng bất kỳ sẽ làm gãy toàn bộ chuỗi phía sau.</div>';
