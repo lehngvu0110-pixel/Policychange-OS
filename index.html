@@ -570,7 +570,7 @@ function escRe(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
 
 function parseValue(v){
   v = String(v||"").trim();
-  const m = v.match(/^([\d.,]+)\s*(triệu|tr|tỉ|tỷ|nghìn|ngàn)?\s*(.*)$/i);
+  const m = v.match(/^((?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?)(?![\d.,])\s*(triệu|tr|tỉ|tỷ|nghìn|ngàn)?\s*(.*)$/i);
   if(!m) return { raw:v, num:null, unit:"" };
   let num = parseFloat(m[1].replace(/\./g,"").replace(/,/g,"."));
   const scale = { "triệu":1e6, "tr":1e6, "tỉ":1e9, "tỷ":1e9, "nghìn":1e3, "ngàn":1e3 }[(m[2]||"").toLowerCase()];
@@ -764,13 +764,15 @@ function parseFreeText(text){
   if(!t) return { ok:false, msg:"Chưa nhập nội dung." };
 
   let oldV=null, newV=null;
-  let m = t.match(/từ\s+([^,;]+?)\s+(?:thành|lên|xuống|còn|sang)\s+([^,;.]+)/i);
-  if(m){ oldV=m[1].trim(); newV=m[2].trim(); }
+  let m = t.match(/từ\s+(.+?)\s+(?:thành|lên|xuống|còn|sang)\s+([\d.,]+\s*(?:triệu|tr|tỉ|tỷ|nghìn|ngàn)?\s*(?:ngày(?:\s+làm\s+việc)?|tín\s+chỉ|đồng|vnđ|vnd)?)/i);
+  if(m){ oldV=m[1].trim(); newV=m[2].trim().replace(/[,.;]+$/,""); }
   if(!oldV){
     m = t.match(/([\d.,]+\s*(?:triệu|tr|nghìn)?\s*[\p{L}]*)\s*(?:->|→|=>)\s*([\d.,]+\s*(?:triệu|tr|nghìn)?\s*[\p{L}]*)/u);
     if(m){ oldV=m[1].trim(); newV=m[2].trim(); }
   }
   if(!oldV || !newV) return { ok:false, msg:"Không nhận ra cặp giá trị cũ → mới. Hãy viết dạng “từ 7 ngày xuống 5 ngày” hoặc “7 ngày → 5 ngày”." };
+  if(parseValue(oldV).num===null || parseValue(newV).num===null)
+    return { ok:false, msg:"Giá trị không đúng định dạng số Việt Nam. Dùng dấu chấm cho hàng nghìn và dấu phẩy cho phần thập phân." };
 
   let issuerTier = null;
   if(/hiệu trưởng|hội đồng trường|phó hiệu trưởng/i.test(t)) issuerTier = 3;
@@ -997,6 +999,7 @@ function buildChange(){
   const rule = RULES.find(r=>r.id===$("ruleSel").value);
   const newValue = $("newVal").value.trim();
   if(!newValue) return { error:"Chưa nhập giá trị mới." };
+  if(parseValue(newValue).num===null) return { error:"Giá trị mới không đúng định dạng số Việt Nam (ví dụ: 10,5 triệu hoặc 10.500.000 đồng)." };
   const issuerTier = Number($("issuerSel").value);
   if(!Number.isInteger(issuerTier) || issuerTier<1 || issuerTier>3) return { error:"Hãy chọn cấp ban hành thay đổi." };
   if(parseValue(newValue).num === parseValue(rule.value).num) return { error:"Giá trị mới trùng với giá trị hiện hành." };
@@ -1332,14 +1335,35 @@ function proveProposal(p){
 }
 
 /* ---------- Ban hành + sổ kiểm toán ---------- */
+function ledgerPayload(e){
+  return JSON.stringify([e.seq, e.ts, e.actor, e.docId, e.lineIndex??null, e.action,
+    e.from, e.to, e.basis, e.propId??null, e.revertsSeq??null, e.prevHash]);
+}
+function verifyLedger(){
+  let prev = "0".repeat(64);
+  for(let i=0;i<ledger.length;i++){
+    const e = ledger[i];
+    if(e.seq!==i+1 || e.prevHash!==prev || e.hash!==sha256Hex(ledgerPayload(e))) return false;
+    prev=e.hash;
+  }
+  return true;
+}
+function isReverted(seq){
+  return ledger.some(e=>e.revertsSeq===seq && e.action==="HOÀN TÁC bản ghi #"+seq);
+}
 function appendLedger(entry){
   const prev = ledger.length ? ledger[ledger.length-1].hash : "0".repeat(64);
-  const payload = [++ledgerSeq, entry.ts, entry.actor, entry.docId, entry.action, entry.from, entry.to, entry.basis, prev].join("|");
-  ledger.push({ seq:ledgerSeq, ...entry, prevHash:prev, hash:sha256Hex(payload) });
+  const record = { seq:++ledgerSeq, ...entry, prevHash:prev };
+  record.hash = sha256Hex(ledgerPayload(record));
+  ledger.push(record);
 }
 
 $("commitBtn").addEventListener("click", ()=>{
   if(!current) return;
+  if(!verifyLedger()){
+    $("commitMsg").textContent = "Chuỗi kiểm toán không hợp lệ; đã dừng ban hành.";
+    return;
+  }
   const c = current.change;
   const ts = new Date().toISOString();
   let applied = 0;
@@ -1384,6 +1408,7 @@ function bumpVersion(v){
 function renderLedger(){
   const host = $("ledger");
   if(!ledger.length){ host.innerHTML='<div class="empty">Sổ nhật ký trống. Ban hành một thay đổi để sinh bản ghi đầu tiên.</div>'; return; }
+  const chainValid = verifyLedger();
   host.innerHTML =
     '<div class="tablewrap"><table>'+
     '<colgroup><col style="width:42px"><col style="width:150px"><col style="width:190px"><col style="width:86px"><col style="width:150px"><col><col style="width:112px"><col style="width:96px"></colgroup>'+
@@ -1392,9 +1417,10 @@ function renderLedger(){
     ledger.map(e=>'<tr><td class="num">'+escapeSemanticHtml(e.seq)+'</td><td class="num">'+escapeSemanticHtml(e.ts.replace("T"," ").slice(0,19))+"</td>"+
       "<td>"+escapeSemanticHtml(e.actor)+'</td><td class="mono">'+escapeSemanticHtml(e.docId)+"</td><td>"+escapeSemanticHtml(e.action)+"</td><td>"+escapeSemanticHtml(e.basis)+"</td>"+
       '<td class="hash">'+escapeSemanticHtml(e.hash.slice(0,14))+"…</td><td>"+
-      (e.action.startsWith("PATCH") && !e.reverted ? '<button class="danger" type="button" data-undo="'+e.seq+'">Hoàn tác</button>' : "")+
+      (e.action.startsWith("PATCH") && !isReverted(e.seq) && chainValid ? '<button class="danger" type="button" data-undo="'+e.seq+'">Hoàn tác</button>' : "")+
       "</td></tr>").join("")+"</tbody></table></div>"+
-    '<div class="note">Mỗi bản ghi băm SHA-256 trên nội dung của chính nó nối với băm của bản ghi liền trước. Sửa lén một dòng bất kỳ sẽ làm gãy toàn bộ chuỗi phía sau.</div>';
+    '<div class="note">'+(chainValid ? "✓ Chuỗi SHA-256 hợp lệ trong phiên này." : "✗ Chuỗi SHA-256 không hợp lệ; đã khóa Hoàn tác và Ban hành.")+
+    ' Mỗi bản ghi bao gồm vị trí, nội dung trước/sau và liên kết tới bản ghi trước. Hoàn tác thêm bản ghi mới, không sửa bản ghi cũ.</div>';
 
   host.querySelectorAll("button[data-undo]").forEach(b=>{
     b.addEventListener("click", ()=>undo(Number(b.dataset.undo)));
@@ -1403,14 +1429,22 @@ function renderLedger(){
 
 function undo(seq){
   const e = ledger.find(x=>x.seq===seq);
-  if(!e || e.reverted) return;
+  if(!e || !e.action.startsWith("PATCH") || isReverted(seq) || !verifyLedger()) return;
   const doc = docs.find(d=>d.id===e.docId);
-  if(doc && doc.lines[e.lineIndex] === e.to){ doc.lines[e.lineIndex] = e.from; doc.version = bumpVersion(doc.version); }
-  e.reverted = true;
-  if(current){ const p = current.props.find(x=>x.id===e.propId); if(p) p.applied = false; }
+  if(!doc || doc.lines[e.lineIndex] !== e.to){
+    $("commitMsg").textContent = "Không thể hoàn tác bản ghi #"+seq+": nội dung hiện tại đã khác bản được ban hành.";
+    return;
+  }
+  doc.lines[e.lineIndex] = e.from;
+  doc.version = bumpVersion(doc.version);
+  if(current){
+    const p = current.props.find(x=>x.id===e.propId && x.docId===e.docId && x.lineIndex===e.lineIndex);
+    if(p) p.applied = false;
+  }
   appendLedger({ ts:new Date().toISOString(), actor:"Người · "+TIER_APPROVER[doc?doc.tier:1],
-    docId:e.docId, action:"HOÀN TÁC bản ghi #"+seq, from:e.to, to:e.from,
-    basis:"Thu hồi thay đổi đã ban hành; bản ghi gốc giữ nguyên trong sổ", propId:e.propId });
+    docId:e.docId, lineIndex:e.lineIndex, action:"HOÀN TÁC bản ghi #"+seq, from:e.to, to:e.from,
+    basis:"Thu hồi thay đổi đã ban hành; bản ghi gốc giữ nguyên trong sổ", propId:e.propId, revertsSeq:seq });
+  $("commitMsg").textContent = "Đã hoàn tác bản ghi #"+seq+" và ghi thêm sự kiện vào sổ.";
   renderAll(); renderLedger();
 }
 

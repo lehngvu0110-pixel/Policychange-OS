@@ -225,11 +225,11 @@ test('issued patch is represented from current document and actual ledger state'
   assert.ok(edge(graph, 'DECISION_TO_AUDIT', decision.id, ImpactGraph.ids.audit(3)));
 });
 
-test('undo state is represented from actual reverted patch and undo ledger records', () => {
+test('undo state is represented from immutable patch and reversal ledger records', () => {
   const p = prop('DOC-A', 'AUTO_PATCH', null, { applied: false });
   const ledger = [
-    { seq: 3, ts: 't1', actor: 'AI', docId: 'DOC-A', lineIndex: 0, action: 'PATCH dòng 1', from: p.line, to: p.newLine, basis: 'issued', propId: p.id, reverted: true },
-    { seq: 4, ts: 't2', actor: 'Người', docId: 'DOC-A', action: 'HOÀN TÁC bản ghi #3', from: p.newLine, to: p.line, basis: 'reverted', propId: p.id }
+    { seq: 3, ts: 't1', actor: 'AI', docId: 'DOC-A', lineIndex: 0, action: 'PATCH dòng 1', from: p.line, to: p.newLine, basis: 'issued', propId: p.id },
+    { seq: 4, ts: 't2', actor: 'Người', docId: 'DOC-A', lineIndex: 0, action: 'HOÀN TÁC bản ghi #3', from: p.newLine, to: p.line, basis: 'reverted', propId: p.id, revertsSeq: 3 }
   ];
   const graph = ImpactGraph.buildImpactGraph(input([p], { ledger }));
   const decision = node(graph, decisionId('DOC-A'));
@@ -243,9 +243,9 @@ test('undo state is represented from actual reverted patch and undo ledger recor
 test('a later reissue after undo is shown as issued from the latest audit state', () => {
   const p = prop('DOC-A', 'AUTO_PATCH', null, { applied: true });
   const ledger = [
-    { seq: 3, ts: 't1', actor: 'AI', docId: 'DOC-A', lineIndex: 0, action: 'PATCH dòng 1', from: p.line, to: p.newLine, basis: 'first issue', propId: p.id, reverted: true },
-    { seq: 4, ts: 't2', actor: 'Người', docId: 'DOC-A', action: 'HOÀN TÁC bản ghi #3', from: p.newLine, to: p.line, basis: 'reverted', propId: p.id },
-    { seq: 5, ts: 't3', actor: 'AI', docId: 'DOC-A', lineIndex: 0, action: 'PATCH dòng 1', from: p.line, to: p.newLine, basis: 'reissued', propId: p.id, reverted: false }
+    { seq: 3, ts: 't1', actor: 'AI', docId: 'DOC-A', lineIndex: 0, action: 'PATCH dòng 1', from: p.line, to: p.newLine, basis: 'first issue', propId: p.id },
+    { seq: 4, ts: 't2', actor: 'Người', docId: 'DOC-A', lineIndex: 0, action: 'HOÀN TÁC bản ghi #3', from: p.newLine, to: p.line, basis: 'reverted', propId: p.id, revertsSeq: 3 },
+    { seq: 5, ts: 't3', actor: 'AI', docId: 'DOC-A', lineIndex: 0, action: 'PATCH dòng 1', from: p.line, to: p.newLine, basis: 'reissued', propId: p.id }
   ];
   const issuedDocs = docs.map(doc => doc.id === 'DOC-A'
     ? { ...doc, lines: [p.newLine], version: '1.3' } : doc);

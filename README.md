@@ -1,6 +1,5 @@
 # PolicyChange OS
 
-
 **Đường dẫn trực tuyến:** https://lehngvu0110-pixel.github.io/Policychange-OS/
 **Trọng tài kiểm soát tài liệu khi quy định thay đổi.**
 
@@ -43,20 +42,20 @@ Mở đường dẫn trực tuyến → bấm **▶ Chạy thay đổi mẫu**. 
 ### Tại máy (runbook đầy đủ, từ kho mã nguồn sạch)
 
 ```bash
-git clone <URL kho mã nguồn>
-cd policychange-os
+git clone https://github.com/lehngvu0110-pixel/Policychange-OS.git
+cd Policychange-OS
 python3 -m http.server 8080      # hoặc: npx serve .
 # mở http://localhost:8080
 ```
 
-Không có bước build, không có phụ thuộc, không cần khóa API, không cần biến môi trường. Mở trực tiếp
-tệp `index.html` bằng trình duyệt (`file://`) cũng chạy đầy đủ kể cả hàm băm SHA-256.
+Không có bước build, không có phụ thuộc cho ứng dụng, không cần khóa API hay biến môi trường.
+Ứng dụng tĩnh gồm `index.html` và các tệp trong `js/`; cần giữ nguyên cấu trúc thư mục.
+Nên dùng HTTP server để kiểm tra giống môi trường triển khai.
 
 ### Triển khai
 
 ```bash
-# GitHub Pages
-git push origin main
+# GitHub Pages: sau khi thay đổi đã có trên nhánh main
 # Settings → Pages → Source: Deploy from a branch → main / (root)
 
 # hoặc Vercel / Netlify: kéo thả thư mục, không cấu hình gì thêm
@@ -67,7 +66,7 @@ git push origin main
 1. **▶ Chạy thay đổi mẫu** — hạn nộp đơn phúc khảo `7 ngày → 5 ngày`, ban hành ở cấp Trưởng phòng.
    Hệ thống quét 12 tài liệu, tự sửa 6 vị trí, dừng lại ở 3 vị trí và nêu rõ lý do từng chỗ.
 2. **Mục 3** — ba câu hỏi chuyển tiếp, mỗi câu đúng hai nút. Bấm chọn.
-3. **Mục 4** — **Ban hành**, xem sổ nhật ký SHA-256. Bấm **Hoàn tác** một bản ghi bất kỳ.
+3. **Mục 4** — **Ban hành**, xem sổ nhật ký SHA-256. Bấm **Hoàn tác** một bản ghi khi dòng hiện tại vẫn khớp nội dung đã ban hành.
 4. **Mục 5** — **▶ Verify** chạy 9 ca kiểm thử, in bảng pass/fail kèm dấu thời gian.
 5. Nhập dữ liệu mới: chọn quy định khác, gõ câu lệnh tiếng Việt tự do, hoặc dán một tài liệu mới vào kho.
 
@@ -113,8 +112,8 @@ Ba lý do, theo thứ tự quan trọng:
 2. **Không được suy đoán trên dữ liệu mơ hồ.** Mô hình ngôn ngữ có xu hướng đoán khi thiếu thông tin. Ở đây đoán sai nghĩa là sửa nhầm một quy định đang có hiệu lực.
 3. **Chạy được ở mọi lúc.** Không khóa API, không quota, không phụ thuộc mạng — điều kiện để giám khảo bấm vào là chạy.
 
-Lớp mô hình ngôn ngữ được dự kiến bổ sung ở Sprint 2 **bên ngoài đường ra quyết định**: dùng để hiểu câu
-lệnh và diễn đạt câu hỏi, không dùng để phân loại.
+Đã có adapter cho bước hiểu câu lệnh và kiểm tra bằng chứng ngữ nghĩa, nhưng chưa kết nối model sống.
+Khi provider không khả dụng, bước hiểu câu lệnh dùng parser tiền định; model không được quyền phân loại hay ban hành.
 
 ## MLAI Demo
 
@@ -136,14 +135,19 @@ To reproduce interactively, use an HTTP server rather than `file://`; this also 
 3. Chỉ phát hiện mâu thuẫn đi qua con số. Mâu thuẫn diễn đạt thuần ngữ nghĩa chưa phát hiện được.
 4. Chưa đọc được tài liệu dạng ảnh quét hoặc PDF không có lớp văn bản.
 5. Kho tài liệu hiện nằm trong bộ nhớ trình duyệt; tải lại trang là về trạng thái gốc. Bản tích hợp thật cần kho có phiên bản.
+6. Sổ SHA-256 được kiểm tra lại trong phiên hiện tại và Hoàn tác chỉ thêm sự kiện mới. Sổ chưa có lưu trữ bền vững, chữ ký số hay mốc băm độc lập nên chưa thể dùng làm bằng chứng kiểm toán chống người có quyền sửa toàn bộ dữ liệu.
+7. Số dùng định dạng Việt Nam: dấu chấm tách hàng nghìn, dấu phẩy cho phần thập phân. Ví dụ `10,5 triệu` và `10.500.000 đồng` hợp lệ; `10.5 triệu` bị từ chối.
 
 ## Cấu trúc kho mã nguồn
 
 ```
-index.html      ứng dụng (một tệp, không phụ thuộc, không bước build)
+index.html      giao diện và động cơ chính; tải thêm các module trong js/
+js/             AI adapter, semantic validator, graph, prover, demo và HTML escaping
 README.md       tài liệu này — gồm runbook
 TESTCASES.md    bảng trường hợp kiểm thử + kịch bản cho giám khảo
 BUILD_LOG.md    nhật ký phát triển
+tests/          bộ test Node.js
+bench/          benchmark offline với dữ liệu tổng hợp
 docs/QT-KSTL-01_Quy-trinh-kiem-soat-tai-lieu.md
                 tài liệu quy định của quy trình được chọn (yêu cầu bắt buộc của Đề A)
 ```
@@ -157,6 +161,8 @@ The benchmark in `bench/` compares three deliberately different systems on the s
 - `policyChangeOS`: loads the current browser implementation from `index.html`, runs the deterministic request fallback, analysis, semantic evidence validation where supplied, prover, and existing commit handler. It does not connect to a live model.
 
 Run it from the repository root with `node bench/run.cjs`. Add `--json` for machine-readable output. Run the benchmark contract tests with `node tests/benchmark.test.cjs`.
+
+Run all Node regression suites with `node --test tests/*.test.cjs`. In environments that block child-process spawning, run each `tests/*.test.cjs` file separately with `node`. The in-browser Verify button is a separate check of the browser UI.
 
 All 26 cases are synthetic. `bench/fixtures.json` contains the explicit input and manually authored ground truth for each case, including expected mutations and engine classifications. These fixtures are demonstrations of behavior, not a statistically representative sample and not evidence of real-world performance. The LLM-only responses are mocks, not model outputs.
 

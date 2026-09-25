@@ -51,7 +51,7 @@ vào kho** → chạy lại phân tích. Tài liệu mới được quét như m
 1. Chạy một thay đổi ở mục 1.
 2. Mục 3 — trả lời các câu hỏi chuyển tiếp. Mỗi câu đúng hai nút, quyết dứt điểm trong một lượt.
 3. Mục 4 — bấm **Ban hành**. Sổ nhật ký in ra: tác nhân là AI hay người, vai trò gì, tài liệu nào, dòng nào, nội dung trước/sau, căn cứ điều khoản, băm SHA-256 nối chuỗi.
-4. Bấm **Hoàn tác** trên một bản ghi bất kỳ. Nội dung tài liệu trở về nguyên trạng, và sổ **thêm** một bản ghi hoàn tác chứ không xóa bản ghi cũ.
+4. Bấm **Hoàn tác** trên một bản ghi khi dòng hiện tại vẫn đúng bằng nội dung bản ghi đã ban hành. Nội dung trở về nguyên trạng và sổ **thêm** một bản ghi hoàn tác. Nếu dòng đã thay đổi, ứng dụng từ chối hoàn tác và giữ nguyên sổ.
 5. Mục 6 — mở tài liệu để đối chiếu nội dung và số hiệu phiên bản đã tăng.
 
 ## E. Kết quả chạy gần nhất
