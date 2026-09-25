@@ -44,6 +44,9 @@
     if (/[\d/]/.test(before) || /[\d/]/.test(after)) return true;
     const beforePrevious = index > 1 ? line[index - 2] : '';
     const afterNext = line[index + numeric[0].length + 1] || '';
+    const prefix = line.slice(0, index);
+    const suffix = line.slice(index + numeric[0].length);
+    if (/\d\s*[-–—]\s*$/.test(prefix) || /^\s*[-–—]\s*\d/.test(suffix)) return true;
     return (/[.,]/.test(before) && /\d/.test(beforePrevious)) || (/[.,]/.test(after) && /\d/.test(afterNext));
   }
 
@@ -140,8 +143,8 @@
 
     const aliases = rule && Array.isArray(rule.aliases) ? rule.aliases.filter(alias => typeof alias === 'string' && alias.length && typeof line === 'string' && line.toLowerCase().includes(alias.toLowerCase())) : [];
     const owners = typeof line === 'string' && typeof ctx.ownersOfLine === 'function' ? ctx.ownersOfLine(line) : [];
-    const targetAnchored = !!rule && aliases.length > 0 && Array.isArray(owners) && owners.some(owner => owner && owner.id === rule.id);
-    check(checks, 'registered_policy_anchor', targetAnchored, targetAnchored ? 'Current clause contains an anchor for the requested registered policy.' : 'Current clause has no validated anchor for the requested policy.');
+    const targetAnchored = !!rule && aliases.length > 0 && Array.isArray(owners) && owners.length === 1 && owners[0] && owners[0].id === rule.id;
+    check(checks, 'registered_policy_anchor', targetAnchored, targetAnchored ? 'Current clause contains an exclusive anchor for the requested registered policy.' : 'Current clause has no exclusive validated anchor for the requested policy.');
 
     let engineProp = null;
     let engineError = false;
