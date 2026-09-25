@@ -53,13 +53,18 @@ function loadProductionEngine(options = {}) {
     functionSource(html, 'parseFreeText'),
     functionSource(html, 'proveProposal'),
     functionSource(html, 'sha256Hex'),
+    functionSource(html, 'ledgerPayload'),
+    functionSource(html, 'verifyLedger'),
+    functionSource(html, 'isReverted'),
     functionSource(html, 'appendLedger'),
     functionSource(html, 'bumpVersion'),
+    functionSource(html, 'undo'),
     proverSource,
     'let docs = []; let current = null; let ledger = []; let ledgerSeq = 0;',
     'this.__commitPolicyChange = ' + commitHandler[1] + ';',
     'this.__setPolicyBenchmarkState = (state, documents, audit) => { current = JSON.parse(JSON.stringify(state)); docs = JSON.parse(JSON.stringify(documents)); ledger = JSON.parse(JSON.stringify(audit)); ledgerSeq = ledger.length ? ledger[ledger.length - 1].seq : 0; };',
     'this.__getPolicyBenchmarkState = () => ({ current, docs, ledger });',
+    'this.__undoPolicyChange = undo; this.__verifyPolicyLedger = verifyLedger;',
     'this.__policyBenchmarkExports = { RULES, parseValue, valueRegex, renderValue, ownersOfLine, analyze, parseFreeText };'
   ].join('\n');
   const commitMessage = { textContent:'' };
@@ -95,6 +100,18 @@ function loadProductionEngine(options = {}) {
       ledger:clone(committedState.ledger),
       commitMessage:commitMessage.textContent
     };
+  };
+  runtime.undo = ({ appState, documents, auditLedger, seq }) => {
+    commitMessage.textContent = '';
+    context.__setPolicyBenchmarkState(appState, documents, auditLedger);
+    context.__undoPolicyChange(seq);
+    const state = context.__getPolicyBenchmarkState();
+    return { documents:clone(state.docs), appState:clone(state.current), ledger:clone(state.ledger),
+      message:commitMessage.textContent, chainValid:context.__verifyPolicyLedger() };
+  };
+  runtime.verifyLedger = auditLedger => {
+    context.__setPolicyBenchmarkState({}, [], auditLedger);
+    return context.__verifyPolicyLedger();
   };
   return runtime;
 }

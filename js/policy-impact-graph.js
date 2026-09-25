@@ -57,7 +57,9 @@
   function undoTargetSequence(entry) {
     if (!entry || typeof entry.action !== 'string') return null;
     const match = entry.action.match(/^HOÀN TÁC bản ghi #(\d+)$/u);
-    return match ? Number(match[1]) : null;
+    if (!match) return null;
+    const sequence = Number(match[1]);
+    return entry.revertsSeq === undefined || entry.revertsSeq === sequence ? sequence : null;
   }
 
   function relatedAudit(prop, ledger) {
@@ -146,18 +148,19 @@
       }
 
       const auditEntries = relatedAudit(prop, ledger);
+      const reversedPatches = new Set(auditEntries.map(undoTargetSequence).filter(value => value !== null));
       for (const entry of auditEntries) {
         addNode({
           id: ids.audit(entry.seq), type: 'AUDIT_EVENT', sequence: entry.seq,
           timestamp: entry.ts || null, actor: entry.actor || null, action: entry.action,
           basis: entry.basis || null, hash: entry.hash || null, prevHash: entry.prevHash || null,
-          reverted: entry.reverted === true || undoTargetSequence(entry) !== null
+          reverted: entry.action.startsWith('PATCH') ? reversedPatches.has(entry.seq) : undoTargetSequence(entry) !== null
         });
       }
       const relatedPatches = auditEntries.filter(entry => entry.action.startsWith('PATCH'));
       let ledgerIssueState = null;
       for (const entry of auditEntries) {
-        if (entry.action.startsWith('PATCH')) ledgerIssueState = entry.reverted === true ? 'reverted' : 'issued';
+        if (entry.action.startsWith('PATCH')) ledgerIssueState = 'issued';
         else if (undoTargetSequence(entry) !== null) ledgerIssueState = 'reverted';
       }
       const issueState = ledgerIssueState ||
