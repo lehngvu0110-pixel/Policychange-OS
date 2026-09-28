@@ -166,6 +166,14 @@ test('patch gate preserves the baseline no-evidence patch and escalation decisio
   assert.equal(Discovery.isPatchAllowed({ outcome: 'AUTO_PATCH', semanticHold: true }), false);
 });
 
+test('U2 and U3 cannot authorize an escalated patch from client state', () => {
+  for (const category of ['U2', 'U3']) {
+    assert.equal(Discovery.isPatchAllowed({
+      outcome: 'ESCALATE', category, decided: true, accepted: true
+    }), false);
+  }
+});
+
 test('AI cannot make an unanchored unrelated clause automatic by claiming it is relevant', () => {
   const context = setup();
   const item = context.candidateSet.candidates.find(value => value.documentId === 'DOC-B');

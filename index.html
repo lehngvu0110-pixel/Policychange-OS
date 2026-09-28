@@ -378,8 +378,12 @@ details[open] summary::before{transform:rotate(90deg)}
 <div class="panel">
   <div class="row">
     <button class="primary" type="button" id="commitBtn" disabled>Ban hành các thay đổi đã duyệt</button>
-    <span class="note" id="commitMsg">Chuỗi băm SHA-256 nối tiếp, chỉ ghi thêm. Hoàn tác tạo bản ghi mới chứ không xoá vết.</span>
+    <button type="button" id="exportStateBtn">Xuất bản sao lưu</button>
+    <button type="button" id="importStateBtn">Nhập bản sao lưu</button>
+    <input type="file" id="importStateFile" accept="application/json,.json" hidden>
+    <span class="note" id="commitMsg">Chuỗi băm SHA-256 nối tiếp, chỉ ghi thêm. Hoàn tác tạo bản ghi mới chứ không xoá vết. Bản demo lưu trên thiết bị này; không đồng bộ và không dùng cho tài liệu mật.</span>
   </div>
+  <div class="note" id="storageMsg" role="status" aria-live="polite"></div>
   <div id="ledger" style="margin-top:12px"><div class="empty">Sổ nhật ký trống.</div></div>
 </div>
 
@@ -712,15 +716,15 @@ function escalationQuestion(p, change){
     return {
       q: "Dòng "+(p.lineIndex+1)+" của "+p.docId+" đang diễn đạt "+(other?other.id+" — "+other.name:"một quy định khác")+", hiện vẫn giữ giá trị "+(other?other.value:change.oldValue)+". "+
          "Sửa ở đây sẽ thay đổi cả quy định đó. "+(other?other.owner:who)+" quyết định: có sửa kèm không?",
-      a: "Không — chỉ sửa "+(rule?rule.id:"quy định đích")+", giữ nguyên dòng này",
-      b: "Có — sửa cả "+(other?other.id:"quy định kia")+" và ghi nhận là sửa đổi có chủ đích"
+      a: "Ghi nhận yêu cầu riêng cho "+(other?other.id:"quy định kia"),
+      b: "Giữ nguyên dòng này"
     };
   }
   return {
     q: p.docId+" — "+p.docTitle+" do "+p.docOwner+" ban hành ở "+TIER_LABEL[p.docTier]+", cao hơn cấp ra thay đổi lần này ("+TIER_APPROVER[change.issuerTier]+"). "+
        "Hệ thống đã khoá quyền sửa. "+TIER_APPROVER[p.docTier]+" quyết định: xử lý thế nào?",
-    a: "Từ chối — giữ nguyên, yêu cầu ban hành quyết định sửa đổi đúng cấp",
-    b: "Chấp thuận sửa ngay và ghi nhận ngoại lệ có phê duyệt"
+      a: "Chuyển cấp ban hành xem xét riêng",
+      b: "Giữ nguyên dòng này"
   };
 }
 
@@ -729,10 +733,59 @@ function escalationQuestion(p, change){
    ============================================================ */
 function cloneDocs(src){ return src.map(d=>({ ...d, lines:[...d.lines] })); }
 
-let docs = cloneDocs(BASE_DOCS);
+const APP_STORAGE_KEY = "policychange-os-state-v1";
+let storageWarning=false;
+function validStoredDocuments(value){
+  if(!Array.isArray(value) || value.length>5000) return false;
+  const ids=new Set();
+  return value.every(doc=>{
+    if(!doc || typeof doc.id!=="string" || !doc.id.length || doc.id.length>120 || ids.has(doc.id) ||
+       typeof doc.title!=="string" || doc.title.length>500 || typeof doc.owner!=="string" ||
+       !Number.isInteger(doc.tier) || doc.tier<1 || doc.tier>3 || typeof doc.version!=="string" ||
+       !Array.isArray(doc.lines) || doc.lines.length>10000 ||
+       !doc.lines.every(line=>typeof line==="string" && line.length<=10000)) return false;
+    ids.add(doc.id); return true;
+  });
+}
+function validStoredLedger(value){
+  if(!Array.isArray(value) || value.length>100000) return false;
+  let previous="0".repeat(64);
+  return value.every((entry,index)=>{
+    if(!entry || entry.seq!==index+1 || entry.prevHash!==previous ||
+       typeof entry.hash!=="string" || entry.hash!==sha256Hex(ledgerPayload(entry))) return false;
+    previous=entry.hash; return true;
+  });
+}
+function readPersistedState(){
+  try{
+    const raw=localStorage.getItem(APP_STORAGE_KEY);
+    if(!raw) return null;
+    const state=JSON.parse(raw);
+    const valid=state && state.schemaVersion===1 && validStoredDocuments(state.docs) &&
+      validStoredLedger(state.ledger) && state.ledgerSeq===state.ledger.length;
+    if(!valid) storageWarning=true;
+    return valid ? state : null;
+  }catch(_error){ storageWarning=true; return null; }
+}
+function persistState(){
+  try{
+    localStorage.setItem(APP_STORAGE_KEY,JSON.stringify({schemaVersion:1,docs,ledger,ledgerSeq}));
+    storageWarning=false;
+    return true;
+  }catch(_error){ storageWarning=true; return false; }
+}
+function updateStorageStatus(){
+  const status=$("storageMsg");
+  if(!status) return;
+  status.textContent=storageWarning
+    ? "Không đọc hoặc ghi được dữ liệu cục bộ. Hãy xuất bản sao lưu và tránh tải lại trang cho tới khi lưu được."
+    : (restoredState ? "Đã khôi phục tài liệu và sổ nhật ký từ thiết bị này." : "Lưu tự động trên thiết bị này; xuất bản sao lưu để chuyển sang thiết bị khác.");
+}
+const restoredState=readPersistedState();
+let docs = restoredState ? restoredState.docs : cloneDocs(BASE_DOCS);
 let current = null;      // { change, props, elapsedMs }
-let ledger = [];
-let ledgerSeq = 0;
+let ledger = restoredState ? restoredState.ledger : [];
+let ledgerSeq = restoredState ? restoredState.ledgerSeq : 0;
 
 const $ = id => document.getElementById(id);
 
@@ -977,6 +1030,8 @@ $("addDocBtn").addEventListener("click", ()=>{
   const n = docs.filter(d=>d.id.startsWith("NEW-")).length + 1;
   docs.push({ id:"NEW-"+String(n).padStart(2,"0"), title, owner:"Do giám khảo nhập", tier:Number($("newDocTier").value),
               version:"1.0", lines: body.split(/\n+/).map(s=>s.trim()).filter(Boolean) });
+  persistState();
+  updateStorageStatus();
   msg.style.color="var(--auto)"; msg.textContent="✓ Đã thêm vào kho. Chạy lại phân tích để quét tài liệu này.";
   $("newDocTitle").value=""; $("newDocBody").value="";
   renderDocs();
@@ -986,6 +1041,8 @@ $("addDocBtn").addEventListener("click", ()=>{
 $("runBtn").addEventListener("click", run);
 $("resetBtn").addEventListener("click", ()=>{
   docs = cloneDocs(BASE_DOCS); current=null; ledger=[]; ledgerSeq=0;
+  try{ localStorage.removeItem(APP_STORAGE_KEY); }catch(_error){}
+  storageWarning=false;
   $("proposals").innerHTML = '<div class="empty">Chưa chạy phân tích nào.</div>';
   $("summary").innerHTML = ""; $("queue").innerHTML = '<div class="empty">Không có hồ sơ nào cần người xử lý.</div>';
   $("ledger").innerHTML = '<div class="empty">Sổ nhật ký trống.</div>';
@@ -993,6 +1050,36 @@ $("resetBtn").addEventListener("click", ()=>{
   $("semanticBtn").disabled = true; $("semanticMsg").textContent = "Chưa chạy phân tích.";
   renderImpactGraph();
   renderDocs();
+  $("storageMsg").textContent="Kho gốc được khôi phục; lưu tự động trên thiết bị này.";
+});
+
+$("exportStateBtn").addEventListener("click", ()=>{
+  const blob=new Blob([JSON.stringify({schemaVersion:1,docs,ledger,ledgerSeq},null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement("a");
+  link.href=url; link.download="policychange-backup.json"; link.click();
+  setTimeout(()=>URL.revokeObjectURL(url),0);
+});
+$("importStateBtn").addEventListener("click", ()=>$("importStateFile").click());
+$("importStateFile").addEventListener("change", async event=>{
+  const file=event.target.files && event.target.files[0];
+  event.target.value="";
+  if(!file) return;
+  if(file.size>20*1024*1024){ $("commitMsg").textContent="Bản sao lưu vượt giới hạn 20 MB."; return; }
+  try{
+    const state=JSON.parse(await file.text());
+    if(!state || state.schemaVersion!==1 || !validStoredDocuments(state.docs) ||
+       !validStoredLedger(state.ledger) || state.ledgerSeq!==state.ledger.length){
+      throw new Error("Cấu trúc hoặc chuỗi nhật ký không hợp lệ.");
+    }
+    localStorage.setItem(APP_STORAGE_KEY,JSON.stringify(state));
+    storageWarning=false;
+    location.reload();
+  }catch(error){
+    storageWarning=true;
+    updateStorageStatus();
+    $("commitMsg").textContent="Không nhập được bản sao lưu: "+(error && error.message ? error.message : "dữ liệu không hợp lệ.");
+  }
 });
 
 function buildChange(){
@@ -1266,7 +1353,7 @@ function renderProposals(){
       p.semanticHoldApproved = btn.dataset.semanticReview === "approve";
       if(!p.semanticHoldApproved){
         const ts = new Date().toISOString();
-        appendLedger({ ts, actor:"Người rà soát", docId:p.docId,
+        appendLedger({ ts, actor:"Người dùng demo · rà soát chưa xác thực", docId:p.docId,
           action:"GIỮ NGUYÊN dòng "+(p.lineIndex+1), from:p.line, to:p.line,
           basis:"Rà soát bằng chứng ngữ nghĩa; không áp dụng patch tự động", propId:p.id });
         renderLedger();
@@ -1300,8 +1387,9 @@ function renderQueue(){
       const act = btn.dataset.act;
       p.decided = true;
       p.decisionLabel = (act==="a" ? q.a : q.b);
-      // Nút A của U1 và nút B của U2/U3 là các lựa chọn dẫn tới việc sửa dòng.
-      p.accepted = (p.category==="U1") ? (act==="a") : (act==="b");
+      // Only U1 can confirm the target policy. U2 and U3 cannot authorize a
+      // patch in this browser-only demo; they create an audit handoff record.
+      p.accepted = p.category==="U1" && act==="a";
       renderAll();
     });
   });
@@ -1356,6 +1444,8 @@ function appendLedger(entry){
   const record = { seq:++ledgerSeq, ...entry, prevHash:prev };
   record.hash = sha256Hex(ledgerPayload(record));
   ledger.push(record);
+  persistState();
+  updateStorageStatus();
 }
 
 $("commitBtn").addEventListener("click", ()=>{
@@ -1380,7 +1470,8 @@ $("commitBtn").addEventListener("click", ()=>{
     doc.version = bumpVersion(doc.version);
     p.applied = true; applied++;
     appendLedger({
-      ts, actor: p.semanticHoldApproved ? "Người rà soát ngữ nghĩa" : (p.outcome==="AUTO_PATCH" ? "AI · động cơ tiền định" : "Người · "+TIER_APPROVER[p.docTier]),
+      ts, actor: p.semanticHoldApproved ? "Người dùng demo · rà soát ngữ nghĩa chưa xác thực" :
+        (p.outcome==="AUTO_PATCH" ? "AI · động cơ tiền định" : "Người dùng demo · danh tính chưa xác thực"),
       docId: p.docId, lineIndex: p.lineIndex, action:"PATCH dòng "+(p.lineIndex+1),
       from: p.line, to: p.newLine,
       basis: p.citation + " · " + (p.semanticHoldApproved
@@ -1390,11 +1481,12 @@ $("commitBtn").addEventListener("click", ()=>{
       propId: p.id
     });
   });
-  current.props.filter(p=>p.decided && !p.accepted && !p.logged).forEach(p=>{
+  current.props.filter(p=>p.decided && !p.logged && !(p.category==="U1" && p.accepted)).forEach(p=>{
     p.logged = true;
-    appendLedger({ ts, actor:"Người · "+TIER_APPROVER[p.docTier], docId:p.docId,
-      action:"TỪ CHỐI SỬA dòng "+(p.lineIndex+1), from:p.line, to:p.line,
-      basis: p.category+" — "+p.decisionLabel, propId:p.id });
+    const handoff = p.category==="U2" || p.category==="U3";
+    appendLedger({ ts, actor:"Người dùng demo · danh tính chưa xác thực", docId:p.docId,
+      action:(handoff ? "CHUYỂN XỬ LÝ dòng " : "TỪ CHỐI SỬA dòng ")+(p.lineIndex+1), from:p.line, to:p.line,
+      basis: p.category+" — "+p.decisionLabel+(handoff ? " · Không ban hành từ demo phía trình duyệt." : ""), propId:p.id });
   });
   $("commitMsg").textContent = "Đã ban hành "+applied+" thay đổi"+(proverHeld ? "; prover chặn "+proverHeld+" đề xuất" : "")+" lúc "+ts+".";
   renderAll(); renderLedger();
@@ -1553,6 +1645,8 @@ $("verifyEscBtn").addEventListener("click", ()=>renderVerify([
 /* ---------- Khởi động ---------- */
 initForm();
 renderDocs();
+renderLedger();
+updateStorageStatus();
 </script>
 </body>
 </html>

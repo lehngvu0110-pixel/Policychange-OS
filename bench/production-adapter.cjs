@@ -63,6 +63,7 @@ function loadProductionEngine(options = {}) {
     'let docs = []; let current = null; let ledger = []; let ledgerSeq = 0;',
     'this.__commitPolicyChange = ' + commitHandler[1] + ';',
     'this.__setPolicyBenchmarkState = (state, documents, audit) => { current = JSON.parse(JSON.stringify(state)); docs = JSON.parse(JSON.stringify(documents)); ledger = JSON.parse(JSON.stringify(audit)); ledgerSeq = ledger.length ? ledger[ledger.length - 1].seq : 0; };',
+    'function persistState(){ return true; } function updateStorageStatus(){}',
     'this.__getPolicyBenchmarkState = () => ({ current, docs, ledger });',
     'this.__undoPolicyChange = undo; this.__verifyPolicyLedger = verifyLedger;',
     'this.__policyBenchmarkExports = { RULES, parseValue, valueRegex, renderValue, ownersOfLine, analyze, parseFreeText };'

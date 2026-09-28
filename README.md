@@ -9,21 +9,15 @@ MLAI Hackathon 2026 · Bảng 1 OrganizationAI · **Đề A — Bộ điều ph�
 
 ## Vấn đề
 
-Đổi một quy định thì không chỉ sửa một văn bản. Giá trị cũ nằm rải rác trong quy trình tác nghiệp, biểu
-mẫu, checklist quầy một cửa, trang hỏi đáp và mẫu thư tự động. Thực tế: văn bản gốc được sửa, các tài
-liệu vệ tinh thì không. Sinh viên đọc hướng dẫn cũ, chuyên viên làm theo checklist cũ, hệ thống gửi thư
-trích dẫn con số đã hết hiệu lực.
+Đổi một quy định thì không chỉ sửa một văn bản. Giá trị cũ nằm rải rác trong quy trình tác nghiệp, biểu mẫu, checklist quầy một cửa, trang hỏi đáp và mẫu thư tự động. Thực tế: văn bản gốc được sửa, các tài liệu vệ tinh thì không. Sinh viên đọc hướng dẫn cũ, chuyên viên làm theo checklist cũ, hệ thống gửi thư trích dẫn con số đã hết hiệu lực.
 
-Rà soát thủ công thì chậm và sót. Tự động thay thế toàn bộ bằng find-and-replace thì nguy hiểm — cùng
-một con số ở hai chỗ có thể là hai quy định khác nhau.
+Rà soát thủ công thì chậm và sót. Tự động thay thế toàn bộ bằng find-and-replace thì nguy hiểm — cùng một con số ở hai chỗ có thể là hai quy định khác nhau.
 
 ## Giải pháp
 
-Quy trình thường quy được chọn: **kiểm soát tài liệu khi thay đổi quy định** (xem
-`docs/QT-KSTL-01_Quy-trinh-kiem-soat-tai-lieu.md`).
+Quy trình thường quy được chọn: **kiểm soát tài liệu khi thay đổi quy định** (xem `docs/QT-KSTL-01_Quy-trinh-kiem-soat-tai-lieu.md`).
 
-Hệ thống nhận một thay đổi quy định, quét toàn bộ kho tài liệu, và với mỗi vị trí bị ảnh hưởng thì hoặc
-tự sửa, hoặc dừng lại và hỏi đúng một câu cho đúng người:
+Hệ thống nhận một thay đổi quy định, quét kho tài liệu demo, rồi tự sửa vị trí đã qua kiểm chứng hoặc ghi nhận điểm cần chuyển tiếp:
 
 | | Nhóm dừng | Khi nào | Ai quyết |
 |---|---|---|---|
@@ -32,6 +26,8 @@ tự sửa, hoặc dừng lại và hỏi đúng một câu cho đúng người:
 | **U3** | Vượt thẩm quyền | Tài liệu do cấp cao hơn ban hành — khóa quyền sửa | Người ban hành tài liệu đó |
 
 Mọi trường hợp còn lại được **xử lý tự động, không hỏi người**. Đó là phần lớn khối lượng.
+
+Các chức danh trong bảng là người cần xử lý theo quy trình mục tiêu. Bản demo chưa đăng nhập hay xác minh vai trò; quyết định trên giao diện được ghi rõ là của người dùng demo. U2/U3 không thể cấp quyền sửa tài liệu từ trình duyệt.
 
 ## Chạy thử
 
@@ -65,7 +61,7 @@ Nên dùng HTTP server để kiểm tra giống môi trường triển khai.
 
 1. **▶ Chạy thay đổi mẫu** — hạn nộp đơn phúc khảo `7 ngày → 5 ngày`, ban hành ở cấp Trưởng phòng.
    Hệ thống quét 12 tài liệu, tự sửa 6 vị trí, dừng lại ở 3 vị trí và nêu rõ lý do từng chỗ.
-2. **Mục 3** — ba câu hỏi chuyển tiếp, mỗi câu đúng hai nút. Bấm chọn.
+2. **Mục 3** — câu hỏi U1 có thể xác nhận phạm vi; U2/U3 chỉ ghi nhận chuyển xử lý, không cấp quyền sửa từ trình duyệt.
 3. **Mục 4** — **Ban hành**, xem sổ nhật ký SHA-256. Bấm **Hoàn tác** một bản ghi khi dòng hiện tại vẫn khớp nội dung đã ban hành.
 4. **Mục 5** — **▶ Verify** chạy 9 ca kiểm thử, in bảng pass/fail kèm dấu thời gian.
 5. Nhập dữ liệu mới: chọn quy định khác, gõ câu lệnh tiếng Việt tự do, hoặc dán một tài liệu mới vào kho.
@@ -94,13 +90,9 @@ Thay đổi quy định ──┐
               Ban hành + Sổ kiểm toán SHA-256 nối chuỗi + Hoàn tác
 ```
 
-**Thành phần thực tế (đã chạy được):** phân tích tiền định, semantic evidence validation, graph, deterministic prover,
-commit, audit và undo chạy trong trình duyệt. Provider adapter đã có nhưng **chưa cấu hình provider sống**;
-phân tích câu lệnh dùng deterministic fallback. Ca semantic review trong guided demo dùng fixture mock được gắn nhãn,
-đi qua validator thật.
+**Thành phần thực tế (đã chạy được):** phân tích tiền định, semantic evidence validation, graph, deterministic prover, commit, audit và undo chạy trong trình duyệt. Provider adapter đã có nhưng **chưa cấu hình provider sống**; phân tích câu lệnh dùng deterministic fallback. Ca semantic review trong guided demo dùng fixture mock được gắn nhãn, đi qua validator thật.
 
-**Thành phần giả lập:** kho 12 tài liệu và sổ 6 quy định là **dữ liệu tổng hợp do nhóm tự soạn**, mô phỏng
-hệ thống văn bản của một trường đại học. Không dùng văn bản thật của bất kỳ đơn vị nào.
+**Thành phần giả lập:** kho 12 tài liệu và sổ 6 quy định là **dữ liệu tổng hợp do nhóm tự soạn**, mô phỏng hệ thống văn bản của một trường đại học. Không dùng văn bản thật của bất kỳ đơn vị nào.
 
 **Chưa có:** kết nối model provider thật; kết nối kho tài liệu thật (Google Drive / SharePoint); xử lý tài liệu dạng ảnh quét.
 
@@ -134,8 +126,8 @@ To reproduce interactively, use an HTTP server rather than `file://`; this also 
 2. Chất lượng phân loại phụ thuộc độ đầy đủ của cụm từ neo. Khai báo thiếu làm tăng số hồ sơ U1 — hệ thống dừng nhiều hơn cần thiết, chứ không sửa sai. Đây là hướng lệch có chủ đích.
 3. Chỉ phát hiện mâu thuẫn đi qua con số. Mâu thuẫn diễn đạt thuần ngữ nghĩa chưa phát hiện được.
 4. Chưa đọc được tài liệu dạng ảnh quét hoặc PDF không có lớp văn bản.
-5. Kho tài liệu hiện nằm trong bộ nhớ trình duyệt; tải lại trang là về trạng thái gốc. Bản tích hợp thật cần kho có phiên bản.
-6. Sổ SHA-256 được kiểm tra lại trong phiên hiện tại và Hoàn tác chỉ thêm sự kiện mới. Sổ chưa có lưu trữ bền vững, chữ ký số hay mốc băm độc lập nên chưa thể dùng làm bằng chứng kiểm toán chống người có quyền sửa toàn bộ dữ liệu.
+5. Kho tài liệu và sổ nhật ký được lưu trong `localStorage` của trình duyệt, có nhập/xuất JSON và được kiểm tra chuỗi băm khi khôi phục. Dữ liệu chỉ nằm trên thiết bị đó; xóa dữ liệu trình duyệt sẽ xóa bản lưu nếu chưa xuất. Không dùng bản demo cho tài liệu mật hoặc làm kho dùng chung.
+6. Sổ SHA-256 nối chuỗi phát hiện sửa đổi vô ý nhưng không chống được người có quyền sửa dữ liệu và tính lại chuỗi. Bản demo chưa có lưu trữ máy chủ, danh tính người dùng, phân quyền thực thi, chữ ký số hay mốc băm độc lập nên chưa phải bằng chứng kiểm toán.
 7. Số dùng định dạng Việt Nam: dấu chấm tách hàng nghìn, dấu phẩy cho phần thập phân. Ví dụ `10,5 triệu` và `10.500.000 đồng` hợp lệ; `10.5 triệu` bị từ chối.
 
 ## Cấu trúc kho mã nguồn

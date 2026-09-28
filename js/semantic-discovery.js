@@ -175,7 +175,11 @@
   function isPatchAllowed(prop) {
     if (!prop) return false;
     if (prop.outcome === 'AUTO_PATCH') return !prop.semanticHold || prop.semanticHoldApproved === true;
-    return prop.outcome === 'ESCALATE' && prop.decided === true && prop.accepted === true;
+    // U1 can only confirm whether an unanchored value belongs to the selected
+    // policy. U2 and U3 require a separate, attributable authorization flow;
+    // a client-side button cannot grant that authority.
+    return prop.outcome === 'ESCALATE' && prop.category === 'U1' &&
+      prop.decided === true && prop.accepted === true;
   }
 
   async function discoverSemantics(options) {
