@@ -1,0 +1,49 @@
+id,rule_id,new_value,issuer_tier,doc_tier,line,expected
+H01,R-PK-01,5 ngày,2,2,Sinh viên muốn phúc khảo phải nộp đơn trong 7 ngày kể từ khi có điểm.,AUTO
+H02,R-PK-01,5 ngày,2,1,Mẫu tin nhắn: Hạn nộp đơn phúc khảo là 7 ngày sau ngày công bố điểm.,AUTO
+H03,R-PK-01,10 ngày,3,3,Điều 9. Người học được đề nghị chấm lại bài thi trong 7 ngày kể từ ngày công bố kết quả.,AUTO
+H04,R-PK-01,5 ngày,2,2,Hướng dẫn nộp đơn đề nghị chấm lại: thời hạn 7 ngày tính từ ngày công bố điểm.,AUTO
+H05,R-KN-01,10 ngày,3,2,Đơn khiếu nại của người học được trả lời bằng văn bản trong 7 ngày làm việc.,AUTO
+H06,R-KN-01,10 ngày,2,1,Bộ phận tiếp dân chuyển đơn thư cho nơi xử lý để phản hồi trong 7 ngày.,AUTO
+H07,R-XN-01,2 ngày,2,2,Giấy xác nhận được trả cho sinh viên sau 3 ngày làm việc.,AUTO
+H08,R-XN-01,2 ngày,2,1,Thông báo: thời gian cấp giấy xác nhận sinh viên là 3 ngày.,AUTO
+H09,R-DK-01,30 tín chỉ,3,2,"Mỗi học kỳ chính, sinh viên được đăng ký học phần không quá 24 tín chỉ.",AUTO
+H10,R-DK-01,30 tín chỉ,3,1,Hệ thống chặn khi khối lượng học tập vượt 24 tín chỉ trong học kỳ.,AUTO
+H11,R-TC-01,15 triệu,3,2,Đề nghị tạm ứng từ 10 triệu đồng trở xuống do Trưởng đơn vị ký duyệt.,AUTO
+H12,R-TC-01,15 triệu,3,1,Câu lạc bộ lập hồ sơ hoàn ứng cho khoản tạm ứng không vượt 10.000.000 đồng.,AUTO
+H13,R-TC-02,20 triệu,3,2,Chứng từ chi từ 10 triệu đồng phải có đủ hai chữ ký trước khi chuyển khoản.,AUTO
+H14,R-TC-02,20 triệu,3,1,Kế toán kiểm tra đồng ký với mọi khoản chi trên 10tr.,AUTO
+H15,R-PK-01,5 ngày,2,2,"Quá 7 ngày kể từ ngày công bố điểm, đơn phúc khảo không được tiếp nhận.",AUTO
+H16,R-PK-01,5 ngày,2,2,Sinh viên nhận lại thẻ dự thi sau 7 ngày.,U1
+H17,R-PK-01,5 ngày,2,1,Kết quả rèn luyện được niêm yết trong 7 ngày.,U1
+H18,R-XN-01,2 ngày,2,1,Hồ sơ bổ sung được xử lý trong 3 ngày làm việc.,U1
+H19,R-DK-01,30 tín chỉ,3,2,Chương trình liên kết yêu cầu tối thiểu 24 tín chỉ tiếng Anh.,U1
+H20,R-TC-01,15 triệu,3,2,Học bổng khuyến khích mức 10 triệu đồng mỗi học kỳ.,U1
+H21,R-TC-02,20 triệu,3,1,Giải thưởng cuộc thi ý tưởng trị giá 10 triệu đồng.,U1
+H22,R-KN-01,10 ngày,3,2,Biên bản họp được gửi các thành viên trong 7 ngày.,U1
+H23,R-PK-01,5 ngày,2,2,Ngày công bố điểm cộng thêm 7 ngày là mốc khóa sổ điểm.,U1
+H24,R-PK-01,5 ngày,2,2,Người học có quyền tố cáo và được phản hồi trong 7 ngày.,U2
+H25,R-KN-01,10 ngày,3,2,Đơn phúc khảo nộp muộn quá 7 ngày sẽ bị trả lại.,U2
+H26,R-TC-01,15 triệu,3,2,Khoản chi từ 10 triệu đồng cần đồng ký của kế toán trưởng.,U2
+H27,R-TC-02,20 triệu,3,1,Mức hoàn ứng tối đa cho mỗi lần là 10 triệu đồng.,U2
+H28,R-PK-01,5 ngày,2,1,Đơn thư của sinh viên được xem xét trong 7 ngày.,U2
+H29,R-TC-01,15 triệu,3,2,Đề nghị tạm ứng trên 10 triệu phải qua kiểm soát chi hai cấp.,U2
+H30,R-PK-01,5 ngày,2,2,Đơn khiếu nại về kết quả phúc khảo được giải quyết trong 7 ngày.,U2
+H31,R-PK-01,5 ngày,2,3,Điều 18. Sinh viên được phúc khảo trong thời hạn 7 ngày kể từ ngày công bố điểm.,U3
+H32,R-TC-01,15 triệu,2,3,Điều 7. Trưởng đơn vị được phê duyệt tạm ứng đến 10 triệu đồng.,U3
+H33,R-DK-01,30 tín chỉ,2,3,Điều 22. Khối lượng học tập tối đa là 24 tín chỉ mỗi học kỳ.,U3
+H34,R-XN-01,2 ngày,1,2,Quy trình cấp giấy xác nhận sinh viên: trả kết quả sau 3 ngày.,U3
+H35,R-KN-01,10 ngày,1,2,Đơn khiếu nại được phản hồi trong 7 ngày làm việc.,U3
+H36,R-TC-02,20 triệu,2,3,Điều 25. Khoản chi từ 10 triệu đồng phải có hai chữ ký kiểm soát.,U3
+H37,R-PK-01,5 ngày,2,2,Kết quả phúc khảo được thông báo cho sinh viên sau 7 ngày.,U1
+H38,R-PK-01,5 ngày,2,1,Bài thi đã phúc khảo được lưu tại khoa thêm 7 ngày.,U1
+H39,R-TC-01,15 triệu,3,2,Tổng dư tạm ứng của một đơn vị không vượt 10 triệu đồng mỗi quý.,U1
+H40,R-XN-01,2 ngày,2,2,Giấy xác nhận sinh viên có giá trị sử dụng trong 3 ngày kể từ ngày cấp.,U1
+H41,R-PK-01,5 ngày,2,2,Thời hạn xin phúc tra điểm thi là 7 ngày kể từ ngày công bố điểm.,AUTO
+H42,R-TC-01,15 triệu,3,2,Mức ứng trước kinh phí do Trưởng đơn vị duyệt là 10 triệu đồng.,AUTO
+H43,R-DK-01,30 tín chỉ,3,1,Sinh viên chỉ được ghi danh tối đa 24 tín chỉ mỗi kỳ chính.,AUTO
+H44,R-PK-01,5 ngày,2,2,Đơn phúc khảo nộp trong 07 ngày kể từ ngày công bố điểm.,AUTO
+H45,R-TC-01,15 triệu,3,2,Khoản tạm ứng đến 10.000.000đ do Trưởng đơn vị duyệt.,AUTO
+H46,R-KN-01,10 ngày,3,2,Đơn tố cáo được giải quyết trong vòng một tuần.,U1
+H47,R-XN-01,2 ngày,2,2,Giấy xác nhận vay vốn được cấp trong 3 ngày làm việc.,U1
+H48,R-DK-01,30 tín chỉ,3,2,Sinh viên năm cuối được đăng ký học phần vượt 24 tín chỉ nếu được Khoa đồng ý.,AUTO

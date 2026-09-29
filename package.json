@@ -9,6 +9,7 @@
     "e2e": "playwright test",
     "typecheck": "tsc -p jsconfig.json",
     "sync:edge": "node scripts/sync-edge-shared.mjs",
-    "serve": "python3 -m http.server 8080"
+    "serve": "python3 -m http.server 8080",
+    "eval": "node bench/holdout.cjs"
   }
 }
