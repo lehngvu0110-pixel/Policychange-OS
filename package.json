@@ -9,7 +9,12 @@
     "e2e": "playwright test",
     "typecheck": "tsc -p jsconfig.json",
     "sync:edge": "node scripts/sync-edge-shared.mjs",
-    "serve": "python3 -m http.server 8080",
-    "eval": "node bench/holdout.cjs"
+    "serve": "node scripts/serve.mjs",
+    "eval": "node bench/holdout.cjs",
+    "build:holdout": "node scripts/build-holdout-data.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "typescript": "^5.9.3"
   }
 }

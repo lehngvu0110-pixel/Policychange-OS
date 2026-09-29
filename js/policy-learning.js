@@ -120,9 +120,11 @@
     for (const f of Array.isArray(feedback) ? feedback : []) {
       if (!f || (f.answer !== 'accept' && f.answer !== 'reject')) continue;
       const c = byCategory[f.category] || (byCategory[f.category] = { accept: 0, reject: 0, total: 0, acceptRate: null });
-      c[f.answer]++; c.total++;
+      if (f.answer === 'accept') c.accept++; else c.reject++;
+      c.total++;
       const r = byRule[f.ruleId] || (byRule[f.ruleId] = { accept: 0, reject: 0, total: 0 });
-      r[f.answer]++; r.total++;
+      if (f.answer === 'accept') r.accept++; else r.reject++;
+      r.total++;
     }
     Object.values(byCategory).forEach(c => { c.acceptRate = c.total ? c.accept / c.total : null; });
     const total = Object.values(byCategory).reduce((s, c) => s + c.total, 0);

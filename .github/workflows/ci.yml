@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Unit tests (động cơ, sổ kiểm toán, phân quyền, máy chủ, học, đánh giá)
+        run: npm test
+      - name: Benchmark 26 fixture
+        run: npm run bench
+      - name: Báo cáo tập độc lập
+        run: npm run eval
+      - name: Kiểm tra kiểu (tsc, JSDoc)
+        run: npm run typecheck
+      - name: Edge Function dùng đúng bản module mới nhất
+        run: npm run sync:edge && git diff --exit-code supabase/functions/_shared
+      - name: Cài Chromium cho Playwright
+        run: npx playwright install --with-deps chromium
+      - name: E2E (chế độ Ngoại tuyến)
+        run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: test-results/
+          retention-days: 7
+
+  edge-functions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: deno check
+        working-directory: supabase/functions
+        run: deno check --no-lock policy-api/index.ts ai-extract/index.ts ai-discover/index.ts

@@ -92,3 +92,8 @@ test('evaluateWithSemantics: AI chỉ giữ lại AUTO_PATCH, không nâng ca ch
   assert.equal(withAi.rows.find(r => r.id === 'A').actual, 'AUTO');
   assert.equal(withAi.rows.find(r => r.id === 'C').actual, 'U1');
 });
+
+test('js/holdout-data.js đồng bộ với bench/holdout.csv', () => {
+  const embedded = require('../js/holdout-data.js');
+  assert.equal(embedded, fs.readFileSync(path.join(__dirname, '..', 'bench', 'holdout.csv'), 'utf8'), 'chạy npm run build:holdout');
+});
