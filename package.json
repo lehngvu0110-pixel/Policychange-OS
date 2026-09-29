@@ -1,0 +1,14 @@
+{
+  "name": "policychange-os",
+  "private": true,
+  "description": "Trọng tài kiểm soát tài liệu khi quy định thay đổi — MLAI Hackathon 2026, Bảng 1 OrganizationAI, Đề A.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "test": "node --test \"tests/*.test.cjs\"",
+    "bench": "node bench/run.cjs",
+    "e2e": "playwright test",
+    "typecheck": "tsc -p jsconfig.json",
+    "sync:edge": "node scripts/sync-edge-shared.mjs",
+    "serve": "python3 -m http.server 8080"
+  }
+}
