@@ -97,3 +97,26 @@ test('bộ Verify: 9/9 ca đạt trên kho mẫu', () => {
   assert.deepEqual(rows.filter(r => !r.ok).map(r => r.id), []);
   assert.equal(rows.length, 9);
 });
+
+test('thêm neo: từ chối cụm trùng / chồng lên neo của quy định khác, ghi sổ khi hợp lệ', () => {
+  const state = freshState();
+  assert.equal(Workflow.addAnchor(state, 'R-PK-01', 'khiếu nại điểm', { now: clock }).ok, false);
+  assert.equal(Workflow.addAnchor(state, 'R-PK-01', 'phúc khảo', { now: clock }).ok, false);
+  assert.equal(Workflow.addAnchor(state, 'R-PK-01', 'lưu bài 7', { now: clock }).ok, false);
+  const ok = Workflow.addAnchor(state, 'R-PK-01', 'lưu bài', { now: clock, actor: 'Trưởng phòng Đào tạo (demo)' });
+  assert.equal(ok.ok, true);
+  assert.ok(state.registry.find(r => r.id === 'R-PK-01').aliases.includes('lưu bài'));
+  assert.equal(state.ledger[0].action, 'THÊM NEO R-PK-01');
+  assert.equal(Ledger.verify(state.ledger), true);
+});
+
+test('thêm tài liệu: kiểm tra đầu vào, cấp mã NEW-xx và ghi sổ', () => {
+  const state = freshState();
+  assert.equal(Workflow.addDocument(state, { title: '', tier: 1, lines: ['a'] }).ok, false);
+  assert.equal(Workflow.addDocument(state, { title: 'X', tier: 4, lines: ['a'] }).ok, false);
+  const r = Workflow.addDocument(state, { title: 'Hướng dẫn Khoa Điện', owner: 'Phòng Đào tạo', tier: 1, lines: ['Nộp đơn phúc khảo trong 7 ngày.', ''] }, { now: clock });
+  assert.equal(r.ok, true);
+  assert.equal(r.doc.id, 'NEW-01');
+  assert.deepEqual(r.doc.lines, ['Nộp đơn phúc khảo trong 7 ngày.']);
+  assert.equal(state.ledger[0].action, 'THÊM TÀI LIỆU NEW-01');
+});

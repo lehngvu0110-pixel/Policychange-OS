@@ -5,7 +5,7 @@
  * Mọi thao tác đều bọc try/catch: trình duyệt chặn lưu trữ (chế độ riêng tư, iframe) thì ứng dụng
  * vẫn chạy, chỉ là không lưu được.
  */
-(function attachPolicyStore(root, factory) {
+(function attachPolicyStore(/** @type {any} */ root, /** @type {(...args:any[]) => any} */ factory) {
   const api = factory();
   // @ts-ignore
   if (typeof module === 'object' && module.exports) module.exports = api;
