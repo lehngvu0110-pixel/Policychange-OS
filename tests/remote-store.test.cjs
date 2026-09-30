@@ -27,13 +27,17 @@ test('loadWorkspace ghép dữ liệu từ PostgREST sang mô hình ứng dụng
     { prefix: '/rest/v1/policies', body: [{ id: 'R-1', name: 'n', value: '7 ngày', tier: 3, source: 's', owner: 'o', aliases: ['a'] }] },
     { prefix: '/rest/v1/documents', body: [{ id: 'D-1', title: 't', owner: 'o', tier: 2, version: '1.0', lines: ['x'] }] },
     { prefix: '/rest/v1/audit_log', body: [] },
-    { prefix: '/rest/v1/feedback_events', body: [{ rule_id: 'R-1', category: 'U1', doc_id: 'D-1', line_index: 0, line: 'x', answer: 'accept', actor: 'a', created_at: 't' }] }
+    { prefix: '/rest/v1/feedback_events', body: [{ rule_id: 'R-1', category: 'U1', doc_id: 'D-1', line_index: 0, line: 'x', answer: 'accept', actor: 'a', created_at: 't' }] },
+    { prefix: '/rest/v1/open_changes', body: [{ id: 'CR-1', rule_id: 'R-1', old_value: '7 ngày', new_value: '5 ngày', issuer_tier: 2, request_text: '', created_by: 'A', status: 'open', held: [] }] },
+    { prefix: '/rest/v1/change_decisions', body: [] }
   ], log) });
   const res = await client.loadWorkspace('demo');
   assert.equal(res.ok, true);
   assert.equal(res.registry[0].value, '7 ngày');
   assert.deepEqual(res.docs[0].lines, ['x']);
   assert.equal(res.feedback[0].ruleId, 'R-1');
+  assert.equal(res.openChanges[0].id, 'CR-1');
+  assert.equal(res.openChanges[0].issuerTier, 2);
   assert.equal(log[0].init.headers.apikey, 'anon');
   assert.equal(log[0].init.headers.Authorization, 'Bearer anon');
 });

@@ -106,15 +106,21 @@
 
   function pending() {
     if (!S.current) return [];
-    return S.current.props.filter(p => (p.outcome === 'ESCALATE' && !p.decided) || (p.semanticHold && !p.semanticHoldReviewed));
+    return S.current.props.filter(p => !p.inCase && !p.applied && !p.logged && ((p.outcome === 'ESCALATE' && !p.decided) || (p.semanticHold && !p.semanticHoldReviewed)));
   }
   function mine(list) { return list.filter(p => app.decisionRight(p).ok); }
+  /** Mọi việc đang chờ: của phân tích đang mở trên máy này + hồ sơ dùng chung trên máy chủ. */
+  function queueEntries() {
+    const local = pending().map(p => ({ kind: 'local', p, right: app.decisionRight(p) }));
+    const cases = app.caseItems().map((item, idx) => ({ kind: 'case', p: item.p, item, idx, right: app.caseRight(item) }));
+    return local.concat(cases);
+  }
 
   // ---------- Định tuyến ----------
   const ROUTES = [
     { id: 'tong-quan', label: 'Tổng quan', icon: 'home', title: 'Tổng quan', view: viewOverview },
     { id: 'thay-doi', label: 'Thay đổi quy định', icon: 'change', title: 'Thay đổi quy định', view: viewChange },
-    { id: 'hang-doi', label: 'Hàng đợi duyệt', icon: 'queue', title: 'Hàng đợi duyệt', view: viewQueue, count: () => mine(pending()).length, hot: true },
+    { id: 'hang-doi', label: 'Hàng đợi duyệt', icon: 'queue', title: 'Hàng đợi duyệt', view: viewQueue, count: () => queueEntries().filter(e => e.right.ok).length, hot: true },
     { id: 'so-kiem-toan', label: 'Sổ kiểm toán', icon: 'ledger', title: 'Sổ kiểm toán', view: viewLedger, count: () => S.ledger.length },
     { id: 'kho-tai-lieu', label: 'Kho tài liệu', icon: 'docs', title: 'Kho tài liệu', view: viewDocs, count: () => S.docs.length },
     { id: 'so-dang-ky', label: 'Sổ đăng ký & học', icon: 'registry', title: 'Sổ đăng ký & học từ phản hồi', view: viewRegistry, count: () => app.suggestions().length || '', hot: true },
@@ -234,7 +240,7 @@
   function viewOverview() {
     const chainOk = Ledger.verify(S.ledger);
     const lines = S.docs.reduce((s, d) => s + d.lines.length, 0);
-    const pend = pending();
+    const pend = queueEntries();
     const m = member();
     if (!ui.overviewEval) {
       const parsed = Evaluation.parseCsv(G.PolicyChangeHoldoutCsv || '');
@@ -258,7 +264,7 @@
       '<div class="grid g4">' +
         stat('', nf.format(S.docs.length), 'Tài liệu có kiểm soát', nf.format(lines) + ' dòng điều khoản') +
         stat('', nf.format(S.registry.length), 'Quy định trong sổ đăng ký', 'mỗi quy định có cụm từ neo riêng') +
-        stat(pend.length ? 'U3' : '', nf.format(mine(pend).length) + ' / ' + nf.format(pend.length), 'Hồ sơ chờ bạn duyệt', 'trên tổng số hồ sơ đang mở') +
+        stat(pend.length ? 'U3' : '', nf.format(pend.filter(e => e.right.ok).length) + ' / ' + nf.format(pend.length), 'Vị trí chờ bạn duyệt', 'trên tổng số vị trí đang chờ người quyết') +
         stat('', nf.format(S.ledger.length), 'Bản ghi kiểm toán', chainOk ? 'toàn vẹn, chỉ ghi thêm' : 'phát hiện chỉnh sửa trái phép') +
       '</div>' +
       '<section class="card"><div class="card-head"><h2>Luồng xử lý một thay đổi</h2><p>Động cơ tiền định là nơi duy nhất quyết định tự sửa hay chuyển người; AI chỉ đưa bằng chứng và chỉ có thể làm kết quả thận trọng hơn.</p></div>' +
@@ -383,12 +389,15 @@
     return m[cur.semanticStatus] || '';
   }
 
-  function propCard(p, withActions) {
-    const cur = S.current;
+  function propCard(p, withActions, opts) {
+    const o = opts || {};
+    const cur = S.current || {};
+    const change = o.change || cur.change;
+    const caseItem = o.caseIdx !== undefined;
     const st = G.PolicyChangeImpactSvg.stateOf(p);
     const cls = { done: 'auto', kept: '', hold: 'hold', auto: 'auto', U1: 'U1', U2: 'U2', U3: 'U3' }[st.key] || '';
     let proofHtml = '';
-    if (p.outcome === 'AUTO_PATCH' && !p.applied) {
+    if (!caseItem && p.outcome === 'AUTO_PATCH' && !p.applied) {
       const proof = Workflow.prove(S, p);
       proofHtml = '<div class="why"><b>Prover:</b> ' + (proof.allowed ? '✓ ' + proof.checks.filter(c => c.passed).length + '/' + proof.checks.length + ' điều kiện · <code>' + esc(proof.proofId) + '</code>'
         : 'đang chặn — ' + esc((proof.reasons || []).slice(0, 2).join(' '))) + '</div>';
@@ -396,27 +405,33 @@
     const evidence = Array.isArray(p.semanticEvidence) ? p.semanticEvidence.map(e => '<div class="evidence"><b>' + esc(cur.semanticSource === 'fixture_mock' ? 'Bằng chứng mẫu (mock)' : 'AI') + ' · ' +
       esc({ supports: 'đúng quy định này', possibly_related: 'có thể liên quan', unrelated: 'nói về việc khác', uncertain: 'chưa đủ căn cứ' }[e.relation] || e.relation) + ':</b> “' + esc(e.quote) + '” — ' + esc(e.explanation) + '</div>').join('') : '';
     let action = '';
-    if (withActions && !p.applied && !p.logged) {
-      const right = app.decisionRight(p);
+    if (withActions && !p.applied && !p.logged && p.inCase) {
+      action = '<div class="small muted">Đã chuyển vào hồ sơ dùng chung <b>' + esc(p.inCase) + '</b> — người có thẩm quyền quyết trong Hàng đợi duyệt.</div>';
+    } else if (withActions && !p.applied && !p.logged) {
+      const right = o.right || app.decisionRight(p);
       if (p.outcome === 'ESCALATE' && !p.decided) {
-        const q = Engine.escalationQuestion(p, cur.change, S.registry);
+        const q = Engine.escalationQuestion(p, change, S.registry);
+        const choice = (act, label) => caseItem ? btn('decide-case', label, { data: { idx: o.caseIdx, act }, busyKey: 'case-' + o.caseIdx }) : btn('decide', label, { data: { p: p.id, act } });
         action = '<div class="question"><div class="q-label">Câu hỏi chuyển tiếp · một lượt, quyết dứt điểm</div>' + esc(q.q) + '</div>' +
-          (right.ok ? '<div class="choices">' + btn('decide', 'A · ' + q.a, { data: { p: p.id, act: 'a' } }) + btn('decide', 'B · ' + q.b, { data: { p: p.id, act: 'b' } }) + '</div>'
+          (right.ok ? '<div class="choices">' + choice('a', 'A · ' + q.a) + choice('b', 'B · ' + q.b) + '</div>'
             : '<div class="lock">' + icon('lock', 16) + '<span>' + esc(right.reason) + ' Đổi vai trò ở thanh trên để thử.</span></div>') +
           '<div class="xs muted"><b>Giải thích dễ hiểu:</b> ' + esc(p.plain) + '</div>';
       } else if (p.outcome === 'ESCALATE' && p.decided) {
         action = '<div class="row small"><span>✔ ' + esc(p.decisionLabel) + (p.decidedBy ? ' · ' + esc(p.decidedBy) : '') + '</span>' + btn('undo-decision', 'Đổi quyết định', { cls: 'sm ghost', data: { p: p.id } }) + '</div>';
       } else if (p.semanticHold && !p.semanticHoldReviewed) {
-        action = right.ok ? '<div class="row">' + btn('review', 'Duyệt sửa dòng này', { cls: 'sm', data: { p: p.id, approve: '1' } }) + btn('review', 'Giữ nguyên dòng', { cls: 'sm', data: { p: p.id, approve: '0' } }) + '</div>'
+        action = right.ok ? '<div class="row">' + (caseItem
+            ? btn('decide-case', 'Duyệt sửa dòng này', { cls: 'sm', data: { idx: o.caseIdx, act: 'approve' }, busyKey: 'case-' + o.caseIdx }) + btn('decide-case', 'Giữ nguyên dòng', { cls: 'sm', data: { idx: o.caseIdx, act: 'reject' }, busyKey: 'case-' + o.caseIdx })
+            : btn('review', 'Duyệt sửa dòng này', { cls: 'sm', data: { p: p.id, approve: '1' } }) + btn('review', 'Giữ nguyên dòng', { cls: 'sm', data: { p: p.id, approve: '0' } })) + '</div>'
           : '<div class="lock">' + icon('lock', 16) + '<span>' + esc(right.reason) + '</span></div>';
       } else if (p.semanticHoldReviewed) {
         action = '<div class="small">' + (p.semanticHoldApproved ? '✔ Người rà soát đã duyệt; sẽ sửa khi ban hành.' : '✔ Đã chọn giữ nguyên.') + '</div>';
       }
     }
-    return '<article class="prop ' + cls + (p.applied || p.logged ? ' is-done' : '') + '" id="prop-' + esc(p.id) + '">' +
+    return '<article class="prop ' + cls + (p.applied || p.logged ? ' is-done' : '') + '" id="' + (caseItem ? 'case-' + esc(o.caseIdx) : 'prop-' + esc(p.id)) + '">' +
       '<div class="prop-head"><span class="docid">' + esc(p.docId) + '</span><span class="title">' + esc(p.docTitle) + ' · dòng ' + (p.lineIndex + 1) + '</span>' +
+      (o.caseLabel ? '<span class="tag done" title="Hồ sơ dùng chung">' + esc(o.caseLabel) + '</span>' : '') +
       '<span class="chip">' + esc(tierLabel(p.docTier)) + '</span>' + stateTag(p) + '<span class="meta">' + esc(p.docOwner) + '</span></div>' +
-      '<div class="prop-body">' + diffHtml(p, cur.change) +
+      '<div class="prop-body">' + (o.caseMeta ? '<div class="xs muted">' + esc(o.caseMeta) + '</div>' : '') + diffHtml(p, change) +
       '<div class="why"><b>Căn cứ:</b> ' + esc(p.reason) + '</div><div class="cite">Trích dẫn: ' + esc(p.citation) + '</div>' +
       proofHtml + evidence + action + '</div></article>';
   }
@@ -427,14 +442,15 @@
     const n = app.committableCount();
     const rejections = cur.props.filter(p => p.decided && !p.accepted && !p.logged).length;
     const open = pending().length;
+    const shared = S.source === 'remote';
     const issue = app.canIssueCurrent();
     const rule = S.registry.find(r => r.id === cur.change.rule.id);
     const canRatify = rule && cur.change.issuerTier >= rule.tier && Engine.parseValue(rule.value).num !== Engine.parseValue(cur.change.newValue).num;
-    const nothing = n === 0 && rejections === 0;
+    const nothing = n === 0 && rejections === 0 && !(shared && open);
     return '<div class="commitbar" role="region" aria-label="Ban hành">' +
       '<div class="grow"><b>' + nf.format(n) + ' thay đổi sẵn sàng ban hành</b>' + (rejections ? ' · ' + nf.format(rejections) + ' quyết định giữ nguyên sẽ được ghi sổ' : '') +
-      '<div class="xs muted">' + esc(open ? open + ' hồ sơ còn chờ người quyết — có thể ban hành phần đã sẵn sàng trước.' : 'Không còn hồ sơ chờ.') +
-      (!issue.ok ? ' ' + issue.reason : '') + '</div></div>' +
+      '<div class="xs muted">' + esc(open ? open + ' vị trí còn chờ người quyết — ' + (shared ? 'khi ban hành, các vị trí này được chuyển thành hồ sơ dùng chung để đúng người quyết trên máy của họ.' : 'có thể ban hành phần đã sẵn sàng trước.') : 'Không còn vị trí chờ.') +
+      (!issue.ok ? ' ' + esc(issue.reason) : '') + '</div></div>' +
       (canRatify ? '<label class="check small"><input type="checkbox" id="ratifyChk" name="ratify" data-bind="ratify"' + (ui.ratify ? ' checked' : '') + '> Cập nhật luôn giá trị gốc ' + esc(rule.id) + ' trong sổ đăng ký</label>'
         : (rule && cur.change.issuerTier < rule.tier ? '<span class="xs muted hide-sm" style="max-width:260px">' + esc(rule.id + ' là quy định cấp ' + rule.tier + '; giá trị gốc chỉ đổi khi cấp ' + rule.tier + ' ban hành.') + '</span>' : '')) +
       btn('commit', 'Ban hành', { cls: 'primary', disabled: nothing || !issue.ok || S.busy }) + '</div>';
@@ -455,19 +471,27 @@
   function viewQueue() {
     const tab = ui.query.get('tab') || 'mine';
     const cur = S.current;
-    const all = pending();
-    const decided = cur ? cur.props.filter(p => (p.outcome === 'ESCALATE' && p.decided) || p.semanticHoldReviewed) : [];
-    const list = tab === 'all' ? all : tab === 'done' ? decided : mine(all);
+    const all = queueEntries();
+    const decided = cur ? cur.props.filter(p => !p.inCase && ((p.outcome === 'ESCALATE' && p.decided) || p.semanticHoldReviewed)) : [];
+    const mineList = all.filter(e => e.right.ok);
     const m = member();
+    const card = e => e.kind === 'case'
+      ? propCard(e.p, true, { change: e.item.change, caseIdx: e.idx, right: e.right, caseLabel: e.item.oc.id,
+          caseMeta: 'Hồ sơ ' + e.item.oc.id + ' · ' + e.item.oc.ruleId + ' ' + e.item.oc.oldValue + ' → ' + e.item.oc.newValue +
+            ' · cấp ban hành ' + e.item.oc.issuerTier + ' · khởi tạo bởi ' + e.item.oc.createdBy })
+      : propCard(e.p, true, { right: e.right });
+    const body = tab === 'done' ? decided.map(p => propCard(p, true)).join('') : (tab === 'all' ? all : mineList).map(card).join('');
+    const shared = S.source === 'remote';
     return sandboxBanner() + staleBanner() +
-      '<div class="page-head"><div><div class="eyebrow">Bước 3</div><h1>Hàng đợi duyệt</h1><p>Mỗi hồ sơ là đúng một câu hỏi với hai lựa chọn. Chỉ người đúng cấp và đúng đơn vị phụ trách mới quyết được — “Chuyên viên phòng ban chỉ duyệt văn bản thuộc phạm vi của mình”.</p></div>' +
+      '<div class="page-head"><div><div class="eyebrow">Bước 3</div><h1>Hàng đợi duyệt</h1><p>Mỗi vị trí là đúng một câu hỏi với hai lựa chọn. Chỉ người đúng cấp và đúng đơn vị phụ trách mới quyết được — “Chuyên viên phòng ban chỉ duyệt văn bản thuộc phạm vi của mình”.' +
+        (shared ? ' Ở chế độ dùng chung, vị trí chưa quyết của một thay đổi đã ban hành trở thành hồ sơ mà người có thẩm quyền thấy ngay trên máy của mình; quyết định được áp dụng và ghi sổ ngay.' : '') + '</p></div>' +
       '<span class="pill" style="max-width:100%"><span class="t">' + esc(m ? 'Bạn: ' + m.displayName + ' · cấp ' + m.tier : 'Chưa xác định vai trò') + '</span></span></div>' +
-      (!cur ? '<div class="empty"><b>Chưa có thay đổi nào đang mở</b>Tạo một thay đổi ở mục <a href="#/thay-doi">Thay đổi quy định</a>.</div>' :
+      (!cur && !all.length ? '<div class="empty"><b>Không có việc nào đang chờ</b>Tạo một thay đổi ở mục <a href="#/thay-doi">Thay đổi quy định</a>.</div>' :
       '<div class="filters" role="group" aria-label="Lọc hàng đợi">' +
-        [['mine', 'Việc của tôi · ' + mine(all).length], ['all', 'Tất cả đang chờ · ' + all.length], ['done', 'Đã quyết · ' + decided.length]]
+        [['mine', 'Việc của tôi · ' + mineList.length], ['all', 'Tất cả đang chờ · ' + all.length], ['done', 'Đã quyết (chưa ban hành) · ' + decided.length]]
           .map(([k, l]) => '<button type="button" data-action="queue-tab" data-value="' + k + '" aria-pressed="' + (tab === k) + '">' + esc(l) + '</button>').join('') + '</div>' +
-      '<div class="stack">' + (list.map(p => propCard(p, true)).join('') ||
-        '<div class="empty"><b>' + (tab === 'mine' ? 'Không có hồ sơ nào thuộc thẩm quyền của bạn' : 'Không có hồ sơ') + '</b>' + (tab === 'mine' && all.length ? 'Còn ' + all.length + ' hồ sơ cần người khác — xem tab “Tất cả” hoặc đổi vai trò.' : '') + '</div>') + '</div>' + commitBar());
+      '<div class="stack">' + (body ||
+        '<div class="empty"><b>' + (tab === 'mine' ? 'Không có vị trí nào thuộc thẩm quyền của bạn' : 'Không có vị trí nào') + '</b>' + (tab === 'mine' && all.length ? 'Còn ' + all.length + ' vị trí cần người khác — xem tab “Tất cả” hoặc đổi vai trò.' : '') + '</div>') + '</div>' + commitBar());
   }
 
   // ---------- Màn hình: Sổ kiểm toán ----------
@@ -682,6 +706,10 @@
     'clear-analysis': () => app.clearAnalysis(),
     'semantic': () => withBusy('semantic', () => app.discoverSemantics()),
     'decide': el => app.decide(el.dataset.p, el.dataset.act),
+    'decide-case': el => {
+      const item = app.caseItems()[Number(el.dataset.idx)];
+      if (item) withBusy('case-' + el.dataset.idx, () => app.decideCase(item, el.dataset.act));
+    },
     'undo-decision': el => app.undoDecision(el.dataset.p),
     'review': el => app.reviewSemantic(el.dataset.p, el.dataset.approve === '1'),
     'commit': () => withBusy('commit', () => app.commit({ ratify: ui.ratify })),

@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     return json(200, { available: false, reason: "Tập ứng viên rỗng hoặc vượt giới hạn cho phép." });
   }
   if (!openAIConfigured()) return json(200, { available: false, reason: "Máy chủ chưa cấu hình OPENAI_API_KEY; giữ nguyên kết quả tiền định." });
-  if (!(await consumeAIQuota())) return json(200, { available: false, reason: "Đã hết hạn mức gọi AI trong ngày; giữ nguyên kết quả tiền định." });
+  if (!(await consumeAIQuota(req))) return json(200, { available: false, reason: "Đã hết hạn mức gọi AI trong ngày; giữ nguyên kết quả tiền định." });
 
   const result = await callStructured(Mapping.discoverMessages(payload), "semantic_evidence", Mapping.DISCOVER_SCHEMA, 1500);
   if (!result.ok) return json(200, { available: false, reason: result.reason });

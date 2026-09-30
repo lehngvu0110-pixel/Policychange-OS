@@ -74,7 +74,7 @@
   /** @param {ServerContext} ctx */
   function stateOf(ctx) {
     return { registry: ctx.registry.map(r => ({ ...r, aliases: [...r.aliases] })), docs: Engine.cloneDocs(ctx.docs),
-      current: null, ledger: ctx.ledger.map(e => ({ ...e })) };
+      current: /** @type {any} */ (null), ledger: ctx.ledger.map(e => ({ ...e })) };
   }
 
   /** @param {ServerContext} ctx */
@@ -100,11 +100,73 @@
       });
   }
 
+  // ---------- Hồ sơ chuyển tiếp dùng chung ----------
+  // Khi một thay đổi còn vị trí chờ người quyết, máy chủ mở một "hồ sơ" (open change). Người có thẩm quyền mở ứng
+  // dụng trên máy của mình sẽ thấy hồ sơ trong hàng đợi và quyết từng vị trí; mỗi quyết định được áp dụng ngay,
+  // ghi sổ với đúng tên người quyết.
+
+  /** @param {any} x */
+  const lineKey = x => x.docId + '\u0000' + x.lineIndex + '\u0000' + x.line;
+
+  /**
+   * Chuỗi căn cứ gắn vào mọi bản ghi của một lần ban hành: hồ sơ nào, cấp ban hành, ai khởi tạo.
+   * `cấp ban hành N` được policy-authz đọc lại khi xét quyền hoàn tác.
+   * @param {string} creator @param {number} issuerTier @param {string|null} [changeId]
+   */
+  function issueSuffix(creator, issuerTier, changeId) {
+    return (changeId ? 'hồ sơ ' + changeId + ' · ' : '') + 'cấp ban hành ' + issuerTier + ' · khởi tạo bởi ' + creator;
+  }
+
+  /** @param {any} row */
+  function fromDbOpenChange(row) {
+    return { id: row.id, ruleId: row.rule_id, oldValue: row.old_value, newValue: row.new_value, issuerTier: row.issuer_tier,
+      requestText: row.request_text || '', createdBy: row.created_by, status: row.status, createdAt: row.created_at || null,
+      held: Array.isArray(row.held) ? row.held : [] };
+  }
+  /** @param {any} row */
+  function fromDbDecision(row) {
+    return { changeId: row.change_id, docId: row.doc_id, lineIndex: row.line_index, line: row.line, act: row.act,
+      accepted: row.accepted, decidedBy: row.decided_by };
+  }
+
+  /**
+   * Phân tích lại một hồ sơ trên dữ liệu hiện tại. Dùng chung cho máy chủ (khi quyết) và trình duyệt (hàng đợi).
+   * Giá trị cũ lấy từ hồ sơ, nên vẫn đúng kể cả khi quy định gốc đã được cập nhật sau đó.
+   * @param {any} oc @param {any[]} registry @param {any[]} docs @param {any[]} decisions
+   */
+  function analyzeOpenChange(oc, registry, docs, decisions) {
+    const rule = registry.find(r => r.id === oc.ruleId);
+    if (!rule) return { change: null, props: [], pending: [] };
+    const change = { rule: { ...rule, aliases: [...rule.aliases], value: oc.oldValue }, oldValue: oc.oldValue, newValue: oc.newValue, issuerTier: oc.issuerTier };
+    const props = Engine.analyze(change, docs, registry).props;
+    const held = new Set((oc.held || []).map(lineKey));
+    const done = new Set((decisions || []).filter(d => d.changeId === oc.id).map(lineKey));
+    props.forEach((/** @type {any} */ p) => { if (p.outcome === 'AUTO_PATCH' && held.has(lineKey(p))) p.semanticHold = true; });
+    const pending = props.filter((/** @type {any} */ p) => (p.outcome === 'ESCALATE' || p.semanticHold) && !done.has(lineKey(p)));
+    return { change, props, pending };
+  }
+
+  /** @param {ServerContext & { openChanges?:any[] }} ctx */
+  function nextChangeId(ctx) {
+    const max = (ctx.openChanges || []).reduce((m, c) => { const n = Number(String(c.id).replace(/^CR-/, '')); return Number.isFinite(n) && n > m ? n : m; }, 0);
+    return 'CR-' + (max + 1);
+  }
+
+  /**
+   * Người đưa ra một quyết định. Ở workspace trình diễn, cùng một trình duyệt có thể đổi vai trò giữa các quyết
+   * định, nên mỗi quyết định mang theo vai trò của người bấm; ở workspace thật, người quyết là người đăng nhập.
+   * @param {ServerContext} ctx @param {any} item
+   */
+  function deciderOf(ctx, item) {
+    if (ctx.workspace.mode === 'demo' && item && typeof item.persona === 'string' && item.persona) return demoMember(item.persona);
+    return ctx.member;
+  }
+
   /**
    * Ban hành một thay đổi.
-   * request = { change:{ruleId,newValue,issuerTier}, requestText?, decisions?:[{docId,lineIndex,line,act}],
-   *             holds?:[{docId,lineIndex,line}], semanticReviews?:[{docId,lineIndex,line,approve}], ratify?:boolean }
-   * @param {ServerContext} ctx @param {any} request @returns {Plan}
+   * request = { change:{ruleId,newValue,issuerTier}, requestText?, decisions?:[{docId,lineIndex,line,act,persona?}],
+   *             holds?:[{docId,lineIndex,line}], semanticReviews?:[{docId,lineIndex,line,approve,persona?}], ratify?:boolean }
+   * @param {ServerContext & { openChanges?:any[], decisions?:any[] }} ctx @param {any} request @returns {Plan}
    */
   function planCommit(ctx, request) {
     const problem = chainProblem(ctx);
@@ -118,49 +180,67 @@
     if (!issue.ok) return fail(403, 'forbidden_issue', issue.reason || 'Không đủ thẩm quyền.');
     Workflow.startAnalysis(state, built.change, typeof req.requestText === 'string' ? req.requestText.slice(0, 2000) : '');
     const current = /** @type {any} */ (state.current);
+    const change = current.change;
     const key = (/** @type {any} */ x) => x.docId + '\u0000' + x.lineIndex;
     const byKey = new Map(current.props.map((/** @type {any} */ p) => [key(p), p]));
+
+    // Hồ sơ đang mở của đúng thay đổi này (nếu người khởi tạo ban hành tiếp phần còn lại).
+    const reuse = (ctx.openChanges || []).find(c => c.status === 'open' && c.ruleId === change.rule.id &&
+      c.oldValue === change.oldValue && c.newValue === change.newValue && c.issuerTier === change.issuerTier) || null;
+    const done = new Set((ctx.decisions || []).filter(d => reuse && d.changeId === reuse.id).map(lineKey));
+    const heldBefore = new Set(reuse ? reuse.held.map(lineKey) : []);
+
     /** @type {any[]} */ const staleItems = [];
     /** @type {any[]} */ const forbidden = [];
-    /** @type {any[]} */ const feedback = [];
+    /** @type {any[]} */ const decided = [];
     const locate = (/** @type {any} */ item) => {
       const p = byKey.get(key(item));
       if (!p || p.line !== item.line) { staleItems.push({ docId: item.docId, lineIndex: item.lineIndex }); return null; }
       return p;
     };
 
+    for (const p of current.props) if (p.outcome === 'AUTO_PATCH' && heldBefore.has(lineKey(p)) && !done.has(lineKey(p))) p.semanticHold = true;
     for (const hold of Array.isArray(req.holds) ? req.holds : []) {
       const p = locate(hold);
       if (p && p.outcome === 'AUTO_PATCH') p.semanticHold = true; // client chỉ có thể làm cho kết quả THẬN TRỌNG hơn
     }
     for (const review of Array.isArray(req.semanticReviews) ? req.semanticReviews : []) {
       const p = locate(review);
-      if (!p || p.outcome !== 'AUTO_PATCH') continue;
-      const verdict = Authz.canDecide(ctx.member, { ...p, category: null }, current.change, state.registry);
-      if (!verdict.ok) { forbidden.push({ docId: p.docId, lineIndex: p.lineIndex, reason: verdict.reason }); continue; }
+      if (!p || p.outcome !== 'AUTO_PATCH' || done.has(lineKey(p))) continue;
+      const decider = deciderOf(ctx, review);
+      const verdict = decider ? Authz.canDecide(decider, { ...p, category: null }, change, state.registry) : { ok: false, reason: 'Vai trò không hợp lệ.' };
+      if (!verdict.ok || !decider) { forbidden.push({ docId: p.docId, lineIndex: p.lineIndex, reason: verdict.reason }); continue; }
       p.semanticHold = true;
-      Workflow.reviewSemantic(state, p.id, review.approve === true, { now: ctx.now, humanActor: () => actorLabel(ctx.member) });
-      feedback.push({ category: 'SEMANTIC', p, answer: review.approve === true ? 'accept' : 'reject' });
+      p.deciderLabel = actorLabel(decider); p.deciderUser = decider.userId || '';
+      Workflow.reviewSemantic(state, p.id, review.approve === true, { now: ctx.now, humanActor: () => p.deciderLabel });
+      decided.push({ p, category: 'SEMANTIC', act: review.approve === true ? 'approve' : 'reject', accepted: review.approve === true });
     }
     for (const decision of Array.isArray(req.decisions) ? req.decisions : []) {
       const p = locate(decision);
-      if (!p || p.outcome !== 'ESCALATE') continue;
-      const verdict = Authz.canDecide(ctx.member, p, current.change, state.registry);
-      if (!verdict.ok) { forbidden.push({ docId: p.docId, lineIndex: p.lineIndex, reason: verdict.reason }); continue; }
+      if (!p || p.outcome !== 'ESCALATE' || done.has(lineKey(p))) continue;
+      const decider = deciderOf(ctx, decision);
+      const verdict = decider ? Authz.canDecide(decider, p, change, state.registry) : { ok: false, reason: 'Vai trò không hợp lệ.' };
+      if (!verdict.ok || !decider) { forbidden.push({ docId: p.docId, lineIndex: p.lineIndex, reason: verdict.reason }); continue; }
       if (decision.act !== 'a' && decision.act !== 'b') continue;
       Workflow.decide(state, p.id, decision.act);
-      feedback.push({ category: p.category, p, answer: p.accepted ? 'accept' : 'reject' });
+      p.deciderLabel = actorLabel(decider); p.deciderUser = decider.userId || '';
+      decided.push({ p, category: p.category, act: decision.act, accepted: p.accepted });
     }
     if (staleItems.length) return fail(409, 'stale_analysis', 'Tài liệu đã thay đổi kể từ lúc bạn phân tích. Hãy phân tích lại.', staleItems);
-    if (forbidden.length) return fail(403, 'forbidden_decision', 'Một số quyết định vượt thẩm quyền của ' + ctx.member.displayName + '.', forbidden);
+    if (forbidden.length) return fail(403, 'forbidden_decision', 'Một số quyết định vượt thẩm quyền của người quyết.', forbidden);
 
-    const committed = Workflow.commit(state, { now: ctx.now, humanActor: () => actorLabel(ctx.member), basisSuffix: 'khởi tạo bởi ' + ctx.member.displayName });
+    // Các vị trí đã được quyết trong hồ sơ trước đó thì bỏ qua lần này.
+    for (const p of current.props) if (done.has(lineKey(p))) p.applied = true;
+    const needsCase = current.props.some((/** @type {any} */ p) => !done.has(lineKey(p)) && (p.outcome === 'ESCALATE' || p.semanticHold));
+    const changeId = needsCase ? (reuse ? reuse.id : nextChangeId(ctx)) : null;
+    const committed = Workflow.commit(state, { now: ctx.now, humanActor: (/** @type {any} */ p) => p.deciderLabel || actorLabel(ctx.member),
+      basisSuffix: issueSuffix(ctx.member.displayName, change.issuerTier, changeId) });
     if (!committed.ok) return fail(409, 'commit_refused', committed.message);
     let records = [...state.ledger.slice(ctx.ledger.length)];
     /** @type {any[]} */ const policyUpdates = [];
     let ratifyMessage = null;
     if (req.ratify === true) {
-      const before = state.registry.find(r => r.id === current.change.rule.id);
+      const before = state.registry.find(r => r.id === change.rule.id);
       const expectedValue = before ? before.value : null;
       const ratified = Workflow.ratifyRule(state, { now: ctx.now, actor: actorLabel(ctx.member) });
       ratifyMessage = ratified.message;
@@ -169,17 +249,94 @@
         records = [...state.ledger.slice(ctx.ledger.length)];
       }
     }
-    if (!records.length) return fail(422, 'nothing_to_commit', 'Không có thay đổi nào đủ điều kiện ban hành.');
+    const pendingAfter = current.props.filter((/** @type {any} */ p) => !done.has(lineKey(p)) &&
+      ((p.outcome === 'ESCALATE' && !p.decided) || (p.semanticHold && !p.semanticHoldReviewed)));
+    const newHolds = current.props.filter((/** @type {any} */ p) => p.semanticHold && !p.semanticHoldReviewed && !heldBefore.has(lineKey(p)));
+    if (!records.length && (!needsCase || (reuse && !decided.length && !newHolds.length))) {
+      return fail(422, 'nothing_to_commit', 'Không có thay đổi nào đủ điều kiện ban hành.');
+    }
+    const held = [...(reuse ? reuse.held : []), ...newHolds.map((/** @type {any} */ p) => ({ docId: p.docId, lineIndex: p.lineIndex, line: p.line }))];
+    const openChange = needsCase ? {
+      id: changeId, reuse: !!reuse, ruleId: change.rule.id, oldValue: change.oldValue, newValue: change.newValue, issuerTier: change.issuerTier,
+      requestText: current.requestText || '', createdBy: ctx.member.displayName, createdUser: ctx.member.userId || '',
+      held, status: pendingAfter.length ? 'open' : 'closed'
+    } : null;
+    const caseMessage = openChange && openChange.status === 'open'
+      ? ' Hồ sơ ' + openChange.id + ' còn ' + pendingAfter.length + ' vị trí chờ người có thẩm quyền quyết trong Hàng đợi duyệt.' : '';
     return {
       ok: true, status: 200,
-      body: { message: committed.message + (ratifyMessage ? ' ' + ratifyMessage : ''), applied: committed.applied,
-        proverHeld: committed.proverHeld, stale: committed.stale, records },
+      body: { message: committed.message + (ratifyMessage ? ' ' + ratifyMessage : '') + caseMessage, applied: committed.applied,
+        proverHeld: committed.proverHeld, stale: committed.stale, records,
+        openChange: openChange ? { id: openChange.id, status: openChange.status, pending: pendingAfter.length } : null },
       rpc: {
         p_workspace: ctx.workspace.id, p_expected_seq: ctx.workspace.ledger_seq, p_expected_tail: ctx.workspace.ledger_tail,
         p_doc_updates: docUpdatesFrom(records, state.docs), p_policy_updates: policyUpdates, p_new_documents: [],
         p_records: records.map(r => toRpcRecord(r, ctx.member.userId)),
-        p_feedback: feedback.map(f => ({ userId: ctx.member.userId || '', actor: actorLabel(ctx.member), ruleId: current.change.rule.id,
-          category: f.category, docId: f.p.docId, lineIndex: f.p.lineIndex, line: f.p.line, answer: f.answer }))
+        p_feedback: decided.map(d => ({ userId: d.p.deciderUser, actor: d.p.deciderLabel, ruleId: change.rule.id,
+          category: d.category, docId: d.p.docId, lineIndex: d.p.lineIndex, line: d.p.line, answer: d.accepted ? 'accept' : 'reject' })),
+        p_open_change: openChange,
+        p_decisions: changeId ? decided.map(d => ({ changeId, docId: d.p.docId, lineIndex: d.p.lineIndex, line: d.p.line, act: d.act,
+          accepted: d.accepted, decidedBy: d.p.deciderLabel, decidedUser: d.p.deciderUser })) : [],
+        p_close_change: null
+      }
+    };
+  }
+
+  /**
+   * Người có thẩm quyền quyết MỘT vị trí trong hồ sơ đang mở; áp dụng ngay.
+   * request = { changeId, docId, lineIndex, line, act: 'a'|'b' (U1/U2/U3) hoặc 'approve'|'reject' (AI giữ lại) }
+   * @param {ServerContext & { openChanges?:any[], decisions?:any[] }} ctx @param {any} request @returns {Plan}
+   */
+  function planDecide(ctx, request) {
+    const problem = chainProblem(ctx);
+    if (problem) return problem;
+    const req = request || {};
+    const oc = (ctx.openChanges || []).find(c => c.id === req.changeId);
+    if (!oc) return fail(404, 'not_found', 'Không có hồ sơ ' + String(req.changeId || '') + '.');
+    if (oc.status !== 'open') return fail(409, 'change_closed', 'Hồ sơ ' + oc.id + ' đã đóng.');
+    const state = stateOf(ctx);
+    const { change, props, pending } = analyzeOpenChange(oc, state.registry, state.docs, ctx.decisions || []);
+    if (!change) return fail(409, 'change_closed', 'Quy định của hồ sơ không còn trong sổ đăng ký.');
+    const p = pending.find((/** @type {any} */ x) => x.docId === req.docId && x.lineIndex === Number(req.lineIndex) && x.line === req.line);
+    if (!p) return fail(409, 'stale_analysis', 'Vị trí này đã được quyết hoặc nội dung đã thay đổi. Hãy tải lại.');
+    const label = actorLabel(ctx.member);
+    state.current = { change, props, requestText: oc.requestText, semanticResult: null };
+    const semantic = p.outcome === 'AUTO_PATCH';
+    const verdict = Authz.canDecide(ctx.member, semantic ? { ...p, category: null } : p, change, state.registry);
+    if (!verdict.ok) return fail(403, 'forbidden_decision', verdict.reason || 'Không đủ thẩm quyền.');
+    let accepted;
+    if (semantic) {
+      if (req.act !== 'approve' && req.act !== 'reject') return fail(400, 'invalid_decision', 'Lựa chọn không hợp lệ.');
+      accepted = req.act === 'approve';
+      Workflow.reviewSemantic(state, p.id, accepted, { now: ctx.now, humanActor: () => label });
+    } else {
+      if (req.act !== 'a' && req.act !== 'b') return fail(400, 'invalid_decision', 'Lựa chọn không hợp lệ.');
+      Workflow.decide(state, p.id, req.act);
+      accepted = p.accepted;
+    }
+    props.forEach((/** @type {any} */ x) => { if (x !== p) x.applied = true; });
+    const committed = Workflow.commit(state, { now: ctx.now, humanActor: () => label, basisSuffix: issueSuffix(oc.createdBy, oc.issuerTier, oc.id) });
+    if (!committed.ok) return fail(409, 'commit_refused', committed.message);
+    const records = state.ledger.slice(ctx.ledger.length);
+    if (accepted && !records.some(r => String(r.action).startsWith('PATCH'))) {
+      return fail(409, 'commit_refused', 'Không áp dụng được: prover chặn hoặc dòng đã thay đổi. Hãy tải lại.');
+    }
+    const remaining = pending.length - 1;
+    const where = p.docId + ' dòng ' + (p.lineIndex + 1);
+    return {
+      ok: true, status: 200,
+      body: { message: (accepted ? 'Đã sửa ' : 'Đã giữ nguyên ') + where + '. ' +
+        (remaining ? 'Hồ sơ ' + oc.id + ' còn ' + remaining + ' vị trí.' : 'Hồ sơ ' + oc.id + ' đã xử lý xong và được đóng.'), records, remaining },
+      rpc: {
+        p_workspace: ctx.workspace.id, p_expected_seq: ctx.workspace.ledger_seq, p_expected_tail: ctx.workspace.ledger_tail,
+        p_doc_updates: docUpdatesFrom(records, state.docs), p_policy_updates: [], p_new_documents: [],
+        p_records: records.map(r => toRpcRecord(r, ctx.member.userId)),
+        p_feedback: [{ userId: ctx.member.userId || '', actor: label, ruleId: oc.ruleId, category: semantic ? 'SEMANTIC' : p.category,
+          docId: p.docId, lineIndex: p.lineIndex, line: p.line, answer: accepted ? 'accept' : 'reject' }],
+        p_open_change: null,
+        p_decisions: [{ changeId: oc.id, docId: p.docId, lineIndex: p.lineIndex, line: p.line, act: req.act, accepted,
+          decidedBy: label, decidedUser: ctx.member.userId || '' }],
+        p_close_change: remaining ? null : oc.id
       }
     };
   }
@@ -192,7 +349,7 @@
     const entry = ctx.ledger.find(e => e.seq === seq);
     if (!entry) return fail(404, 'not_found', 'Không có bản ghi #' + seq + '.');
     const doc = ctx.docs.find(d => d.id === entry.docId);
-    const allowed = Authz.canUndo(ctx.member, doc);
+    const allowed = Authz.canUndo(ctx.member, doc, entry);
     if (!allowed.ok) return fail(403, 'forbidden_undo', allowed.reason || 'Không đủ thẩm quyền.');
     const state = stateOf(ctx);
     const result = Workflow.undo(state, seq, { now: ctx.now, humanActor: () => actorLabel(ctx.member) });
@@ -242,6 +399,6 @@
         p_records: (result.records || []).map((/** @type {any} */ r) => toRpcRecord(r, ctx.member.userId)), p_feedback: [] } };
   }
 
-  return Object.freeze({ fromDbPolicy, fromDbDocument, fromDbRecord, toRpcRecord, demoMember, actorLabel,
-    planCommit, planUndo, planAnchor, planAddDocument });
+  return Object.freeze({ fromDbPolicy, fromDbDocument, fromDbRecord, fromDbOpenChange, fromDbDecision, toRpcRecord, demoMember, actorLabel,
+    issueSuffix, analyzeOpenChange, planCommit, planDecide, planUndo, planAnchor, planAddDocument });
 });

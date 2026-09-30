@@ -98,3 +98,78 @@ test('thêm neo và thêm tài liệu cũng theo quyền và ghi sổ', () => {
   assert.equal(doc.ok, true);
   assert.equal(doc.rpc.p_new_documents[0].owner, 'Phòng Đào tạo');
 });
+
+// ---------- Hồ sơ chuyển tiếp dùng chung (Sprint 2, sau review) ----------
+function applyPlan(ctx, plan) {
+  // Mô phỏng apply_change: cập nhật tài liệu, sổ, hồ sơ, quyết định.
+  const docs = Engine.cloneDocs(ctx.docs);
+  for (const u of plan.rpc.p_doc_updates) { const d = docs.find(x => x.id === u.id); d.lines[u.lineIndex] = u.to; d.version = u.version; }
+  const ledger = [...ctx.ledger, ...plan.rpc.p_records];
+  let openChanges = (ctx.openChanges || []).map(c => ({ ...c }));
+  const oc = plan.rpc.p_open_change;
+  if (oc) {
+    const row = { id: oc.id, ruleId: oc.ruleId, oldValue: oc.oldValue, newValue: oc.newValue, issuerTier: oc.issuerTier,
+      requestText: oc.requestText, createdBy: oc.createdBy, status: oc.status, held: oc.held };
+    openChanges = openChanges.filter(c => c.id !== oc.id).concat(row);
+  }
+  if (plan.rpc.p_close_change) openChanges = openChanges.map(c => c.id === plan.rpc.p_close_change ? { ...c, status: 'closed' } : c);
+  const decisions = [...(ctx.decisions || []), ...plan.rpc.p_decisions];
+  const tail = Ledger.tailOf(ledger);
+  return { ...ctx, docs, ledger, openChanges, decisions, workspace: { ...ctx.workspace, ledger_seq: tail.seq, ledger_tail: tail.hash } };
+}
+const as = (ctx, personaId, mode = 'demo') => ({ ...ctx, member: Server.demoMember(personaId), workspace: { ...ctx.workspace, mode } });
+
+test('ban hành còn U1/U2/U3 chưa quyết → mở hồ sơ CR-1 cho người có thẩm quyền, căn cứ ghi cấp ban hành', () => {
+  const plan = Server.planCommit(ctxFor('tp-dt'), { change });
+  assert.equal(plan.ok, true);
+  assert.deepEqual(plan.body.openChange, { id: 'CR-1', status: 'open', pending: 3 });
+  assert.match(plan.rpc.p_records[0].basis, /hồ sơ CR-1 · cấp ban hành 2 · khởi tạo bởi Trưởng phòng Đào tạo \(demo\)/);
+});
+
+test('trưởng phòng Thanh tra quyết U2 trên máy của mình; người sai đơn vị bị chặn; quyết xong mục cuối thì đóng hồ sơ', () => {
+  let ctx = ctxFor('tp-dt');
+  ctx = applyPlan(ctx, Server.planCommit(ctx, { change }));
+  const pending = Server.analyzeOpenChange(ctx.openChanges[0], ctx.registry, ctx.docs, ctx.decisions).pending;
+  assert.deepEqual(pending.map(p => p.category).sort(), ['U1', 'U2', 'U3']);
+  const u2 = pending.find(p => p.category === 'U2');
+  const req = { changeId: 'CR-1', docId: u2.docId, lineIndex: u2.lineIndex, line: u2.line, act: 'a' };
+  assert.equal(Server.planDecide(as(ctx, 'tp-dt'), req).status, 403);
+  const ok = Server.planDecide(as(ctx, 'tp-tt'), req);
+  assert.equal(ok.ok, true, ok.message);
+  assert.equal(ok.rpc.p_records[0].actor, 'Người · Trưởng phòng Thanh tra – Pháp chế (demo)');
+  assert.equal(ok.rpc.p_records[0].action, 'TỪ CHỐI SỬA dòng 2');
+  assert.equal(ok.rpc.p_close_change, null);
+  ctx = applyPlan(ctx, ok);
+  assert.equal(Server.planDecide(as(ctx, 'tp-tt'), req).status, 409, 'không quyết lại vị trí đã quyết');
+
+  const rest = Server.analyzeOpenChange(ctx.openChanges[0], ctx.registry, ctx.docs, ctx.decisions).pending;
+  assert.equal(rest.length, 2);
+  const u1 = rest.find(p => p.category === 'U1');
+  ctx = applyPlan(ctx, Server.planDecide(as(ctx, 'cv-dt'), { changeId: 'CR-1', docId: u1.docId, lineIndex: u1.lineIndex, line: u1.line, act: 'a' }));
+  assert.ok(ctx.docs.find(d => d.id === 'HD-04').lines[3].includes('5 ngày'));
+  const u3 = Server.analyzeOpenChange(ctx.openChanges[0], ctx.registry, ctx.docs, ctx.decisions).pending[0];
+  const last = Server.planDecide(as(ctx, 'ht'), { changeId: 'CR-1', docId: u3.docId, lineIndex: u3.lineIndex, line: u3.line, act: 'b' });
+  assert.equal(last.rpc.p_close_change, 'CR-1');
+  ctx = applyPlan(ctx, last);
+  assert.equal(Ledger.verify(ctx.ledger), true);
+  assert.equal(Server.planDecide(as(ctx, 'ht'), { changeId: 'CR-1', docId: 'x', lineIndex: 0, line: '', act: 'a' }).error, 'change_closed');
+});
+
+test('workspace trình diễn: quyết định mang vai trò người bấm; workspace thật bỏ qua vai trò client khai', () => {
+  const u2 = { docId: 'QT-07', lineIndex: 1, line: lineOf('QT-07', 1), act: 'b', persona: 'tp-tt' };
+  const demo = Server.planCommit(ctxFor('tp-dt'), { change, decisions: [u2] });
+  assert.equal(demo.ok, true, demo.message);
+  const rec = demo.rpc.p_records.find(r => r.docId === 'QT-07');
+  assert.equal(rec.actor, 'Người · Trưởng phòng Thanh tra – Pháp chế (demo)');
+  assert.equal(demo.rpc.p_feedback[0].actor, rec.actor);
+  const live = Server.planCommit(as(ctxFor('tp-dt'), 'tp-dt', 'live'), { change, decisions: [u2] });
+  assert.equal(live.status, 403);
+});
+
+test('hoàn tác cần đủ cấp đã ban hành: chuyên viên không thu hồi được thay đổi do Hiệu trưởng ban hành', () => {
+  let ctx = ctxFor('ht');
+  ctx = applyPlan(ctx, Server.planCommit(ctx, { change: { ...change, issuerTier: 3 } }));
+  const hd = ctx.ledger.find(e => e.docId === 'HD-04' && e.action.startsWith('PATCH'));
+  assert.equal(Server.planUndo(as(ctx, 'cv-dt'), { seq: hd.seq }).status, 403);
+  assert.equal(Server.planUndo(as(ctx, 'ht'), { seq: hd.seq }).ok, true);
+});

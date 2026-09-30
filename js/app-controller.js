@@ -36,6 +36,8 @@
       docs: /** @type {any[]} */ ([]),
       ledger: /** @type {any[]} */ ([]),
       feedback: /** @type {any[]} */ ([]),
+      openChanges: /** @type {any[]} */ ([]),
+      decisions: /** @type {any[]} */ ([]),
       current: /** @type {any} */ (null),
       persona: 'tp-dt',
       liveMember: /** @type {any} */ (null),
@@ -91,6 +93,7 @@
         seedLocal();
       }
       S.source = 'local';
+      S.openChanges = []; S.decisions = [];
       S.workspace = { id: 'local', name: 'Trên máy này', mode: 'demo' };
       S.current = null; S.stale = false; S.revision++;
     }
@@ -108,6 +111,7 @@
       S.source = 'remote';
       S.workspace = { id: res.workspace.id, name: res.workspace.name, mode: res.workspace.mode };
       S.registry = res.registry; S.docs = res.docs; S.ledger = res.ledger; S.feedback = res.feedback;
+      S.openChanges = res.openChanges || []; S.decisions = res.decisions || [];
       S.stale = false; S.revision++;
       if (S.workspace.mode === 'live') {
         const who = await deps.remote.call({ action: 'whoami', workspace: S.workspace.id });
@@ -201,7 +205,7 @@
       S.workspace = { id: 'sandbox', name: scenario.label, mode: 'demo' };
       S.registry = Engine.cloneRegistry(scenario.registry || Data.SEED_REGISTRY);
       S.docs = Engine.cloneDocs(scenario.docs);
-      S.ledger = []; S.feedback = []; S.current = null; S.revision++;
+      S.ledger = []; S.feedback = []; S.openChanges = []; S.decisions = []; S.current = null; S.revision++;
       emit();
     }
     function exitSandbox() {
@@ -284,6 +288,7 @@
       if (!res.ok) return result(false, res.message);
       p.act = act;
       p.decidedBy = actor();
+      p.deciderPersona = S.persona;
       return result(true, p.docId + ' dòng ' + (p.lineIndex + 1) + ': ' + p.decisionLabel + '. Bấm “Ban hành” để ghi vào sổ.');
     }
 
@@ -302,6 +307,8 @@
       if (!p || !p.semanticHold || p.semanticHoldReviewed) return result(false, 'Không có vị trí đang chờ rà soát.');
       const right = decisionRight(p);
       if (!right.ok) return result(false, right.reason || 'Không đủ thẩm quyền.');
+      p.decidedBy = actor();
+      p.deciderPersona = S.persona;
       if (S.source === 'remote') { p.semanticHoldReviewed = true; p.semanticHoldApproved = approve === true; }
       else {
         Workflow.reviewSemantic(S, propId, approve === true, { now, humanActor: () => actor() });
@@ -326,7 +333,8 @@
       if (S.source === 'remote') return commitRemote(options);
       const fresh = S.current.props.filter((/** @type {any} */ p) => p.decided && !p.fed);
       const approvedSemantic = S.current.props.filter((/** @type {any} */ p) => p.semanticHoldApproved && !p.fed);
-      const committed = Workflow.commit(S, { now, humanActor: () => actor(), basisSuffix: 'khởi tạo bởi ' + (member() || {}).displayName });
+      const committed = Workflow.commit(S, { now, humanActor: (/** @type {any} */ p) => p.decidedBy || actor(),
+        basisSuffix: Server.issueSuffix((member() || {}).displayName, S.current.change.issuerTier, null) });
       if (!committed.ok) return result(false, committed.message);
       fresh.forEach((/** @type {any} */ p) => { p.fed = true; S.feedback.push(feedbackOf(p.category, p, p.accepted ? 'accept' : 'reject')); });
       approvedSemantic.forEach((/** @type {any} */ p) => { p.fed = true; S.feedback.push(feedbackOf('SEMANTIC', p, 'accept')); });
@@ -348,24 +356,29 @@
         action: 'commit', workspace: S.workspace.id, persona: S.persona,
         change: { ruleId: cur.change.rule.id, newValue: cur.change.newValue, issuerTier: cur.change.issuerTier },
         requestText: cur.requestText || '',
-        decisions: cur.props.filter((/** @type {any} */ p) => p.outcome === 'ESCALATE' && p.decided && !p.logged && !p.applied).map((/** @type {any} */ p) => ({ ...pick(p), act: p.act })),
+        decisions: cur.props.filter((/** @type {any} */ p) => p.outcome === 'ESCALATE' && p.decided && !p.logged && !p.applied)
+          .map((/** @type {any} */ p) => ({ ...pick(p), act: p.act, persona: p.deciderPersona || S.persona })),
         holds: cur.props.filter((/** @type {any} */ p) => p.semanticHold && !p.semanticHoldReviewed).map(pick),
-        semanticReviews: cur.props.filter((/** @type {any} */ p) => p.semanticHoldReviewed && !p.applied && !p.logged).map((/** @type {any} */ p) => ({ ...pick(p), approve: p.semanticHoldApproved === true })),
+        semanticReviews: cur.props.filter((/** @type {any} */ p) => p.semanticHoldReviewed && !p.applied && !p.logged)
+          .map((/** @type {any} */ p) => ({ ...pick(p), approve: p.semanticHoldApproved === true, persona: p.deciderPersona || S.persona })),
         ratify: options.ratify === true
       };
       S.busy = true; emit();
       const res = await deps.remote.call(body);
       S.busy = false;
       if (!res.ok) {
-        if (res.status === 409) { S.stale = true; await reload(); }
+        if (res.status === 409) await reload();
         return result(false, res.data.message || 'Máy chủ từ chối ban hành.');
       }
+      // Máy chủ đánh số lại đề xuất mỗi lần ban hành, nên đối chiếu theo vị trí + nội dung dòng, không theo propId.
       for (const record of res.data.records || []) {
-        const p = cur.props.find((/** @type {any} */ x) => x.id === record.propId);
+        const p = cur.props.find((/** @type {any} */ x) => x.docId === record.docId && x.lineIndex === record.lineIndex && x.line === record.from);
         if (!p) continue;
         if (String(record.action).startsWith('PATCH')) p.applied = true;
-        else { p.logged = true; }
+        else p.logged = true;
       }
+      // Vị trí còn chờ đã được chuyển vào hồ sơ dùng chung; bỏ quyết định cục bộ đang dở để khỏi gửi lại.
+      if (res.data.openChange) cur.props.forEach((/** @type {any} */ p) => { if (!p.applied && !p.logged && (p.outcome === 'ESCALATE' || p.semanticHold)) p.inCase = res.data.openChange.id; });
       await reload();
       return result(true, res.data.message || 'Đã ban hành.', { applied: res.data.applied });
     }
@@ -375,7 +388,7 @@
       const entry = S.ledger.find(e => e.seq === seq);
       if (!entry) return result(false, 'Không có bản ghi #' + seq + '.');
       const doc = S.docs.find(d => d.id === entry.docId);
-      const right = Authz.canUndo(member(), doc);
+      const right = Authz.canUndo(member(), doc, entry);
       if (!right.ok) return result(false, right.reason || 'Không đủ thẩm quyền hoàn tác.');
       if (S.source === 'remote') {
         S.busy = true; emit();
@@ -405,7 +418,40 @@
       if (!entry || !String(entry.action).startsWith('PATCH') || Ledger.isReverted(S.ledger, seq)) return { ok: false, reason: '' };
       const doc = S.docs.find(d => d.id === entry.docId);
       if (!doc || doc.lines[entry.lineIndex] !== entry.to) return { ok: false, reason: 'Dòng đã thay đổi sau lần ban hành này.' };
-      return Authz.canUndo(member(), doc);
+      return Authz.canUndo(member(), doc, entry);
+    }
+
+    // ---------- Hồ sơ dùng chung (chế độ trực tuyến) ----------
+    /** @type {{ rev:number, items:any[] }} */
+    let caseCache = { rev: -1, items: [] };
+    /** Mọi vị trí đang chờ trong các hồ sơ mở, phân tích lại trên dữ liệu hiện tại. */
+    function caseItems() {
+      if (caseCache.rev === S.revision) return caseCache.items;
+      /** @type {any[]} */ const items = [];
+      for (const oc of S.openChanges.filter(c => c.status === 'open')) {
+        const res = Server.analyzeOpenChange(oc, S.registry, S.docs, S.decisions);
+        for (const p of res.pending) items.push({ oc, change: res.change, p });
+      }
+      caseCache = { rev: S.revision, items };
+      return items;
+    }
+    /** @param {any} item */
+    function caseRight(item) {
+      const prop = item.p.outcome === 'AUTO_PATCH' ? { ...item.p, category: null } : item.p;
+      return Authz.canDecide(member(), prop, item.change, S.registry);
+    }
+    /** @param {any} item @param {string} act 'a' | 'b' | 'approve' | 'reject' */
+    async function decideCase(item, act) {
+      if (S.source !== 'remote') return result(false, 'Hồ sơ dùng chung chỉ có ở chế độ trực tuyến.');
+      const right = caseRight(item);
+      if (!right.ok) return result(false, right.reason || 'Không đủ thẩm quyền.');
+      S.busy = true; emit();
+      const res = await deps.remote.call({ action: 'decide', workspace: S.workspace.id, persona: S.persona, changeId: item.oc.id,
+        docId: item.p.docId, lineIndex: item.p.lineIndex, line: item.p.line, act });
+      S.busy = false;
+      if (!res.ok) { await reload(); return result(false, res.data.message || 'Máy chủ từ chối.'); }
+      await reload();
+      return result(true, res.data.message);
     }
 
     // ---------- Sổ đăng ký & học từ phản hồi ----------
@@ -477,6 +523,7 @@
       emit, member, actor, setPersona, init, switchSource, reload, poll, signIn, signOut, checkAI,
       enterSandbox, exitSandbox, resolveRequest, analyze, canIssueCurrent, discoverSemantics, decisionRight,
       decide, undoDecision, reviewSemantic, committableCount, commit, undo, canUndo, suggestions, addAnchor,
+      caseItems, caseRight, decideCase,
       addDocument, resetWorkspace, clearAnalysis, dismissNotice
     };
   }

@@ -10,7 +10,7 @@
  * - U1 (chưa rõ dữ kiện): người phụ trách đơn vị sở hữu tài liệu.
  * - U2 (đụng quy định khác): trưởng đơn vị sở hữu quy định bị đụng.
  * - U3 (vượt thẩm quyền) và rà soát ngữ nghĩa: cấp ≥ cấp tài liệu và phụ trách đơn vị sở hữu tài liệu.
- * - Hoàn tác: cấp ≥ cấp tài liệu và phụ trách tài liệu. Thêm neo cho quy định: trưởng đơn vị sở hữu quy định.
+ * - Hoàn tác: cấp ≥ max(cấp tài liệu, cấp đã ban hành thay đổi) và phụ trách tài liệu. Thêm neo cho quy định: trưởng đơn vị sở hữu quy định.
  */
 (function attachPolicyAuthz(/** @type {any} */ root, /** @type {(...args:any[]) => any} */ factory) {
   const g = /** @type {any} */ (root || {});
@@ -106,9 +106,23 @@
     return { ok: false, requirement, reason: 'Cần ' + requirement.label + ' (cấp ≥ ' + requirement.tier + ').' };
   }
 
-  /** @param {Member|null|undefined} member @param {any} doc */
-  function canUndo(member, doc) {
-    const requirement = { tier: Number(doc && doc.tier) || 1, unit: doc ? doc.owner : '', label: '' };
+  /**
+   * Cấp đã ban hành một bản ghi PATCH (ghi trong phần căn cứ, được băm cùng bản ghi). Bản ghi cũ không có thông tin
+   * này thì trả 0.
+   * @param {any} entry
+   */
+  function issuerTierOf(entry) {
+    const m = String(entry && entry.basis || '').match(/cấp ban hành (\d)/);
+    return m ? Number(m[1]) : 0;
+  }
+
+  /**
+   * Hoàn tác cần đủ cấp của tài liệu VÀ của cấp đã ban hành thay đổi đó — chuyên viên không thu hồi được một thay đổi
+   * do Hiệu trưởng ban hành, kể cả trên tài liệu cấp 1 mình phụ trách.
+   * @param {Member|null|undefined} member @param {any} doc @param {any} [entry]
+   */
+  function canUndo(member, doc, entry) {
+    const requirement = { tier: Math.max(Number(doc && doc.tier) || 1, issuerTierOf(entry)), unit: doc ? doc.owner : '', label: '' };
     requirement.label = Engine.TIER_APPROVER[requirement.tier] + ' · ' + requirement.unit;
     return meets(member, requirement)
       ? { ok: true, requirement }
@@ -135,6 +149,6 @@
 
   return Object.freeze({
     DEMO_PERSONAS, covers, tierOf, foreignRuleOf, requirementFor, meets,
-    canIssue, canDecide, canUndo, canEditRegistry, ratifiesRule
+    canIssue, canDecide, canUndo, canEditRegistry, ratifiesRule, issuerTierOf
   });
 });

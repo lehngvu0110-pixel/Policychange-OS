@@ -1,7 +1,7 @@
 // PolicyChange OS · policy-api — mọi thao tác GHI đều đi qua đây.
 //
 // POST { action, workspace, persona?, ... }
-//   action = "whoami" | "commit" | "undo" | "add_anchor" | "add_document" | "reset_demo"
+//   action = "whoami" | "commit" | "decide" | "undo" | "add_anchor" | "add_document" | "reset_demo"
 //
 // Người gọi:
 //   * workspace live  → bắt buộc JWT đăng nhập hợp lệ + có trong bảng members (cấp, đơn vị do quản trị cấp).
@@ -20,6 +20,10 @@ const CONFLICTS: Record<string, string> = {
   chain_mismatch: "Chuỗi kiểm toán không khớp; thao tác đã bị huỷ.",
   policy_conflict: "Sổ đăng ký vừa được người khác cập nhật. Hãy tải lại.",
   document_exists: "Mã tài liệu đã tồn tại. Hãy tải lại.",
+  decision_conflict: "Vị trí này vừa được người khác quyết. Hãy tải lại.",
+  change_closed: "Hồ sơ đã được đóng. Hãy tải lại.",
+  change_exists: "Có người vừa mở hồ sơ cho thay đổi này. Hãy tải lại.",
+  change_missing: "Hồ sơ không còn tồn tại. Hãy tải lại.",
 };
 
 Deno.serve(async (req) => {
@@ -77,20 +81,26 @@ Deno.serve(async (req) => {
       if (page.data.length < 1000) return { data: rows, error: null };
     }
   };
-  const [policies, documents, audit] = await Promise.all([
+  const [policies, documents, audit, openChanges, decisions] = await Promise.all([
     readAll("policies", "position"), readAll("documents", "position"), readAll("audit_log", "seq"),
+    readAll("open_changes", "created_at"), readAll("change_decisions", "created_at"),
   ]);
-  if (!policies.data || !documents.data || !audit.data) return json(500, { error: "db_error", message: "Không nạp được dữ liệu workspace." });
+  if (!policies.data || !documents.data || !audit.data || !openChanges.data || !decisions.data) {
+    return json(500, { error: "db_error", message: "Không nạp được dữ liệu workspace." });
+  }
   const ctx = {
     workspace, member,
     registry: policies.data.map(Server.fromDbPolicy),
     docs: documents.data.map(Server.fromDbDocument),
     ledger: audit.data.map(Server.fromDbRecord),
+    openChanges: openChanges.data.map(Server.fromDbOpenChange),
+    decisions: decisions.data.map(Server.fromDbDecision),
     now: () => new Date().toISOString(),
   };
 
   let plan: any;
   if (action === "commit") plan = Server.planCommit(ctx, body);
+  else if (action === "decide") plan = Server.planDecide(ctx, body);
   else if (action === "undo") plan = Server.planUndo(ctx, body);
   else if (action === "add_anchor") plan = Server.planAnchor(ctx, body);
   else if (action === "add_document") plan = Server.planAddDocument(ctx, body);

@@ -100,10 +100,11 @@ test('trực tuyến: ban hành gửi đúng ý định lên policy-api rồi n�
   const Data = require('../js/policy-data.js');
   const Engine = require('../js/policy-engine.js');
   const snapshot = () => ({ ok: true, workspace: { id: 'demo', name: 'Demo', mode: 'demo' },
-    registry: Engine.cloneRegistry(Data.SEED_REGISTRY), docs: Engine.cloneDocs(Data.SEED_DOCUMENTS), ledger: [], feedback: [] });
+    registry: Engine.cloneRegistry(Data.SEED_REGISTRY), docs: Engine.cloneDocs(Data.SEED_DOCUMENTS), ledger: [], feedback: [], openChanges: [], decisions: [] });
   const remote = { configured: true,
     loadWorkspace: async () => snapshot(), tail: async () => ({ seq: 0, hash: '0'.repeat(64) }),
-    call: async body => { calls.push(body); return { ok: true, status: 200, data: { message: 'Đã ban hành.', applied: 5, records: [{ propId: 'P2', action: 'PATCH dòng 1' }] } }; } };
+    call: async body => { calls.push(body); return { ok: true, status: 200, data: { message: 'Đã ban hành.', applied: 5,
+      records: [{ propId: 'P1', docId: 'QT-02', lineIndex: 0, from: Data.SEED_DOCUMENTS.find(d => d.id === 'QT-02').lines[0], action: 'PATCH dòng 1' }] } }; } };
   const app = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend() }), remote }));
   await app.init();
   assert.equal(app.state.source, 'remote');
@@ -116,8 +117,10 @@ test('trực tuyến: ban hành gửi đúng ý định lên policy-api rồi n�
   const body = calls.find(c => c.action === 'commit');
   assert.deepEqual(body.change, { ruleId: 'R-PK-01', newValue: '5 ngày', issuerTier: 2 });
   assert.equal(body.persona, 'tp-dt');
-  assert.deepEqual(body.decisions.map(d => [d.docId, d.lineIndex, d.act]), [[u1.docId, u1.lineIndex, 'a']]);
-  assert.equal(app.state.current.props.find(p => p.id === 'P2').applied, true);
+  assert.deepEqual(body.decisions.map(d => [d.docId, d.lineIndex, d.act, d.persona]), [[u1.docId, u1.lineIndex, 'a', 'cv-dt']]);
+  // Đối chiếu theo vị trí + nội dung, không theo propId (máy chủ trả P1 cho dòng mà client gọi là P2).
+  assert.equal(app.state.current.props.find(p => p.docId === 'QT-02' && p.lineIndex === 0).applied, true);
+  assert.equal(app.state.current.props.find(p => p.id === 'P1').applied, undefined);
 });
 
 test('trực tuyến mất mạng khi khởi động → tự lùi về ngoại tuyến kèm thông báo', async () => {
@@ -127,4 +130,38 @@ test('trực tuyến mất mạng khi khởi động → tự lùi về ngoại 
   assert.equal(app.state.source, 'local');
   assert.equal(app.state.connection, 'offline');
   assert.match(app.state.notice.text, /Ngoại tuyến/);
+});
+
+test('trực tuyến: hồ sơ dùng chung hiện đúng người có thẩm quyền và gửi quyết định lên máy chủ', async () => {
+  const calls = [];
+  const Data = require('../js/policy-data.js');
+  const Engine = require('../js/policy-engine.js');
+  const remote = { configured: true, tail: async () => null,
+    loadWorkspace: async () => ({ ok: true, workspace: { id: 'demo', name: 'Demo', mode: 'demo' },
+      registry: Engine.cloneRegistry(Data.SEED_REGISTRY), docs: Engine.cloneDocs(Data.SEED_DOCUMENTS), ledger: [], feedback: [],
+      openChanges: [{ id: 'CR-1', ruleId: 'R-PK-01', oldValue: '7 ngày', newValue: '5 ngày', issuerTier: 2, requestText: '', createdBy: 'A', status: 'open', held: [] }],
+      decisions: [] }),
+    call: async body => { calls.push(body); return { ok: true, status: 200, data: { message: 'Đã giữ nguyên QT-07 dòng 2.' } }; } };
+  const app = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend() }), remote }));
+  await app.init();
+  const items = app.caseItems();
+  assert.deepEqual(items.map(i => i.p.category).sort(), ['U1', 'U2', 'U3']);
+  const u2 = items.find(i => i.p.category === 'U2');
+  app.setPersona('tp-dt');
+  assert.equal((await app.decideCase(u2, 'a')).ok, false);
+  app.setPersona('tp-tt');
+  assert.equal((await app.decideCase(u2, 'a')).ok, true);
+  assert.deepEqual([calls[0].action, calls[0].changeId, calls[0].docId, calls[0].act, calls[0].persona], ['decide', 'CR-1', 'QT-07', 'a', 'tp-tt']);
+});
+
+test('ngoại tuyến: bản ghi ghi đúng tên người quyết, không phải người bấm Ban hành', async () => {
+  const app = await offline();
+  app.analyze(CHANGE);
+  const u2 = app.state.current.props.find(p => p.category === 'U2');
+  app.setPersona('tp-tt'); app.decide(u2.id, 'a');
+  app.setPersona('tp-dt');
+  assert.equal((await app.commit()).ok, true);
+  const rec = app.state.ledger.find(e => e.docId === 'QT-07');
+  assert.equal(rec.actor, 'Người · Trưởng phòng Thanh tra – Pháp chế (demo)');
+  assert.match(rec.basis, /cấp ban hành 2 · khởi tạo bởi Trưởng phòng Đào tạo \(demo\)/);
 });

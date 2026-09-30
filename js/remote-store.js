@@ -108,13 +108,17 @@
       if (head.networkError) return { ok: false, reason: 'network', message: 'Không kết nối được máy chủ.' };
       if (!head.ok || !Array.isArray(head.data)) return { ok: false, reason: 'error', message: 'Máy chủ trả lỗi ' + head.status + '.' };
       if (!head.data.length) return { ok: false, reason: 'forbidden', message: 'Không có quyền đọc workspace này (cần đăng nhập và được cấp quyền).' };
-      const [policies, documents, audit, feedback] = await Promise.all([
+      const [policies, documents, audit, feedback, openChanges, decisions] = await Promise.all([
         selectAll('policies', 'select=*&workspace_id=eq.' + ws + '&order=position.asc,id.asc'),
         selectAll('documents', 'select=*&workspace_id=eq.' + ws + '&order=position.asc,id.asc'),
         selectAll('audit_log', 'select=*&workspace_id=eq.' + ws + '&order=seq.asc'),
-        selectAll('feedback_events', 'select=rule_id,category,doc_id,line_index,line,answer,actor,created_at&workspace_id=eq.' + ws + '&order=id.asc')
+        selectAll('feedback_events', 'select=rule_id,category,doc_id,line_index,line,answer,actor,created_at&workspace_id=eq.' + ws + '&order=id.asc'),
+        selectAll('open_changes', 'select=*&workspace_id=eq.' + ws + '&order=created_at.asc'),
+        selectAll('change_decisions', 'select=*&workspace_id=eq.' + ws + '&order=created_at.asc')
       ]);
-      if (!policies.ok || !documents.ok || !audit.ok || !feedback.ok) return { ok: false, reason: 'error', message: 'Không nạp đủ dữ liệu workspace.' };
+      if (!policies.ok || !documents.ok || !audit.ok || !feedback.ok || !openChanges.ok || !decisions.ok) {
+        return { ok: false, reason: 'error', message: 'Không nạp đủ dữ liệu workspace.' };
+      }
       return {
         ok: true,
         workspace: head.data[0],
@@ -122,7 +126,9 @@
         docs: documents.rows.map(Server.fromDbDocument),
         ledger: audit.rows.map(Server.fromDbRecord),
         feedback: feedback.rows.map(r => ({ ruleId: r.rule_id, category: r.category, docId: r.doc_id, lineIndex: r.line_index,
-          line: r.line, answer: r.answer, actor: r.actor, ts: r.created_at }))
+          line: r.line, answer: r.answer, actor: r.actor, ts: r.created_at })),
+        openChanges: openChanges.rows.map(Server.fromDbOpenChange),
+        decisions: decisions.rows.map(Server.fromDbDecision)
       };
     }
 
