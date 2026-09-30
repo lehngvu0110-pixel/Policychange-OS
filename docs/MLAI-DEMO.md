@@ -12,6 +12,12 @@ tự chuyển sang **Ngoại tuyến**; mọi bước dưới vẫn chạy.
    → **Hiểu yêu cầu** → **Phân tích tác động**: 9 vị trí, 6 tự sửa, U1/U2/U3 mỗi loại một. Chỉ vào đồ thị tác động.
 4. **Phân quyền** — đổi **Vai trò** sang *Chuyên viên Phòng Đào tạo*: quyết được U1 (HD-04), bị khoá ở U2 (cần Trưởng
    phòng Thanh tra – Pháp chế) và không bấm được **Ban hành** (thay đổi cấp 2). Đổi lại *Trưởng phòng Đào tạo* → Ban hành.
+   **Nhiều người cùng làm (chế độ Trực tuyến)** — nếu Trưởng phòng Đào tạo bấm **Ban hành** khi U2/U3 còn chờ, phần
+   chắc chắn được áp ngay và U2/U3 thành **hồ sơ CR-1** trong **Hàng đợi duyệt**. Mở tab thứ hai (hoặc máy thứ hai),
+   chọn *Trưởng phòng Thanh tra – Pháp chế* → quyết U2 trong CR-1; chọn *Hiệu trưởng* → quyết U3; hồ sơ tự đóng. Sổ
+   kiểm toán ghi đúng tên từng người quyết và “hồ sơ CR-1 · cấp ban hành 2 · khởi tạo bởi Trưởng phòng Đào tạo”.
+   Thử đổi sang *Chuyên viên Phòng Đào tạo* và bấm Hoàn tác một dòng đó: bị khoá vì thay đổi do cấp 2 ban hành.
+   Xong thì bấm **Khôi phục dữ liệu mẫu** ở thanh bên.
 5. **Minh hoạ 2 · AI giữ lại** — động cơ nói tự sửa, nhưng bằng chứng ngữ nghĩa “có thể liên quan” → giữ lại chờ người.
    (Bằng chứng này là dữ liệu mẫu có ghi nhãn mock. Khi đã dán khoá OpenAI, dùng nút **Rà soát ngữ nghĩa bằng AI** để
    chạy thật.)
@@ -24,3 +30,4 @@ Câu trả lời cho câu hỏi thường gặp:
 - *Dữ liệu có mất khi tải lại không?* Không — dùng chung trên Supabase, hoặc IndexedDB khi ngoại tuyến.
 - *AI có tự sửa văn bản không?* Không. AI chỉ trả trích dẫn làm bằng chứng và chỉ có thể làm kết quả thận trọng hơn.
 - *Hai người bấm Ban hành cùng lúc?* Máy chủ khoá workspace và kiểm đuôi sổ; người sau nhận thông báo và được nạp lại.
+- *Hai người quyết cùng một vị trí?* Người sau nhận “Vị trí này vừa được người khác quyết” và thấy quyết định của người trước.

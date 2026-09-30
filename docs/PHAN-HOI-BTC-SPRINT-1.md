@@ -18,6 +18,9 @@ Chúng tôi kiểm lại từng nhận xét với mã nguồn trước khi sửa
   `apply_change` ghi tài liệu + sổ kiểm toán + phản hồi trong **một giao dịch** có khoá workspace và kiểm đuôi sổ
   (hai người ban hành cùng lúc → người sau nhận 409 và được nạp lại).
 - Nhiều người dùng: workspace `demo` (công khai, vai trò giả lập) và `hcmut-pilot` (bắt buộc đăng nhập).
+- **Hàng đợi duyệt dùng chung** (bảng `open_changes`, `change_decisions`): phần chắc chắn áp ngay; các vị trí cần
+  người trở thành hồ sơ `CR-n` mà mỗi người có thẩm quyền quyết trên máy của mình. Mỗi quyết định được áp và ghi sổ
+  ngay, đứng tên người quyết; hai người quyết cùng một vị trí → người sau nhận 409.
 - Mất mạng → tự lùi về chế độ Ngoại tuyến lưu bằng **IndexedDB**; tải lại trang vẫn còn.
 
 **Kiểm chứng:** `tests/policy-server.test.cjs`, `tests/app-controller.test.cjs`, `tests/remote-store.test.cjs`;
@@ -57,7 +60,8 @@ validator từ chối; lệnh chèn trong câu yêu cầu chỉ nằm trong ph�
 
 **Đã làm** (`js/policy-authz.js`): mỗi người có **cấp** (1 chuyên viên · 2 trưởng đơn vị · 3 Hiệu trưởng) và
 **danh sách đơn vị phụ trách**. U1 chỉ người phụ trách tài liệu quyết; U2 chỉ trưởng đơn vị sở hữu quy định bị đụng;
-U3 cần đủ cấp của tài liệu; hoàn tác và thêm neo cũng theo cấp × đơn vị. Giao diện khoá nút và ghi rõ cần ai;
+U3 cần đủ cấp của tài liệu; thêm neo cũng theo cấp × đơn vị; hoàn tác còn đòi cấp ≥ cấp ban hành của thay đổi (chuyên viên không hoàn tác được
+quyết định của trưởng phòng). Giao diện khoá nút và ghi rõ cần ai;
 máy chủ chặn thật (403) kể cả khi client bị sửa.
 
 **Kiểm chứng:** `tests/policy-authz.test.cjs`, `tests/policy-server.test.cjs`; E2E “hàng đợi lọc theo vai trò”.

@@ -14,6 +14,7 @@ vì liên quan tới khoá bí mật hoặc tài khoản người thật.
    | `OPENAI_API_KEY` | khoá `sk-...` của nhóm | có |
    | `OPENAI_MODEL` | ví dụ `gpt-4o-mini` (mặc định) hoặc model khác hỗ trợ Structured Outputs | không |
    | `AI_DAILY_LIMIT` | số lượt gọi AI tối đa mỗi ngày cho cả hệ thống, mặc định `300` | không |
+   | `AI_CLIENT_LIMIT` | số lượt tối đa mỗi ngày cho một máy khách (theo IP đã băm), mặc định `40` | không |
 
 3. Mở ứng dụng, tải lại trang: ô **AI** trên thanh trên cùng chuyển thành “AI · gpt-4o-mini”.
    Nút **Hiểu yêu cầu bằng AI** và **Rà soát ngữ nghĩa bằng AI** bắt đầu gọi mô hình thật.
@@ -22,7 +23,7 @@ Khoá chỉ nằm ở máy chủ; trình duyệt không bao giờ nhận đượ
 GitHub. Nếu lỡ lộ khoá, thu hồi ngay trên trang OpenAI rồi dán khoá mới vào Secrets.
 
 Kiểm tra nhanh chi phí: mỗi lần “Hiểu yêu cầu” là 1 lượt; mỗi lần “Rà soát ngữ nghĩa” là 1 lượt cho cả tập vị trí.
-Hạn mức ngày được đếm trong bảng `ai_usage`.
+Hạn mức ngày được đếm trong bảng `ai_usage` (toàn hệ thống) và `ai_usage_clients` (theo máy khách).
 
 ## 2. Workspace thí điểm cho người dùng thật (yêu cầu “≥ 3 nhân sự thật” của Sprint 2)
 
@@ -66,7 +67,7 @@ CI kiểm tra `supabase/functions/_shared` luôn khớp với `js/` (bước “
 
 ## 4. Dựng trên một dự án Supabase mới
 
-1. Tạo dự án, rồi `supabase link --project-ref <ref>` và `supabase db push` (chạy 5 migration trong `supabase/migrations/`).
+1. Tạo dự án, rồi `supabase link --project-ref <ref>` và `supabase db push` (chạy 6 migration trong `supabase/migrations/`).
 2. `npm run sync:edge && supabase functions deploy policy-api ai-extract ai-discover`.
 3. Sửa `js/config.js`: `supabaseUrl` = `https://<ref>.supabase.co`, `anonKey` = khoá **anon (legacy JWT)** trong
    Project Settings → API. Edge Function bật `verify_jwt` nên cần khoá dạng JWT.

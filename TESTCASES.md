@@ -64,6 +64,9 @@ quy định đích. Câu lệnh mơ hồ hoặc tham chiếu giá trị không �
 | RB-02 | Trưởng phòng Kế hoạch – Tài chính | “Việc của tôi” trống; cả 3 hồ sơ bị khoá kèm lý do cần ai |
 | RB-03 | Trưởng phòng Thanh tra – Pháp chế | Quyết được U2 ở QT-07 |
 | RB-04 | Hiệu trưởng | Quyết được U3 ở QD-01; hoàn tác được mọi bản ghi |
+| RB-05 | Trưởng phòng Đào tạo ban hành khi U2/U3 còn chờ (Trực tuyến) | Phần chắc chắn áp ngay; U2/U3 vào hồ sơ CR-1 trong Hàng đợi của mọi máy |
+| RB-06 | Trưởng phòng Thanh tra – Pháp chế mở máy khác, quyết U2 trong CR-1 | Áp và ghi sổ ngay, đứng tên TP Thanh tra – Pháp chế; căn cứ ghi “khởi tạo bởi Trưởng phòng Đào tạo” |
+| RB-07 | Chuyên viên Phòng Đào tạo bấm Hoàn tác một bản ghi do trưởng phòng ban hành | Bị khoá kèm lý do cần cấp 2 |
 
 Tự động hoá: `tests/e2e/flow.spec.mjs`, `tests/policy-authz.test.cjs`. Ở chế độ dùng chung, máy chủ trả 403 cho mọi
 quyết định vượt quyền kể cả khi giao diện bị sửa (`tests/policy-server.test.cjs`).

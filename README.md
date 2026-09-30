@@ -36,8 +36,9 @@ ghi thêm và hoàn tác được.
 | Nhận xét của BTC ở Sprint 1 | Đã làm |
 |---|---|
 | Không có backend, tải lại trang là mất dữ liệu | **Supabase** (Postgres + RLS + Edge Functions): nhiều người dùng chung một kho; mọi thao tác ghi đi qua máy chủ, chạy lại động cơ + prover và ghi trong **một giao dịch** có khoá. Mất mạng thì tự lùi về **IndexedDB** trên máy. |
-| Chưa nối LLM thật | `ai-extract` và `ai-discover` gọi **OpenAI Structured Outputs** qua máy chủ (khoá không bao giờ tới trình duyệt), có hạn mức gọi trong ngày. |
+| Chưa nối LLM thật | `ai-extract` và `ai-discover` gọi **OpenAI Structured Outputs** qua máy chủ (khoá không bao giờ tới trình duyệt), có hạn mức gọi trong ngày (toàn hệ thống và theo từng máy khách). |
 | Chưa phân quyền | Cấp (1–3) × đơn vị phụ trách: *chuyên viên chỉ duyệt văn bản thuộc phạm vi của mình*. Giao diện khoá nút kèm lý do; máy chủ chặn thật. |
+| Nhiều người dùng thật sự cùng làm | **Hàng đợi duyệt dùng chung**: người ban hành áp phần chắc chắn ngay, các vị trí U1/U2/U3 thành *hồ sơ* `CR-n` lưu trên máy chủ; mỗi người có thẩm quyền mở máy của mình và quyết phần của mình — áp dụng và ghi sổ ngay, ghi đúng tên người quyết. Hoàn tác đòi cấp ≥ cấp ban hành của thay đổi. |
 | TypeScript + Vite | Giữ JavaScript thuần để vẫn mở được bằng `file://`, nhưng kiểm kiểu bằng **JSDoc + `tsc --noEmit`** trong CI. Lý do: `docs/PHAN-HOI-BTC-SPRINT-1.md`. |
 | Chưa có E2E, chưa có kiểm thử tải | **Playwright** (luồng chính, phân quyền, 390 px sáng/tối) và `bench/load.cjs`. |
 | Yêu cầu nâng cao của Đề A | **Học từ phản hồi** (đề xuất cụm từ neo mới từ các câu trả lời U1, người duyệt rồi mới áp dụng) và **báo cáo độ chính xác** trên tập độc lập 48 ca (tỉ lệ bỏ sót, chuyển tiếp thừa, ma trận nhầm lẫn). |

@@ -33,16 +33,36 @@ Người dùng                Trình duyệt                           policy-ap
    │ chọn thay đổi ─────► analyze() cục bộ, hiển thị kết quả
    │ quyết A/B ─────────► kiểm quyền cục bộ (khoá nút)
    │ Ban hành ──────────► POST {change, decisions, holds, ...} ─► xác định người gọi (JWT / vai trò demo)
-   │                                                            ► nạp policies, documents, audit_log (theo trang)
+   │                                                            ► nạp policies, documents, audit_log, hồ sơ mở (theo trang)
    │                                                            ► Ledger.verify + so đuôi sổ với workspace
    │                                                            ► analyze + prover lại trên dữ liệu CSDL
    │                                                            ► canIssue / canDecide từng quyết định
    │                                                            ► rpc apply_change(kế hoạch) ─────────────► khoá workspace (FOR UPDATE)
    │                                                                                                        so ledger_seq/tail (409 nếu lệch)
    │                                                                                                        so từng dòng cũ (stale_line)
-   │                                                                                                        ghi tài liệu + sổ + phản hồi
+   │                                                                                                        ghi tài liệu + sổ + phản hồi + hồ sơ
    │ ◄──────────────────── nạp lại dữ liệu ◄──────────────────── kết quả                          ◄──────── COMMIT (hoặc huỷ toàn bộ)
 ```
+
+### Hàng đợi duyệt dùng chung
+
+Ban hành không đợi mọi người quyết xong. Khi còn vị trí chờ người (U1/U2/U3 hoặc bằng chứng AI chưa rà soát), máy
+chủ áp ngay phần chắc chắn và mở **hồ sơ** `open_changes` (`CR-n`: quy định, giá trị cũ → mới, cấp ban hành, người
+khởi tạo). Mỗi vị trí còn lại là một dòng chờ trong hàng đợi của **mọi** máy đang xem workspace.
+
+```
+Trưởng phòng Đào tạo ── commit ──► áp 6 dòng tự sửa + mở CR-1 (3 vị trí chờ)
+Chuyên viên Đào tạo  ── decide(CR-1, HD-04 dòng 4, b) ──► kiểm quyền → áp/giữ → ghi sổ + change_decisions
+Trưởng phòng TT–PC   ── decide(CR-1, QT-07 dòng 2, a) ──► …
+Hiệu trưởng          ── decide(CR-1, QD-01 dòng 1, a) ──► … → hết vị trí chờ → đóng CR-1
+```
+
+- `decide` chạy lại động cơ trên dữ liệu hiện tại (`analyzeOpenChange`, dùng giá trị cũ của hồ sơ) nên vị trí đã bị
+  sửa ở nơi khác sẽ bị từ chối (`stale_line`), không áp mù.
+- Khoá chính `(workspace, change, doc, dòng, nội dung dòng)` của `change_decisions` chặn hai người quyết cùng một chỗ
+  (`decision_conflict` → 409).
+- Bản ghi sổ ghi **người quyết** (không phải người bấm Ban hành) và căn cứ `hồ sơ CR-n · cấp ban hành k · khởi tạo bởi …`.
+- Ban hành lại cùng thay đổi khi hồ sơ còn mở sẽ dùng lại hồ sơ đó, không mở hồ sơ trùng.
 
 Hai người ban hành cùng lúc: người thứ hai nhận 409 “Có người vừa cập nhật workspace” và giao diện tự nạp lại.
 Trình duyệt kiểm đuôi sổ mỗi 20 giây để thấy thay đổi của người khác.
@@ -52,10 +72,10 @@ Trình duyệt kiểm đuôi sổ mỗi 20 giây để thấy thay đổi của 
 | Thao tác | Điều kiện |
 |---|---|
 | Ban hành thay đổi ở cấp *k* cho quy định R | cấp người dùng ≥ *k* **và** phụ trách đơn vị sở hữu R |
-| Quyết hồ sơ U1 | phụ trách đơn vị sở hữu tài liệu (cấp ≥ 1) |
+| Quyết vị trí U1 (ngay hoặc trong hồ sơ `CR-n`) | phụ trách đơn vị sở hữu tài liệu (cấp ≥ 1) |
 | Quyết hồ sơ U2 | cấp ≥ 2 **và** phụ trách đơn vị sở hữu quy định bị đụng |
 | Quyết hồ sơ U3, rà soát bằng chứng AI | cấp ≥ cấp tài liệu **và** phụ trách đơn vị ban hành tài liệu |
-| Hoàn tác | cấp ≥ cấp tài liệu **và** phụ trách tài liệu |
+| Hoàn tác | cấp ≥ max(cấp tài liệu, cấp ban hành ghi trong căn cứ) **và** phụ trách tài liệu — chuyên viên không hoàn tác được thay đổi do trưởng phòng ban hành |
 | Thêm cụm từ neo | cấp ≥ 2 **và** phụ trách đơn vị sở hữu quy định |
 | Cập nhật giá trị gốc trong sổ đăng ký | thay đổi được ban hành ở cấp ≥ cấp của quy định |
 
@@ -72,7 +92,8 @@ bắt buộc đăng nhập, cấp và đơn vị lấy từ bảng `members` do 
 - Mọi chuỗi từ dữ liệu được thoát HTML trước khi chèn vào giao diện (`esc`). Nội dung tài liệu và câu yêu cầu được
   đánh dấu là dữ liệu trong prompt; mô hình được dặn bỏ qua mệnh lệnh nằm trong đó, và dù có làm theo thì đầu ra vẫn
   phải qua validator.
-- Hạn mức AI theo ngày (`AI_DAILY_LIMIT`, mặc định 300) chặn lạm dụng chi phí qua khoá anon công khai.
+- Hạn mức AI theo ngày: toàn hệ thống (`AI_DAILY_LIMIT`, mặc định 300) và theo từng máy khách (`AI_CLIENT_LIMIT`,
+  mặc định 40, đếm theo SHA-256 của IP — không lưu IP gốc) để một người không tiêu hết hạn mức của cả nhóm.
 
 ## Vì sao không chuyển sang TypeScript + Vite
 
