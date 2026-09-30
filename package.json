@@ -11,7 +11,8 @@
     "sync:edge": "node scripts/sync-edge-shared.mjs",
     "serve": "node scripts/serve.mjs",
     "eval": "node bench/holdout.cjs",
-    "build:holdout": "node scripts/build-holdout-data.mjs"
+    "build:holdout": "node scripts/build-holdout-data.mjs",
+    "load": "node bench/load.cjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

@@ -67,12 +67,20 @@ Deno.serve(async (req) => {
   }
 
   // ---------- Nạp trạng thái hiện tại ----------
+  // PostgREST trả tối đa 1.000 dòng mỗi lần: đọc theo trang để không bao giờ thấy một sổ kiểm toán bị cắt cụt.
+  const readAll = async (table: string, order: string) => {
+    const rows: any[] = [];
+    for (let from = 0; ; from += 1000) {
+      const page = await admin.from(table).select("*").eq("workspace_id", workspace.id).order(order).range(from, from + 999);
+      if (page.error) return { data: null, error: page.error };
+      rows.push(...page.data);
+      if (page.data.length < 1000) return { data: rows, error: null };
+    }
+  };
   const [policies, documents, audit] = await Promise.all([
-    admin.from("policies").select("*").eq("workspace_id", workspace.id).order("position"),
-    admin.from("documents").select("*").eq("workspace_id", workspace.id).order("position"),
-    admin.from("audit_log").select("*").eq("workspace_id", workspace.id).order("seq").range(0, 9999),
+    readAll("policies", "position"), readAll("documents", "position"), readAll("audit_log", "seq"),
   ]);
-  if (policies.error || documents.error || audit.error) return json(500, { error: "db_error", message: "Không nạp được dữ liệu workspace." });
+  if (!policies.data || !documents.data || !audit.data) return json(500, { error: "db_error", message: "Không nạp được dữ liệu workspace." });
   const ctx = {
     workspace, member,
     registry: policies.data.map(Server.fromDbPolicy),
