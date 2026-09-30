@@ -1,39 +1,26 @@
-# MLAI 3–5 minute demo runbook
+# Kịch bản trình diễn (3–5 phút)
 
-## Setup
+Mở ứng dụng (GitHub Pages, `npm run serve`, hoặc mở thẳng `index.html`). Nếu mạng phòng chấm chặn máy chủ, ứng dụng
+tự chuyển sang **Ngoại tuyến**; mọi bước dưới vẫn chạy.
 
-Open the GitHub Pages app, or run `python3 -m http.server 8080` from the repository root and open `http://localhost:8080`. The live provider is unavailable; extraction status says deterministic fallback, and the ambiguity path identifies its response as a fixture mock.
+1. **Tổng quan** — giới thiệu một câu: *tự sửa chỗ chắc chắn, hỏi đúng người ở chỗ cần hỏi*. Chỉ vào ô Dữ liệu,
+   AI, Vai trò và trạng thái chuỗi SHA-256.
+2. **Minh hoạ 1 · Tự sửa an toàn** (nút “Chạy”) — hạn phúc khảo 7 → 5 ngày; ngày “17/07/2025” trong cùng dòng không
+   bị đụng. Prover 13/13 điều kiện, đã ban hành. Mở **Sổ kiểm toán** → bấm **Hoàn tác** → thêm bản ghi hoàn tác, không
+   xoá vết. Bấm **Thoát minh hoạ**.
+3. **Thay đổi quy định** — gõ “Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành.”
+   → **Hiểu yêu cầu** → **Phân tích tác động**: 9 vị trí, 6 tự sửa, U1/U2/U3 mỗi loại một. Chỉ vào đồ thị tác động.
+4. **Phân quyền** — đổi **Vai trò** sang *Chuyên viên Phòng Đào tạo*: quyết được U1 (HD-04), bị khoá ở U2 (cần Trưởng
+   phòng Thanh tra – Pháp chế) và không bấm được **Ban hành** (thay đổi cấp 2). Đổi lại *Trưởng phòng Đào tạo* → Ban hành.
+5. **Minh hoạ 2 · AI giữ lại** — động cơ nói tự sửa, nhưng bằng chứng ngữ nghĩa “có thể liên quan” → giữ lại chờ người.
+   (Bằng chứng này là dữ liệu mẫu có ghi nhãn mock. Khi đã dán khoá OpenAI, dùng nút **Rà soát ngữ nghĩa bằng AI** để
+   chạy thật.)
+6. **Minh hoạ 3 · Từ chối** — “Đổi tất cả các thời hạn 7 ngày thành 5 ngày” bị từ chối trước khi phân tích.
+7. **Đánh giá** — **Chạy Verify** (9/9) và **Chạy tập 48 ca**: nói thẳng tỉ lệ bỏ sót 22,2 % của riêng động cơ tiền
+   định và vì sao lớp AI + học neo nhắm vào đúng các ca đó.
+8. **Sổ đăng ký & học** — giải thích vòng học: câu trả lời U1 → đề xuất neo → trưởng đơn vị duyệt → lần sau tự xử lý.
 
-## Script
-
-### 0:00–0:30 · Problem
-
-Explain that a deadline value may appear in unrelated documents and in dates. Global replacement can silently alter unrelated policy content.
-
-### 0:30–1:15 · Natural-language change
-
-Click **Run safe/date demo**. Point out the request, `R-PK-01`, `7 days → 5 days`, single-policy scope, issuer tier, and raw request basis. State that no live model call occurred: the current provider adapter reports unavailable and deterministic parsing handled the request.
-
-### 1:15–2:00 · Discover and prove
-
-Follow the actual Impact Graph from policy through clause and document to dependency evidence and decision. Open the proposal to show the actual engine result and deterministic proof checks. The graph and proof are generated from the current analysis.
-
-### 2:00–2:45 · Commit and audit
-
-The safe/date control commits through the existing handler. Show the new audit row, exact before/after, proof ID/check summary, and the `DEMO-7D` document. The deadline becomes 5 days; `17/07/2025` stays intact. Use that row's **Hoàn tác** button; verify the source line returns and the ledger gains a reversal event.
-
-### 2:45–3:30 · Refuse broad scope
-
-Click **Try global-scope refusal**. The request to change every 7-day deadline is refused before analysis. Point out that no document or ledger mutation occurred.
-
-### 3:30–4:15 · Human review
-
-Click **Load ambiguity fixture · mock**. Identify the semantic response as a benchmark fixture, not live model output. The semantic validator accepts the exact evidence, marks the deterministic `AUTO_PATCH` proposal with a review hold, and exposes human approval/rejection controls. Choose **Giữ nguyên dòng** to demonstrate a human decision without mutation.
-
-### 4:15–5:00 · Evaluation and takeaway
-
-Point to the 26-fixture benchmark snapshot. It reports 0/13 false auto-patches for PolicyChange-OS on the included synthetic fixture set, compared with 16/25 for naive replacement and 13/18 for the fixture-driven LLM-only mock. Invite judges to reproduce the full output with `node bench/run.cjs`.
-
-## What the demo does not claim
-
-There is no live AI inference or measured provider latency. The ambiguity response is explicitly mocked from an existing fixture. Synthetic benchmark rates are not estimates of real-world performance or a proof of universal safety. Browser Verify should be run separately; Node tests and the benchmark do not count as browser end-to-end verification.
+Câu trả lời cho câu hỏi thường gặp:
+- *Dữ liệu có mất khi tải lại không?* Không — dùng chung trên Supabase, hoặc IndexedDB khi ngoại tuyến.
+- *AI có tự sửa văn bản không?* Không. AI chỉ trả trích dẫn làm bằng chứng và chỉ có thể làm kết quả thận trọng hơn.
+- *Hai người bấm Ban hành cùng lúc?* Máy chủ khoá workspace và kiểm đuôi sổ; người sau nhận thông báo và được nạp lại.

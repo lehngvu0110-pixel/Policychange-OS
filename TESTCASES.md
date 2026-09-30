@@ -1,7 +1,7 @@
 # Bộ trường hợp kiểm thử — PolicyChange OS
 
-Chạy bằng **một thao tác**: mở đường dẫn trực tuyến → mục 5 → bấm **▶ Verify — chạy toàn bộ**.
-Bảng kết quả in kèm dấu thời gian thực. Không cần cài đặt, không cần tài khoản.
+Chạy bằng **một thao tác**: mở đường dẫn trực tuyến → màn hình **Đánh giá** → bấm **Chạy Verify**.
+Bảng kết quả đo tại thời điểm bấm. Không cần cài đặt, không cần tài khoản.
 
 Mỗi ca chạy lại toàn bộ động cơ trên **một bản sao sạch** của kho tài liệu rồi đối chiếu với kỳ vọng.
 Không có kết quả nào được ghi sẵn trong mã nguồn — sửa kho tài liệu thì bảng kết quả đổi theo.
@@ -35,26 +35,40 @@ TC-02, TC-03 và TC-04 là các ca mà **hành vi đúng là từ chối hoặc 
 
 Hệ thống nhận dữ liệu đầu vào chưa từng thấy theo ba đường, không cần sửa mã nguồn:
 
-**C1 — Chọn quy định khác trong sổ đăng ký.** Mục 1 → chọn bất kỳ trong 6 quy định, nhập giá trị mới,
-chọn cấp ban hành → ▶ Chạy. Ví dụ: `R-DK-01` đổi `24 tín chỉ → 20 tín chỉ` ở cấp 2 sẽ trả về U3 vì
+**C1 — Chọn quy định khác trong sổ đăng ký.** Màn hình **Thay đổi quy định** → chọn bất kỳ trong 6 quy định,
+nhập giá trị mới, chọn cấp ban hành → **Phân tích tác động**. Ví dụ: `R-DK-01` đổi `24 tín chỉ → 20 tín chỉ` ở cấp 2 sẽ trả về U3 vì
 Điều 37.1 thuộc quy định cấp Trường.
 
-**C2 — Gõ câu lệnh tiếng Việt tự do.** Ô bên phải → *"Nâng hạn mức tạm ứng do Trưởng đơn vị duyệt từ
-10 triệu lên 15 triệu."* → **Phân tích câu lệnh**. Bộ phân tích nhận dạng cặp giá trị, cấp ban hành và
+**C2 — Gõ câu lệnh tiếng Việt tự do.** Ô *Câu mô tả thay đổi* → *"Nâng hạn mức tạm ứng do Trưởng đơn vị duyệt từ
+10 triệu lên 15 triệu."* → **Hiểu yêu cầu** (AI khi đã cấu hình khoá, nếu không thì bộ phân tích tiền định). Bộ phân tích nhận dạng cặp giá trị, cấp ban hành và
 quy định đích. Câu lệnh mơ hồ hoặc tham chiếu giá trị không đăng ký sẽ bị từ chối kèm lý do.
 
-**C3 — Thêm tài liệu mới vào kho.** Mục 1 → *Thêm tài liệu mới* → dán nội dung bất kỳ, chọn cấp → **Thêm
-vào kho** → chạy lại phân tích. Tài liệu mới được quét như mọi tài liệu khác.
+**C3 — Thêm tài liệu mới vào kho.** Màn hình **Kho tài liệu** → *Nạp tài liệu mới* → dán nội dung bất kỳ, chọn
+đơn vị và cấp (không cao hơn cấp của vai trò đang chọn) → **Nạp vào kho** → chạy lại phân tích. Tài liệu mới được quét như mọi tài liệu khác.
 
 ## D. Cách kiểm chứng vai trò con người và nhật ký kiểm toán
 
-1. Chạy một thay đổi ở mục 1.
-2. Mục 3 — trả lời các câu hỏi chuyển tiếp. Mỗi câu đúng hai nút, quyết dứt điểm trong một lượt.
-3. Mục 4 — bấm **Ban hành**. Sổ nhật ký in ra: tác nhân là AI hay người, vai trò gì, tài liệu nào, dòng nào, nội dung trước/sau, căn cứ điều khoản, băm SHA-256 nối chuỗi.
+1. Chạy một thay đổi ở màn hình **Thay đổi quy định**.
+2. **Hàng đợi duyệt** — trả lời các câu hỏi chuyển tiếp. Mỗi câu đúng hai nút, quyết dứt điểm trong một lượt.
+3. Bấm **Ban hành** ở thanh dưới, rồi mở **Sổ kiểm toán**. Sổ nhật ký in ra: tác nhân là AI hay người, vai trò gì, tài liệu nào, dòng nào, nội dung trước/sau, căn cứ điều khoản, băm SHA-256 nối chuỗi.
 4. Bấm **Hoàn tác** trên một bản ghi khi dòng hiện tại vẫn đúng bằng nội dung bản ghi đã ban hành. Nội dung trở về nguyên trạng và sổ **thêm** một bản ghi hoàn tác. Nếu dòng đã thay đổi, ứng dụng từ chối hoàn tác và giữ nguyên sổ.
-5. Mục 6 — mở tài liệu để đối chiếu nội dung và số hiệu phiên bản đã tăng.
+5. **Kho tài liệu** — mở tài liệu để đối chiếu nội dung và số hiệu phiên bản đã tăng.
 
-## E. Kết quả chạy gần nhất
+## E. Phân quyền theo vai trò (Sprint 2)
+
+Đổi ô **Vai trò** trên thanh trên cùng, cùng thay đổi R-PK-01 `7 ngày → 5 ngày` cấp 2:
+
+| Mã | Vai trò | Hành vi kỳ vọng |
+|---|---|---|
+| RB-01 | Chuyên viên Phòng Đào tạo | Quyết được U1 ở HD-04 (thuộc Cổng thông tin sinh viên); nút **Ban hành** bị khoá vì thay đổi ở cấp 2 |
+| RB-02 | Trưởng phòng Kế hoạch – Tài chính | “Việc của tôi” trống; cả 3 hồ sơ bị khoá kèm lý do cần ai |
+| RB-03 | Trưởng phòng Thanh tra – Pháp chế | Quyết được U2 ở QT-07 |
+| RB-04 | Hiệu trưởng | Quyết được U3 ở QD-01; hoàn tác được mọi bản ghi |
+
+Tự động hoá: `tests/e2e/flow.spec.mjs`, `tests/policy-authz.test.cjs`. Ở chế độ dùng chung, máy chủ trả 403 cho mọi
+quyết định vượt quyền kể cả khi giao diện bị sửa (`tests/policy-server.test.cjs`).
+
+## F. Kết quả chạy gần nhất
 
 | Bộ | Kết quả |
 |---|---|
