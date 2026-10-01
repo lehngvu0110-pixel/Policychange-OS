@@ -101,9 +101,11 @@ Chỉ khi **đồng thời**:
 1. không rơi vào U2, U3, U1;
 2. giá trị cũ được viết đúng dạng số đã đăng ký (cho phép các cách viết số chuẩn: `7 ngày`, `07 ngày`,
    `10.000.000 đồng`, `10tr`, `10 triệu đồng`);
-3. dòng có **neo chủ đề** độc quyền của quy định đang sửa **và** (có **neo đại lượng**, hoặc neo chủ đề chi phối
-   trực tiếp con số: giữa neo và con số chỉ có tối đa hai tiếng rồi tới khung "trong / trong vòng / tối đa / không quá /
-   đến / từ", không qua dấu câu — ví dụ "phúc khảo trong 7 ngày");
+3. dòng có **neo chủ đề** độc quyền của quy định đang sửa **và** (có **neo đại lượng** *trong cùng mệnh đề với con số*,
+   hoặc neo chủ đề chi phối trực tiếp con số: giữa neo và con số chỉ có tối đa hai tiếng rồi tới khung "trong / trong
+   vòng / tối đa / không quá / đến / từ", không qua dấu câu, và mệnh đề không nhắc một đại lượng khác như "kết quả",
+   "lưu", "hiệu lực", "số dư", "tổng" — ví dụ "phúc khảo trong 7 ngày" được, "bài thi phúc khảo được lưu trong 7 ngày"
+   thì không). Mệnh đề được cắt theo dấu `;` `?` `!` và dấu chấm kết câu;
 4. tài liệu nằm trong thẩm quyền;
 5. bộ chứng minh (prover) xác nhận đủ **14 điều kiện**, độc lập với động cơ.
 
