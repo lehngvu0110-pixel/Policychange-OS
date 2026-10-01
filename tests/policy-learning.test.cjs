@@ -70,3 +70,28 @@ test('escalationStats đếm theo loại và theo quy định', () => {
   assert.deepEqual(stats.byCategory.U1, { accept: 1, reject: 1, total: 2, acceptRate: 0.5 });
   assert.equal(stats.byRule['R-TC-01'].reject, 1);
 });
+
+test('dòng có neo chủ đề nhưng thiếu đại lượng → đề xuất NEO ĐẠI LƯỢNG; duyệt xong thì tự xử lý', () => {
+  const state = { registry: Engine.cloneRegistry(Data.SEED_REGISTRY), docs: [], current: null, ledger: [] };
+  const L1 = 'Phiếu đăng ký phúc khảo phải gửi về khoa trong thời gian 7 ngày, tính từ ngày có điểm.';
+  const L2 = 'Phúc khảo: phiếu đăng ký gửi về khoa chậm nhất 7 ngày tính từ ngày có điểm.';
+  state.docs = [{ id: 'Y-1', title: 't', owner: 'Phòng Đào tạo', tier: 1, version: '1.0', lines: [L1] }];
+  const change = () => Workflow.buildChange(state.registry, 'R-PK-01', '5 ngày', 2).change;
+  assert.equal(Engine.analyze(change(), state.docs, state.registry).props[0].category, 'U1');
+  const out = Learning.suggestAnchors([fb('Y-1', L1, 'accept'), fb('Y-2', L2, 'accept')], state.registry);
+  const s = out.find(x => x.phrase === 'phiếu đăng ký');
+  assert.ok(s, JSON.stringify(out.map(x => x.phrase)));
+  assert.equal(s.field, 'measures');
+  const added = Workflow.addAnchor(state, 'R-PK-01', s.phrase, { now: () => 't', actor: 'Người · Trưởng phòng Đào tạo', field: s.field });
+  assert.equal(added.ok, true);
+  assert.equal(state.ledger.at(-1).action, 'THÊM NEO ĐẠI LƯỢNG R-PK-01');
+  assert.ok(state.registry.find(r => r.id === 'R-PK-01').measures.includes('phiếu đăng ký'));
+  assert.equal(Engine.analyze(change(), state.docs, state.registry).props[0].outcome, 'AUTO_PATCH');
+});
+
+test('missingField: phân biệt thiếu chủ đề, thiếu đại lượng, thiếu cả hai', () => {
+  const rule = Engine.cloneRegistry(Data.SEED_REGISTRY).find(r => r.id === 'R-PK-01');
+  assert.equal(Learning.missingField(rule, 'Kết quả phúc khảo thông báo sau 7 ngày.'), 'measures');
+  assert.equal(Learning.missingField(rule, 'Hạn nộp phiếu xem lại bài là 7 ngày.'), 'aliases');
+  assert.equal(Learning.missingField(rule, 'Phiếu xem lại bài gửi khoa sau 7 ngày.'), 'both');
+});

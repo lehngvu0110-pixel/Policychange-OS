@@ -146,6 +146,25 @@
     const targetAnchored = !!rule && aliases.length > 0 && Array.isArray(owners) && owners.length === 1 && owners[0] && owners[0].id === rule.id;
     check(checks, 'registered_policy_anchor', targetAnchored, targetAnchored ? 'Current clause contains an exclusive anchor for the requested registered policy.' : 'Current clause has no exclusive validated anchor for the requested policy.');
 
+    // QT-KSTL-01 §5.4: neo chủ đề chưa đủ — con số phải được nói là đại lượng của quy định (neo đại lượng),
+    // hoặc neo chủ đề chi phối trực tiếp con số ("phúc khảo trong 7 ngày"). Kiểm độc lập với động cơ.
+    const measures = rule && Array.isArray(rule.measures) ? rule.measures.filter(m => typeof m === 'string' && m.trim()) : [];
+    const lowLine = typeof line === 'string' ? line.toLowerCase() : '';
+    const wordRe = phrase => new RegExp('(?<![\\p{L}\\p{N}])' + phrase.toLowerCase().trim().split(/\s+/).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+') + '(?![\\p{L}\\p{N}])', 'u');
+    const measureCues = measures.filter(m => { try { return wordRe(m).test(lowLine); } catch (_e) { return false; } });
+    const frame = /^\s*(?:[\p{L}]+\s+){0,2}?(?:trong(?:\s+vòng|\s+thời\s+hạn)?|tối\s+đa|không\s+quá|đến|từ)\s*$/u;
+    const governs = aliases.some(alias => {
+      const a = alias.toLowerCase();
+      for (let i = lowLine.indexOf(a); i >= 0; i = lowLine.indexOf(a, i + 1)) {
+        if (currentHits.some(h => h.index >= i + a.length && frame.test(lowLine.slice(i + a.length, h.index)))) return true;
+      }
+      return false;
+    });
+    const measured = !!rule && (measures.length === 0 || measureCues.length > 0 || governs);
+    check(checks, 'registered_measure_cue', measured, measured
+      ? (measures.length === 0 ? 'Policy anchors are specific enough; no separate measure cue is registered.' : measureCues.length ? 'Clause names the measured quantity: ' + measureCues.join(', ') + '.' : 'The policy anchor directly governs the value (deadline/limit frame).')
+      : 'Clause is on the policy topic but does not say the number measures this policy\'s quantity.');
+
     let engineProp = null;
     let engineError = false;
     if (typeof ctx.analyze === 'function' && validTop && docKnown) {
@@ -191,7 +210,7 @@
       newValue: change && typeof change.newValue === 'string' ? change.newValue : null,
       policyBasis: rule ? { id: rule.id, name: rule.name || null, source: rule.source || null } : null,
       authority: { issuerTier: change && Number.isInteger(change.issuerTier) ? change.issuerTier : null, documentTier: document && Number.isInteger(document.tier) ? document.tier : null, permits: authorityValid },
-      anchor: { policyId: ruleId, aliases },
+      anchor: { policyId: ruleId, aliases, measures: measureCues },
       evidenceRefs: evidence.refs,
       reversible: exactLine && exactReplacement && typeof prop.line === 'string' && typeof prop.newLine === 'string'
     };

@@ -177,6 +177,7 @@ input[readonly]{background:var(--sunken);color:var(--ink-2)}
 .tag.done{background:var(--brand-soft);color:var(--brand);border-color:var(--brand-line)}
 .tag.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--u1-line)}
 .chip{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;background:var(--sunken);border:1px solid var(--line);font-size:12.5px;color:var(--ink-2)}
+.chip.measure{border-style:dashed;background:transparent;color:var(--ink)}
 .docid{font-family:var(--mono);font-size:12.5px;font-weight:600;background:var(--sunken);border:1px solid var(--line);border-radius:6px;padding:1px 7px;color:var(--ink);white-space:nowrap}
 
 .stat{padding:16px 18px;display:flex;flex-direction:column;gap:4px;border-radius:var(--r);background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow-1);min-width:0}

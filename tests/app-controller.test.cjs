@@ -165,3 +165,29 @@ test('ngoại tuyến: bản ghi ghi đúng tên người quyết, không phải
   assert.equal(rec.actor, 'Người · Trưởng phòng Thanh tra – Pháp chế (demo)');
   assert.match(rec.basis, /cấp ban hành 2 · khởi tạo bởi Trưởng phòng Đào tạo \(demo\)/);
 });
+
+test('có AI thật: Ban hành tự cho mô hình rà các dòng tự sửa trước; dòng AI nghi ngờ bị giữ lại cho người', async () => {
+  const calls = [];
+  const aiAdapter = {
+    status: async () => ({ available: true, model: 'test-model' }),
+    discover: async payload => { calls.push(payload); return { available: true, output: { schemaVersion: 1, candidates: payload.candidates.map(c => {
+      const q = '7 ngày'; const start = c.line.indexOf(q);
+      return { ruleId: c.ruleId, documentId: c.documentId, lineIndex: c.lineIndex, quote: q, start, end: start + q.length,
+        relation: c.documentId === 'QT-02' && c.lineIndex === 4 ? 'possibly_related' : 'supports', explanation: 'test', evidence: [{ quote: q, start, end: start + q.length }] };
+    }) } }; },
+    extract: async () => ({ available: false })
+  };
+  const app = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend(), workspace: 'local' }), aiAdapter }));
+  await app.init({ prefer: 'local' });
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(app.state.ai.status, 'ready');
+  app.analyze(CHANGE);
+  app.setPersona('tp-dt');
+  const res = await app.commit();
+  assert.equal(res.ok, true, res.message);
+  assert.equal(calls.length, 1, 'mô hình được gọi đúng một lần, tự động');
+  const held = app.state.current.props.find(p => p.docId === 'QT-02' && p.lineIndex === 4);
+  assert.equal(held.semanticHold, true);
+  assert.ok(!held.applied, 'dòng AI nghi ngờ không được tự sửa');
+  assert.equal(res.applied, 5);
+});

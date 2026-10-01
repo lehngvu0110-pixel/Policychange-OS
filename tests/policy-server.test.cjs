@@ -173,3 +173,13 @@ test('hoàn tác cần đủ cấp đã ban hành: chuyên viên không thu hồ
   assert.equal(Server.planUndo(as(ctx, 'cv-dt'), { seq: hd.seq }).status, 403);
   assert.equal(Server.planUndo(as(ctx, 'ht'), { seq: hd.seq }).ok, true);
 });
+
+test('thêm neo đại lượng: gói RPC mang cả measures, bản ghi ghi rõ loại neo', () => {
+  const plan = Server.planAnchor(ctxFor('tp-dt'), { ruleId: 'R-PK-01', phrase: 'phiếu đăng ký', field: 'measures' });
+  assert.equal(plan.ok, true, plan.message);
+  const upd = plan.rpc.p_policy_updates[0];
+  assert.ok(upd.measures.includes('phiếu đăng ký'));
+  assert.ok(!upd.aliases.includes('phiếu đăng ký'));
+  assert.equal(plan.rpc.p_records[0].action, 'THÊM NEO ĐẠI LƯỢNG R-PK-01');
+  assert.deepEqual(Server.fromDbPolicy({ id: 'X', name: 'n', value: '1 ngày', tier: 1, source: 's', owner: 'o', aliases: ['a'] }).measures, []);
+});

@@ -74,3 +74,66 @@ test('hồi quy: "10 trang" không bị coi là "10 tr(iệu)" và không bị s
   assert.equal(props[0].newLine, 'Tạm ứng 15.000.000đ cho CLB.');
   assert.equal(props[1].newLine, 'Tạm ứng 15tr cho CLB.');
 });
+
+// ---------- Phản hồi doanh nghiệp: không tự sửa khi chỉ khớp chủ đề; nhận ra giá trị viết khác dạng ----------
+{
+  const EngineX = require('../js/policy-engine.js');
+  const DataX = require('../js/policy-data.js');
+  const reg = () => EngineX.cloneRegistry(DataX.SEED_REGISTRY);
+  const one = (ruleId, newValue, line, issuerTier = 3, tier = 1) => {
+    const registry = reg();
+    const rule = registry.find(r => r.id === ruleId);
+    const doc = { id: 'T', title: 't', owner: 'o', tier, version: '1.0', lines: [line] };
+    return EngineX.analyze({ rule, oldValue: rule.value, newValue, issuerTier }, [doc], registry).props[0];
+  };
+
+  test('neo chủ đề không đủ: con số đo đại lượng khác của cùng chủ đề → U1, không tự sửa', () => {
+    for (const [ruleId, nv, line] of [
+      ['R-PK-01', '5 ngày', 'Kết quả phúc khảo được thông báo cho sinh viên sau 7 ngày.'],
+      ['R-PK-01', '5 ngày', 'Bài thi đã phúc khảo được lưu tại khoa thêm 7 ngày.'],
+      ['R-TC-01', '15 triệu', 'Tổng dư tạm ứng của một đơn vị không vượt 10 triệu đồng mỗi quý.']
+    ]) {
+      const p = one(ruleId, nv, line);
+      assert.equal(p.outcome, 'ESCALATE', line);
+      assert.equal(p.category, 'U1', line);
+      assert.match(p.reason, /neo chủ đề/);
+    }
+  });
+
+  test('neo chủ đề + đại lượng, hoặc neo chi phối trực tiếp con số → vẫn tự sửa', () => {
+    assert.equal(one('R-PK-01', '5 ngày', 'Sinh viên nộp đơn phúc khảo trong 7 ngày.').outcome, 'AUTO_PATCH');
+    assert.equal(one('R-PK-01', '5 ngày', 'Sinh viên phúc khảo trong 7 ngày.').outcome, 'AUTO_PATCH');
+    assert.equal(one('R-TC-01', '15 triệu', 'Khoản tạm ứng đến 10 triệu đồng do Trưởng đơn vị duyệt.').outcome, 'AUTO_PATCH');
+    assert.equal(one('R-TC-02', '20 triệu', 'Khoản chi từ 10 triệu đồng phải có hai chữ ký.').outcome, 'AUTO_PATCH', 'measures rỗng = giữ hành vi cũ');
+  });
+
+  test('giá trị viết bằng chữ / quy đổi tuần / không dấu → luôn hỏi người, bản sửa đề xuất thay đúng đoạn', () => {
+    const w = one('R-KN-01', '10 ngày', 'Đơn tố cáo được giải quyết trong vòng một tuần.');
+    assert.equal(w.category, 'U1');
+    assert.equal(w.variantOnly, true);
+    assert.equal(w.newLine, 'Đơn tố cáo được giải quyết trong vòng 10 ngày.');
+    const words = one('R-DK-01', '30 tín chỉ', 'Sinh viên đăng ký học phần không quá hai mươi bốn tín chỉ.');
+    assert.equal(words.category, 'U1');
+    assert.equal(words.newLine, 'Sinh viên đăng ký học phần không quá 30 tín chỉ.');
+    const plain = one('R-KN-01', '5 ngày', 'Don khieu nai se duoc tra loi trong 7 ngay.');
+    assert.equal(plain.category, 'U1');
+    assert.equal(plain.newLine, 'Don khieu nai se duoc tra loi trong 5 ngay.');
+    assert.equal(one('R-PK-01', '5 ngày', 'Kết quả tra cứu sau mười bảy ngày.'), undefined, '"mười bảy" không phải "bảy"');
+    assert.equal(one('R-PK-01', '5 ngày', 'Tra cứu sau 17 ngay.'), undefined, '"17 ngay" không phải "7 ngay"');
+    assert.equal(one('R-XN-01', '2 ngày', 'Trả giấy xác nhận sau 3 ngày làm việc.').hits[0].form, undefined, 'dạng chuẩn có dấu không bị coi là không dấu');
+  });
+
+  test('giá trị khác dạng vẫn theo thứ tự U2 → U3 trước U1', () => {
+    assert.equal(one('R-PK-01', '5 ngày', 'Đơn khiếu nại được trả lời trong một tuần.').category, 'U2');
+    assert.equal(one('R-PK-01', '5 ngày', 'Sinh viên nộp đơn phúc khảo trong một tuần.', 2, 3).category, 'U3');
+  });
+
+  test('numberWords: các cách đọc khẩu ngữ thường gặp', () => {
+    assert.ok(EngineX.numberWords(24).includes('hai mươi tư'));
+    assert.ok(EngineX.numberWords(24).includes('hai tư'));
+    assert.ok(EngineX.numberWords(15).includes('mười lăm'));
+    assert.ok(EngineX.numberWords(21).includes('hai mươi mốt'));
+    assert.ok(EngineX.numberWords(105).includes('một trăm linh năm'));
+    assert.deepEqual(EngineX.numberWords(0), []);
+  });
+}

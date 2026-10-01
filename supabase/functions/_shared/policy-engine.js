@@ -16,10 +16,10 @@
   'use strict';
 
   /**
-   * @typedef {{ id:string, name:string, value:string, tier:number, source:string, owner:string, aliases:string[] }} Rule
+   * @typedef {{ id:string, name:string, value:string, tier:number, source:string, owner:string, aliases:string[], measures?:string[] }} Rule
    * @typedef {{ id:string, title:string, owner:string, tier:number, version:string, lines:string[] }} PolicyDocument
    * @typedef {{ rule:Rule, oldValue:string, newValue:string, issuerTier:number }} Change
-   * @typedef {{ index:number, text:string }} Hit
+   * @typedef {{ index:number, text:string, form?:'words'|'weeks'|'no_diacritics' }} Hit
    * @typedef {{
    *   id:string, docId:string, docTitle:string, docOwner:string, docTier:number,
    *   lineIndex:number, line:string, newLine:string, hits:Hit[],
@@ -132,6 +132,156 @@
     return out;
   }
 
+  // ---------- Giá trị viết khác dạng (QT-KSTL-01 §5.3.b) ----------
+  // "một tuần" = 7 ngày, "hai mươi bốn tín chỉ" = 24 tín chỉ, "10 trieu" (không dấu) = 10 triệu.
+  // Động cơ NHẬN RA các dạng này để không bỏ sót, nhưng KHÔNG BAO GIỜ tự sửa chúng: luôn hỏi người.
+
+  /** Bỏ dấu tiếng Việt, giữ nguyên độ dài chuỗi (mỗi ký tự → đúng một ký tự) để vị trí khớp không lệch. @param {string} text */
+  function stripDiacritics(text) {
+    let out = '';
+    for (const ch of String(text || '')) {
+      if (ch === 'đ') { out += 'd'; continue; }
+      if (ch === 'Đ') { out += 'D'; continue; }
+      const base = ch.normalize('NFD').replace(/[̀-ͯ]/g, '');
+      out += base.length === ch.length ? base : ch;
+    }
+    return out;
+  }
+
+  const DIGIT_WORDS = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+
+  /**
+   * Các cách đọc một số nguyên 1–999 bằng chữ (bao gồm biến thể khẩu ngữ: bẩy, tư, lăm, mốt, "hai tư").
+   * @param {number} n @returns {string[]}
+   */
+  function numberWords(n) {
+    if (!Number.isInteger(n) || n < 1 || n > 999) return [];
+    /** @param {number} d @param {boolean} afterTens @returns {string[]} */
+    const ones = (d, afterTens) => {
+      if (!afterTens) return d === 7 ? ['bảy', 'bẩy'] : [DIGIT_WORDS[d]];
+      if (d === 1) return ['mốt', 'một'];
+      if (d === 4) return ['tư', 'bốn'];
+      if (d === 5) return ['lăm', 'năm'];
+      return d === 7 ? ['bảy', 'bẩy'] : [DIGIT_WORDS[d]];
+    };
+    /** @param {number} m @returns {string[]} */
+    const below100 = m => {
+      if (m < 10) return ones(m, false);
+      const t = Math.floor(m / 10), d = m % 10;
+      if (t === 1) return d === 0 ? ['mười'] : (d === 5 ? ['mười lăm', 'mười năm'] : ones(d, false).map(w => 'mười ' + (d === 1 ? 'một' : w)));
+      const tens = DIGIT_WORDS[t];
+      if (d === 0) return [tens + ' mươi'];
+      // Khẩu ngữ bỏ "mươi" chỉ dùng với mốt / tư / lăm ("hai tư"), vì "hai ba" dễ là hai con số riêng.
+      return ones(d, true).flatMap(w => ['mốt', 'tư', 'lăm'].includes(w) ? [tens + ' mươi ' + w, tens + ' ' + w] : [tens + ' mươi ' + w]);
+    };
+    if (n < 100) return below100(n);
+    const h = Math.floor(n / 100), rest = n % 100;
+    const head = DIGIT_WORDS[h] + ' trăm';
+    if (!rest) return [head];
+    if (rest < 10) return ones(rest, false).flatMap(w => [head + ' linh ' + w, head + ' lẻ ' + w]);
+    return below100(rest).map(w => head + ' ' + w);
+  }
+
+  /** @param {string[]} words */
+  const wordsAlt = words => '(?:' + words.sort((a, b) => b.length - a.length).map(w => w.split(' ').map(escRe).join('\\s+')).join('|') + ')';
+
+  /**
+   * Biểu thức tìm giá trị viết bằng chữ hoặc quy đổi tuần. Trả null nếu không có dạng tương đương nào.
+   * @param {string} v @returns {RegExp|null}
+   */
+  function equivalentRegex(v) {
+    const p = parseValue(v);
+    if (p.num === null) return null;
+    /** @type {string[]} */ const parts = [];
+    if (p.unit) {
+      const unitRe = p.unit.split(/\s+/).map(escRe).join('\\s+') + '(?:\\s+làm\\s+việc)?';
+      const w = numberWords(p.num);
+      if (w.length) parts.push(wordsAlt(w) + '\\s+' + unitRe);
+      // Quy đổi tuần chỉ đúng với ngày lịch: "7 ngày làm việc" không bằng "một tuần".
+      if (/^ngày$/.test(p.unit) && p.num % 7 === 0) {
+        const k = p.num / 7;
+        parts.push('(?:' + escRe(String(k)) + '|' + wordsAlt(numberWords(k)).slice(3, -1) + ')\\s*tuần');
+      }
+    } else if (p.num >= 1e6 && p.num % 1e6 === 0) {
+      const w = numberWords(p.num / 1e6);
+      if (w.length) parts.push(wordsAlt(w) + '\\s+triệu(?:\\s+đồng)?');
+    }
+    if (!parts.length) return null;
+    try {
+      return new RegExp('(?<![\\p{L}\\p{N}])(?<!(?:mười|mươi|trăm|linh|lẻ|nghìn|ngàn)\\s+)(?:' + parts.join('|') + ')(?![\\p{L}\\p{N}])', 'giu');
+    } catch (_) { return null; }
+  }
+
+  /**
+   * Vị trí giá trị cũ được viết khác dạng: bằng chữ, quy đổi tuần, hoặc chữ số nhưng mất dấu ("7 ngay").
+   * Bỏ qua chỗ đã khớp dạng chuẩn.
+   * @param {string} line @param {string} oldValue @param {ReadonlyArray<Hit>} exactHits @returns {Hit[]}
+   */
+  function equivalentHits(line, oldValue, exactHits) {
+    /** @type {Hit[]} */ const out = [];
+    const taken = (/** @type {number} */ i, /** @type {number} */ len) => [...exactHits, ...out].some(h => i < h.index + h.text.length && h.index < i + len);
+    const eq = equivalentRegex(oldValue);
+    /** @type {RegExpExecArray|null} */ let m;
+    if (eq) {
+      eq.lastIndex = 0;
+      while ((m = eq.exec(line)) !== null) {
+        if (!taken(m.index, m[0].length)) out.push({ index: m.index, text: m[0], form: /tuần$/i.test(m[0]) ? 'weeks' : 'words' });
+        if (m.index === eq.lastIndex) eq.lastIndex++;
+      }
+    }
+    // Dòng gõ không dấu (tin nhắn SMS, Zalo): so trên bản bỏ dấu của cả dòng và của biểu thức giá trị.
+    // Chỗ nào đã khớp dạng chuẩn (có dấu) thì đã nằm trong exactHits và bị bỏ qua ở đây.
+    const plainLine = stripDiacritics(line);
+    const re = valueRegex(oldValue);
+    const plain = new RegExp(stripDiacritics(re.source), re.flags);
+    while ((m = plain.exec(plainLine)) !== null) {
+      const original = line.slice(m.index, m.index + m[0].length);
+      if (stripDiacritics(original) === original && !taken(m.index, m[0].length) && !isStructuredNumericOccurrence(line, m.index, original)) {
+        out.push({ index: m.index, text: original, form: 'no_diacritics' });
+      }
+      if (m.index === plain.lastIndex) plain.lastIndex++;
+    }
+    return out.sort((a, b) => a.index - b.index);
+  }
+
+  /** @param {Rule|null|undefined} rule @returns {string[]} */
+  function measuresOf(rule) {
+    return rule && Array.isArray(rule.measures) ? rule.measures.filter(x => typeof x === 'string' && x.trim()) : [];
+  }
+
+  /**
+   * Cụm từ đại lượng của quy định có trong dòng (khớp trọn từ, không phân biệt hoa thường).
+   * @param {string} line @param {Rule|null|undefined} rule @returns {string[]}
+   */
+  function measureCuesInLine(line, rule) {
+    const low = String(line || '').toLowerCase();
+    return measuresOf(rule).filter(cue => {
+      const c = cue.toLowerCase().trim();
+      try { return new RegExp('(?<![\\p{L}\\p{N}])' + c.split(/\s+/).map(escRe).join('\\s+') + '(?![\\p{L}\\p{N}])', 'u').test(low); }
+      catch (_) { return low.includes(c); }
+    });
+  }
+
+  /**
+   * Neo chủ đề chi phối trực tiếp con số: "phúc khảo trong 7 ngày", "tạm ứng đến 10 triệu" — giữa neo và giá trị
+   * chỉ có tối đa hai tiếng rồi tới một khung thời hạn / hạn mức, không qua dấu câu. Khi đó con số chính là thời hạn
+   * hay hạn mức của việc được neo, nên tính như đã có neo đại lượng.
+   * @param {string} line @param {Rule|null|undefined} rule @param {ReadonlyArray<Hit>} hits
+   */
+  function anchorGovernsValue(line, rule, hits) {
+    if (!rule || !Array.isArray(rule.aliases)) return false;
+    const low = String(line || '').toLowerCase();
+    const frame = /^\s*(?:[\p{L}]+\s+){0,2}?(?:trong(?:\s+vòng|\s+thời\s+hạn)?|tối\s+đa|không\s+quá|đến|từ)\s*$/u;
+    return rule.aliases.some(alias => {
+      const a = String(alias).toLowerCase();
+      for (let i = low.indexOf(a); i >= 0; i = low.indexOf(a, i + 1)) {
+        const end = i + a.length;
+        if (hits.some(h => h.index >= end && frame.test(low.slice(end, h.index)))) return true;
+      }
+      return false;
+    });
+  }
+
   /**
    * Các quy định có cụm từ neo xuất hiện trong dòng.
    * @param {string} line @param {ReadonlyArray<Rule>} registry
@@ -179,7 +329,9 @@
           if (!isStructuredNumericOccurrence(line, m.index, m[0])) hits.push({ index: m.index, text: m[0] });
           if (m.index === re.lastIndex) re.lastIndex++;
         }
-        if (!hits.length) return;
+        const variants = equivalentHits(line, change.oldValue, hits);
+        if (!hits.length && !variants.length) return;
+        const variantOnly = !hits.length;
 
         const owners = ownersOfLine(line, registry);
         const ownerIds = owners.map(o => o.id);
@@ -197,6 +349,13 @@
           outcome = 'ESCALATE'; cat = 'U3';
           reason = 'Tài liệu thuộc ' + TIER_LABEL[doc.tier] + ', do ' + doc.owner + ' ban hành — cao hơn cấp ban hành thay đổi (' + TIER_APPROVER[change.issuerTier] + ').';
           plain = 'Văn bản này do cấp trên ký ban hành. Người ra thay đổi lần này không có quyền sửa, phải trình đúng cấp.';
+        } else if (variants.length) {
+          // §5.3.b — giá trị viết khác dạng: nhận ra để không bỏ sót, nhưng không tự viết lại câu.
+          const sample = variants[0];
+          const how = sample.form === 'weeks' ? 'quy đổi theo tuần' : sample.form === 'no_diacritics' ? 'gõ không dấu' : 'viết bằng chữ';
+          outcome = 'ESCALATE'; cat = 'U1';
+          reason = 'Giá trị cũ xuất hiện dưới dạng ' + how + ' (“' + sample.text + '” = ' + change.oldValue + '). Hệ thống chỉ tự sửa khi giá trị được viết đúng dạng số đã đăng ký; dạng khác cần người xác nhận và đọc lại câu sau khi sửa.';
+          plain = 'Con số ở đây được viết theo cách khác (“' + sample.text + '”). Máy nhận ra nhưng không tự viết lại câu, nên hỏi người phụ trách.';
         } else if (owners.length === 0 || !isTarget || owners.length > 1) {
           outcome = 'ESCALATE'; cat = 'U1';
           reason = owners.length
@@ -205,17 +364,30 @@
           plain = owners.length
             ? 'Dòng này có thể nhắc nhiều quy định hoặc chỉ nhắc quy định khác. Người phụ trách cần xác nhận trước khi sửa.'
             : 'Ở dòng này con số đứng trơ một mình, không có chữ nào cho biết nó là hạn mức nào. Đoán bừa thì rủi ro nên hỏi lại người phụ trách.';
+        } else if (measuresOf(rule).length && !measureCuesInLine(line, rule).length && !anchorGovernsValue(line, rule, hits)) {
+          // §5.4 — có neo chủ đề nhưng không có neo đại lượng: con số có thể đo một việc khác của cùng chủ đề.
+          outcome = 'ESCALATE'; cat = 'U1';
+          reason = 'Dòng có neo chủ đề của ' + rule.id + ' nhưng không có cụm nào cho biết con số đo “' + rule.name.toLowerCase() + '” (ví dụ: ' + measuresOf(rule).slice(0, 3).map(x => '“' + x + '”').join(', ') + '). Con số có thể là một đại lượng khác của cùng chủ đề.';
+          plain = 'Dòng này đúng chủ đề nhưng con số có thể nói về việc khác (thời gian lưu, thời gian thông báo, tổng số dư…). Người phụ trách cần xác nhận.';
         } else {
           outcome = 'AUTO_PATCH'; cat = null;
           reason = 'Dòng có cụm từ neo vào ' + rule.id + ' và tài liệu ở ' + TIER_LABEL[doc.tier] + ', nằm trong thẩm quyền của ' + TIER_APPROVER[change.issuerTier] + '.';
           plain = 'Đây là chỗ nhắc lại đúng quy định vừa đổi, sửa máy móc được nên hệ thống tự sửa.';
         }
 
-        const newLine = line.replace(re, (mm, index) => isStructuredNumericOccurrence(line, index, mm) ? mm : renderValue(mm, change.newValue));
+        let newLine = line.replace(re, (mm, index) => isStructuredNumericOccurrence(line, index, mm) ? mm : renderValue(mm, change.newValue));
+        if (variantOnly) {
+          // Bản sửa đề xuất cho dạng khác: thay đúng đoạn khớp bằng giá trị mới (giữ kiểu không dấu nếu dòng không dấu).
+          newLine = line;
+          for (const v of [...variants].sort((a, b) => b.index - a.index)) {
+            const rendered = renderValue(v.text, change.newValue);
+            newLine = newLine.slice(0, v.index) + (v.form === 'no_diacritics' ? stripDiacritics(rendered) : rendered) + newLine.slice(v.index + v.text.length);
+          }
+        }
         props.push({
           id: 'P' + (++seq),
           docId: doc.id, docTitle: doc.title, docOwner: doc.owner, docTier: doc.tier,
-          lineIndex: li, line, newLine, hits, outcome, category: cat, reason, plain,
+          lineIndex: li, line, newLine, hits: variantOnly ? variants : hits, variantOnly, outcome, category: cat, reason, plain,
           citation: rule ? (rule.id + ' — ' + rule.source) : '—',
           decided: false, accepted: false, decisionLabel: null
         });
@@ -355,12 +527,13 @@
    * @param {ReadonlyArray<Rule>} src
    * @returns {Rule[]}
    */
-  function cloneRegistry(src) { return src.map(r => ({ ...r, aliases: [...r.aliases] })); }
+  function cloneRegistry(src) { return src.map(r => ({ ...r, aliases: [...r.aliases], measures: measuresOf(r) })); }
 
   return Object.freeze({
     TIER_LABEL, TIER_APPROVER,
     escRe, parseValue, valueRegex, isStructuredNumericOccurrence, renderValue,
-    ownersOfLine, matchesOldValue, analyze, escalationQuestion, actAccepts,
+    ownersOfLine, matchesOldValue, analyze, stripDiacritics, numberWords, equivalentRegex, equivalentHits,
+    measuresOf, measureCuesInLine, anchorGovernsValue, escalationQuestion, actAccepts,
     parseFreeText, policyValueKey, changeError, bumpVersion, cloneDocs, cloneRegistry
   });
 });

@@ -196,23 +196,38 @@
 
   /**
    * Thêm một cụm từ neo cho quy định (thường xuất phát từ đề xuất học từ phản hồi, đã được người duyệt).
-   * @param {WorkflowState} state @param {string} ruleId @param {string} phrase @param {WorkflowContext & { actor?:string, reason?:string }} [ctx]
+   * field: 'aliases' = neo chủ đề (dòng nói về việc gì), 'measures' = neo đại lượng (con số đo cái gì),
+   * 'both' = cả hai — khi người phụ trách đã xác nhận cụm này vừa chỉ đúng việc vừa chỉ đúng đại lượng.
+   * @param {WorkflowState} state @param {string} ruleId @param {string} phrase
+   * @param {WorkflowContext & { actor?:string, reason?:string, field?:'aliases'|'measures'|'both' }} [ctx]
    */
   function addAnchor(state, ruleId, phrase, ctx) {
     const rule = state.registry.find(r => r.id === ruleId);
     const clean = String(phrase || '').trim().replace(/\s+/g, ' ');
+    const field = ctx && (ctx.field === 'measures' || ctx.field === 'both') ? ctx.field : 'aliases';
     if (!rule) return { ok: false, message: 'Quy định không có trong sổ đăng ký.' };
     if (clean.length < 3 || clean.length > 60 || /[\d]/.test(clean)) return { ok: false, message: 'Cụm từ neo phải dài 3–60 ký tự và không chứa số.' };
     const low = clean.toLowerCase();
-    if (rule.aliases.some((/** @type {string} */ a) => a.toLowerCase() === low)) return { ok: false, message: 'Cụm từ này đã là neo của ' + rule.id + '.' };
-    const clash = state.registry.find(r => r.id !== rule.id && r.aliases.some((/** @type {string} */ a) => a.toLowerCase() === low || low.includes(a.toLowerCase()) || a.toLowerCase().includes(low)));
-    if (clash) return { ok: false, message: 'Cụm từ trùng hoặc chồng lên neo của ' + clash.id + '; thêm vào sẽ tạo xung đột U2.' };
+    const measures = Engine.measuresOf(rule);
+    const toAlias = field !== 'measures', toMeasure = field !== 'aliases';
+    if (toAlias && rule.aliases.some((/** @type {string} */ a) => a.toLowerCase() === low)) return { ok: false, message: 'Cụm từ này đã là neo chủ đề của ' + rule.id + '.' };
+    if (toMeasure && measures.some((/** @type {string} */ a) => a.toLowerCase() === low)) return { ok: false, message: 'Cụm từ này đã là neo đại lượng của ' + rule.id + '.' };
+    if (toAlias) {
+      const clash = state.registry.find(r => r.id !== rule.id && r.aliases.some((/** @type {string} */ a) => a.toLowerCase() === low || low.includes(a.toLowerCase()) || a.toLowerCase().includes(low)));
+      if (clash) return { ok: false, message: 'Cụm từ trùng hoặc chồng lên neo của ' + clash.id + '; thêm vào sẽ tạo xung đột U2.' };
+    }
     if (!Ledger.verify(state.ledger)) return { ok: false, message: 'Chuỗi kiểm toán không hợp lệ.' };
+    const nextAliases = toAlias ? [...rule.aliases, clean] : [...rule.aliases];
+    const nextMeasures = toMeasure ? [...measures, clean] : [...measures];
+    const show = (/** @type {string[]} */ a, /** @type {string[]} */ m) => 'chủ đề: ' + a.join(' | ') + ' ‖ đại lượng: ' + (m.length ? m.join(' | ') : '—');
+    const label = field === 'aliases' ? 'THÊM NEO ' : field === 'measures' ? 'THÊM NEO ĐẠI LƯỢNG ' : 'THÊM NEO CHỦ ĐỀ + ĐẠI LƯỢNG ';
     const record = Ledger.append(state.ledger, { ts: timestamp(ctx), actor: (ctx && ctx.actor) || 'Người · ' + Engine.TIER_APPROVER[2],
-      docId: rule.id, lineIndex: null, action: 'THÊM NEO ' + rule.id, from: rule.aliases.join(' | '), to: [...rule.aliases, clean].join(' | '),
+      docId: rule.id, lineIndex: null, action: label + rule.id, from: show(rule.aliases, measures), to: show(nextAliases, nextMeasures),
       basis: (ctx && ctx.reason) || 'Bổ sung cụm từ neo vào sổ đăng ký', propId: null });
-    rule.aliases = [...rule.aliases, clean];
-    return { ok: true, message: 'Đã thêm neo “' + clean + '” cho ' + rule.id + '.', records: [record], rule };
+    rule.aliases = nextAliases;
+    rule.measures = nextMeasures;
+    const what = field === 'aliases' ? 'neo chủ đề' : field === 'measures' ? 'neo đại lượng' : 'neo chủ đề và đại lượng';
+    return { ok: true, message: 'Đã thêm ' + what + ' “' + clean + '” cho ' + rule.id + '.', records: [record], rule };
   }
 
   /**

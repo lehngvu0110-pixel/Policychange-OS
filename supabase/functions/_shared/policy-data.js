@@ -18,26 +18,36 @@
     return Object.freeze(value);
   }
 
-  /* Sổ đăng ký quy định: mỗi quy định = một giá trị có hiệu lực + các cụm từ neo nó vào văn bản. */
+  /* Sổ đăng ký quy định: mỗi quy định = một giá trị có hiệu lực + hai loại cụm từ:
+   - aliases  (neo chủ đề): dòng đang nói về việc gì — "phúc khảo", "tạm ứng".
+   - measures (neo đại lượng): con số đo cái gì của việc đó — "nộp", "thời hạn", "duyệt".
+   Chỉ tự sửa khi dòng có CẢ HAI (QT-KSTL-01 §5.4). measures rỗng nghĩa là neo chủ đề đã đủ hẹp
+   (ví dụ "hai chữ ký" tự nó đã nói ngưỡng gì). Danh sách lấy từ tên quy định và kho mẫu, KHÔNG lấy từ tập mù. */
   const SEED_REGISTRY = [
   { id:"R-PK-01", name:"Thời hạn sinh viên nộp đơn phúc khảo", value:"7 ngày", tier:3,
     source:"Điều 24.1 Quy định công tác học vụ", owner:"Phòng Đào tạo",
-    aliases:["phúc khảo","chấm lại bài thi","đề nghị chấm lại"] },
+    aliases:["phúc khảo","chấm lại bài thi","đề nghị chấm lại"],
+    measures:["nộp","tiếp nhận","thời hạn","hạn nộp","trong hạn","quá hạn","đề nghị","kể từ ngày công bố"] },
   { id:"R-KN-01", name:"Thời hạn đơn vị phản hồi đơn khiếu nại của người học", value:"7 ngày", tier:3,
     source:"Điều 31.1 Quy định công tác học vụ", owner:"Phòng Thanh tra – Pháp chế",
-    aliases:["khiếu nại","tố cáo","đơn thư"] },
+    aliases:["khiếu nại","tố cáo","đơn thư"],
+    measures:["phản hồi","trả lời","giải quyết","xử lý","xem xét"] },
   { id:"R-XN-01", name:"Thời gian cấp giấy xác nhận sinh viên", value:"3 ngày", tier:2,
     source:"Bước 4 Quy trình cấp giấy xác nhận sinh viên", owner:"Phòng Công tác Sinh viên",
-    aliases:["xác nhận sinh viên","giấy xác nhận"] },
+    aliases:["xác nhận sinh viên","giấy xác nhận"],
+    measures:["cấp","trả","xử lý","giải quyết"] },
   { id:"R-DK-01", name:"Khối lượng đăng ký tối đa mỗi học kỳ", value:"24 tín chỉ", tier:3,
     source:"Điều 37.1 Quy định công tác học vụ", owner:"Phòng Đào tạo",
-    aliases:["đăng ký học phần","khối lượng học tập","tín chỉ tối đa"] },
+    aliases:["đăng ký học phần","khối lượng học tập","tín chỉ tối đa"],
+    measures:["tối đa","không quá","không vượt","vượt","nhiều nhất","trở xuống","giới hạn"] },
   { id:"R-TC-01", name:"Hạn mức tạm ứng do Trưởng đơn vị duyệt", value:"10 triệu", tier:3,
     source:"Điều 12.1 Quy chế chi tiêu nội bộ", owner:"Phòng Kế hoạch – Tài chính",
-    aliases:["tạm ứng","hoàn ứng","đề nghị ứng"] },
+    aliases:["tạm ứng","hoàn ứng","đề nghị ứng"],
+    measures:["duyệt","hạn mức","trưởng đơn vị","thẩm quyền"] },
   { id:"R-TC-02", name:"Ngưỡng khoản chi phải có hai chữ ký kiểm soát", value:"10 triệu", tier:3,
     source:"Điều 19.2 Quy chế chi tiêu nội bộ", owner:"Phòng Kế hoạch – Tài chính",
-    aliases:["hai chữ ký","đồng ký","kiểm soát chi"] }
+    aliases:["hai chữ ký","đồng ký","kiểm soát chi"],
+    measures:[] }
 ];
 
   /* Kho tài liệu: tier 1 = tài liệu tác nghiệp · 2 = quy trình cấp Phòng/Ban · 3 = quy định cấp Trường. */

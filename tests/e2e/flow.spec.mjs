@@ -82,9 +82,11 @@ test('Verify 9/9 và báo cáo tập độc lập', async ({ page }) => {
   await open(page, 'danh-gia');
   await page.getByRole('button', { name: 'Chạy Verify' }).click();
   await expect(page.locator('.notice').first()).toContainText('9/9 ca đạt');
-  await page.getByRole('button', { name: 'Chạy tập 48 ca' }).click();
-  await expect(page.locator('.stat').filter({ hasText: 'Tỉ lệ bỏ sót' })).toContainText('22,2');
-  await expect(page.locator('.stat').filter({ hasText: 'chuyển tiếp thừa' })).toContainText('14,3');
+  await page.getByRole('button', { name: 'Chạy tập mù 40 ca' }).click();
+  await expect(page.locator('.stat').filter({ hasText: 'Tự sửa sai' })).toContainText('0');
+  await expect(page.locator('.stat').filter({ hasText: 'Tỉ lệ bỏ sót' })).toContainText('0/23');
+  await page.getByRole('button', { name: 'Tập phát triển 48 ca' }).click();
+  await expect(page.locator('.stat').filter({ hasText: 'Tỉ lệ bỏ sót' })).toContainText('7,4');
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Tải báo cáo CSV' }).click();
   expect((await download).suggestedFilename()).toBe('bao-cao-danh-gia.csv');

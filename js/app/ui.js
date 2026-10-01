@@ -29,7 +29,7 @@
     form: { text: '', ruleId: 'R-PK-01', newValue: '', issuerTier: '' },
     understanding: null, ratify: false, busy: null, lastNotice: null,
     verify: null, evalReport: null, evalSource: null, evalCsv: null, demoStatus: null,
-    ledgerQuery: '', docQuery: '', docTier: 'all', anchorDraft: {}, newDoc: { title: '', owner: '', tier: '2', body: '' }
+    ledgerQuery: '', docQuery: '', docTier: 'all', anchorDraft: {}, anchorField: {}, newDoc: { title: '', owner: '', tier: '2', body: '' }
   };
 
   const VI_REASONS = {
@@ -243,7 +243,7 @@
     const pend = queueEntries();
     const m = member();
     if (!ui.overviewEval) {
-      const parsed = Evaluation.parseCsv(G.PolicyChangeHoldoutCsv || '');
+      const parsed = Evaluation.parseCsv(G.PolicyChangeBlindCsv || G.PolicyChangeHoldoutCsv || '');
       ui.overviewEval = Evaluation.evaluate(parsed.cases, { registry: Data.SEED_REGISTRY });
     }
     const ev = ui.overviewEval;
@@ -285,11 +285,12 @@
           demoRow('demo-refuse', '3 · Từ chối yêu cầu mơ hồ', '“Đổi tất cả các thời hạn 7 ngày thành 5 ngày” → từ chối trước khi phân tích; kho và sổ không đổi.') +
           '</div>' + (ui.demoStatus ? '<div class="notice ' + esc(ui.demoStatus.tone) + '" role="status"><div class="grow small">' + esc(ui.demoStatus.text) + '</div></div>' : '') +
         '</div></section>' +
-        '<section class="card"><div class="card-head"><h2>Độ chính xác trên tập độc lập</h2><a class="btn sm ghost" href="#/danh-gia">Chi tiết</a></div><div class="card-body stack">' +
-          '<p class="small muted">' + nf.format(ev.total) + ' ca tổng hợp do nhóm gắn nhãn tay, tách biệt với dữ liệu phát triển. Chỉ động cơ tiền định (chưa bật AI).</p>' +
+        '<section class="card"><div class="card-head"><h2>Độ chính xác trên tập mù</h2><a class="btn sm ghost" href="#/danh-gia">Chi tiết</a></div><div class="card-body stack">' +
+          '<p class="small muted">' + nf.format(ev.total) + ' ca do một tác tử độc lập viết, không xem mã nguồn; đóng băng trước khi sửa động cơ. Chỉ động cơ tiền định (chưa bật AI).</p>' +
+          '<div class="row"><span class="tag ' + (ev.wrongEdits ? 'U3' : 'auto') + '">' + esc(ev.wrongEdits + ' lần tự sửa sai') + '</span><span class="xs muted">trên ' + nf.format(ev.autoActions) + ' lần máy tự sửa</span></div>' +
           '<div class="bars">' +
-          bar('Đúng hoàn toàn', ev.accuracy, 'auto') + bar('Bỏ sót', ev.missRate, 'del') + bar('Chuyển thừa', ev.overEscalationRate, 'U1') +
-          '</div><p class="xs muted">Bỏ sót = ca cần người duyệt nhưng hệ thống tự sửa. Đây là lỗi nguy hiểm nhất; lớp AI ngữ nghĩa và cơ chế học neo nhắm vào nó.</p>' +
+          bar('Đúng hoàn toàn', ev.accuracy, 'auto') + bar('Bỏ sót', ev.missRate, 'del') + bar('Báo lên thừa', ev.overEscalationRate, 'U1') +
+          '</div><p class="xs muted">Sửa sai và bỏ sót là hai lỗi nguy hiểm (máy quyết thay người). Báo lên thừa chỉ tốn thời gian người duyệt — cơ chế học neo và lớp AI kéo nó xuống dần.</p>' +
         '</div></section>' +
       '</div>' +
       '<section class="card"><div class="card-head"><h2>Hoạt động gần đây</h2><a class="btn sm ghost" href="#/so-kiem-toan">Mở sổ kiểm toán</a></div><div class="card-body">' +
@@ -553,14 +554,15 @@
     const stats = G.PolicyChangeLearning.escalationStats(S.feedback);
     const sugg = app.suggestions();
     return sandboxBanner() +
-      '<div class="page-head"><div><div class="eyebrow">Dữ liệu</div><h1>Sổ đăng ký &amp; học từ phản hồi</h1><p>Mỗi quy định gắn với các cụm từ neo. Khi người phụ trách nhiều lần trả lời “Có, dòng này thuộc quy định X” ở hồ sơ U1, hệ thống đề xuất cụm từ neo mới — duyệt xong thì lần sau các dòng tương tự được tự xử lý. Đó là cách ngưỡng chuyển tiếp tự điều chỉnh, có người kiểm soát và có ghi sổ.</p></div></div>' +
+      '<div class="page-head"><div><div class="eyebrow">Dữ liệu</div><h1>Sổ đăng ký &amp; học từ phản hồi</h1><p>Mỗi quy định có hai loại cụm từ: <b>neo chủ đề</b> (dòng nói về việc gì) và <b>neo đại lượng</b> (con số đo cái gì). Máy chỉ tự sửa khi dòng có đủ cả hai. Khi người phụ trách nhiều lần trả lời “Có” ở hồ sơ U1, hệ thống đề xuất bổ sung đúng loại neo còn thiếu — duyệt xong thì lần sau các dòng tương tự được tự xử lý. Đó là cách ngưỡng chuyển tiếp tự điều chỉnh, có người kiểm soát và có ghi sổ.</p></div></div>' +
       '<div class="split">' +
         '<section class="card"><div class="card-head"><h2>Đề xuất neo mới</h2><span class="tag ' + (sugg.length ? 'U1' : 'neutral') + '">' + nf.format(sugg.length) + ' đề xuất</span></div><div class="card-body stack">' +
           (sugg.length ? sugg.map(s => {
             const rule = S.registry.find(r => r.id === s.ruleId);
             const right = Authz.canEditRegistry(member(), rule);
-            return '<div class="prop U1"><div class="prop-body"><div class="row"><b>“' + esc(s.phrase) + '”</b><span class="tag neutral">' + esc(s.ruleId) + '</span><span class="xs muted">' + esc(s.support + ' phản hồi “Có” · ' + s.lines.map(l => l.docId + ' dòng ' + (l.lineIndex + 1)).join(', ')) + '</span></div>' +
-              (right.ok ? '<div class="row">' + btn('accept-suggestion', 'Duyệt thêm neo', { cls: 'sm primary', data: { rule: s.ruleId, phrase: s.phrase, support: s.support } }) + '</div>'
+            const fieldLabel = s.field === 'measures' ? 'neo đại lượng' : s.field === 'both' ? 'neo chủ đề + đại lượng' : 'neo chủ đề';
+            return '<div class="prop U1"><div class="prop-body"><div class="row"><b>“' + esc(s.phrase) + '”</b><span class="tag neutral">' + esc(s.ruleId) + '</span><span class="chip">' + esc(fieldLabel) + '</span><span class="xs muted">' + esc(s.support + ' phản hồi “Có” · ' + s.lines.map(l => l.docId + ' dòng ' + (l.lineIndex + 1)).join(', ')) + '</span></div>' +
+              (right.ok ? '<div class="row">' + btn('accept-suggestion', 'Duyệt thêm ' + fieldLabel, { cls: 'sm primary', data: { rule: s.ruleId, phrase: s.phrase, support: s.support, field: s.field } }) + '</div>'
                 : '<div class="lock">' + icon('lock', 16) + '<span>' + esc(right.reason) + '</span></div>') + '</div></div>';
           }).join('') : '<div class="empty"><b>Chưa có đề xuất</b>Cần ít nhất 2 câu trả lời “Có” ở hồ sơ U1 cùng chứa một cụm từ chưa phải là neo.</div>') +
         '</div></section>' +
@@ -578,8 +580,11 @@
           const draftKey = 'anchor-' + r.id;
           return '<div class="prop"><div class="prop-head"><span class="docid">' + esc(r.id) + '</span><span class="title">' + esc(r.name) + '</span><span class="chip">' + esc(tierLabel(r.tier)) + '</span></div>' +
             '<div class="prop-body"><div class="row"><span class="stat" style="padding:6px 12px;box-shadow:none"><span class="v" style="font-size:20px">' + esc(r.value) + '</span></span><span class="xs muted">' + esc(r.owner + ' · ' + r.source) + '</span></div>' +
-            '<div class="row">' + r.aliases.map(a => '<span class="chip">' + esc(a) + '</span>').join('') + '</div>' +
-            (right.ok ? '<div class="row"><label class="sr-only" for="' + esc(draftKey) + '">Cụm từ neo mới cho ' + esc(r.id) + '</label><input id="' + esc(draftKey) + '" type="text" autocomplete="off" name="' + esc(draftKey) + '" data-bind="anchorDraft.' + esc(r.id) + '" placeholder="Thêm cụm từ neo…" value="' + esc(ui.anchorDraft[r.id] || '') + '" style="flex:1;min-width:160px">' + btn('add-anchor', 'Thêm', { cls: 'sm', data: { rule: r.id } }) + '</div>'
+            '<div class="row"><span class="xs muted" style="min-width:76px">Chủ đề</span>' + r.aliases.map(a => '<span class="chip">' + esc(a) + '</span>').join('') + '</div>' +
+            '<div class="row"><span class="xs muted" style="min-width:76px">Đại lượng</span>' + ((r.measures || []).length ? (r.measures || []).map(a => '<span class="chip measure">' + esc(a) + '</span>').join('') : '<span class="xs muted">— neo chủ đề đã đủ hẹp</span>') + '</div>' +
+            (right.ok ? '<div class="row"><label class="sr-only" for="' + esc(draftKey) + '">Cụm từ neo mới cho ' + esc(r.id) + '</label><input id="' + esc(draftKey) + '" type="text" autocomplete="off" name="' + esc(draftKey) + '" data-bind="anchorDraft.' + esc(r.id) + '" placeholder="Thêm cụm từ neo…" value="' + esc(ui.anchorDraft[r.id] || '') + '" style="flex:1;min-width:160px">' +
+              '<label class="sr-only" for="' + esc(draftKey) + '-field">Loại neo</label><select id="' + esc(draftKey) + '-field" data-bind="anchorField.' + esc(r.id) + '"><option value="aliases"' + ((ui.anchorField[r.id] || 'aliases') === 'aliases' ? ' selected' : '') + '>Chủ đề</option><option value="measures"' + (ui.anchorField[r.id] === 'measures' ? ' selected' : '') + '>Đại lượng</option></select>' +
+              btn('add-anchor', 'Thêm', { cls: 'sm', data: { rule: r.id } }) + '</div>'
               : '<div class="lock xs">' + icon('lock', 14) + '<span>' + esc(right.reason) + '</span></div>') + '</div></div>';
         }).join('') + '</div></div></section>';
   }
@@ -587,7 +592,7 @@
   // ---------- Màn hình: Đánh giá ----------
   function viewEval() {
     const r = ui.evalReport;
-    return '<div class="page-head"><div><div class="eyebrow">Chất lượng</div><h1>Đánh giá độ chính xác</h1><p>Hai lớp kiểm chứng: bộ Verify của đề bài (9 ca, chạy trên bản sao sạch) và báo cáo trên tập kiểm thử độc lập có nhãn — đo tỉ lệ bỏ sót và tỉ lệ chuyển tiếp thừa.</p></div></div>' +
+    return '<div class="page-head"><div><div class="eyebrow">Chất lượng</div><h1>Đánh giá độ chính xác</h1><p>Ba lớp kiểm chứng: bộ Verify của đề bài (9 ca, chạy trên bản sao sạch), tập phát triển 48 ca (nhóm tự gắn nhãn, đã dùng để thiết kế nên không còn độc lập) và <b>tập mù 40 ca</b> do một tác tử độc lập viết từ văn bản quy trình, đóng băng bằng mã băm trước khi sửa động cơ. Phương pháp chi tiết: <code>docs/PHUONG-PHAP-KIEM-CHUNG.md</code>.</p></div></div>' +
       '<section class="card"><div class="card-head"><h2>Verify · 4 ca bắt buộc + 5 ca Escalation</h2>' + btn('verify', 'Chạy Verify', { cls: 'primary' }) + '</div><div class="card-body">' +
         (ui.verify ? '<div class="notice ' + (ui.verify.every(x => x.ok) ? 'ok' : 'error') + ' small">' + esc(ui.verify.filter(x => x.ok).length + '/' + ui.verify.length + ' ca đạt · tổng ' + ui.verify.reduce((s, x) => s + x.ms, 0).toFixed(2) + ' ms') + '</div>' +
           '<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Ca</th><th>Mô tả</th><th>Kỳ vọng</th><th>Thực tế</th><th>Kết quả</th></tr></thead><tbody>' +
@@ -595,27 +600,28 @@
           : '<div class="empty">Bấm “Chạy Verify”. Bộ kiểm thử độc lập với dữ liệu bạn đang thao tác.</div>') +
       '</div></section>' +
       '<section class="card"><div class="card-head"><h2>Tập kiểm thử độc lập</h2><div class="row">' +
-        btn('eval-builtin', 'Chạy tập 48 ca', { cls: 'primary' }) + btn('eval-ai', 'Chạy kèm AI ngữ nghĩa', { disabled: S.ai.status !== 'ready', title: S.ai.status === 'ready' ? 'Gọi OpenAI cho các ca động cơ muốn tự sửa' : 'AI đang tắt' }) +
+        btn('eval-blind', 'Chạy tập mù 40 ca', { cls: 'primary' }) + btn('eval-builtin', 'Tập phát triển 48 ca') + btn('eval-ai', 'Chạy kèm AI ngữ nghĩa', { disabled: S.ai.status !== 'ready', title: S.ai.status === 'ready' ? 'Gọi OpenAI cho các ca động cơ muốn tự sửa' : 'AI đang tắt' }) +
         '<label class="btn" for="evalFile">Tải CSV của bạn…</label><input id="evalFile" type="file" accept=".csv,text/csv" class="sr-only" data-action-change="eval-file">' +
       '</div></div><div class="card-body stack">' +
-        '<p class="small muted">Định dạng CSV: <code>id,rule_id,new_value,issuer_tier,doc_tier,line,expected</code> với expected ∈ AUTO, U1, U2, U3. Tập mẫu là dữ liệu tổng hợp do nhóm gắn nhãn tay theo quy tắc nghiệp vụ, tách biệt với dữ liệu phát triển; gồm cả ca khó mà động cơ tiền định trả lời sai.</p>' +
+        '<p class="small muted">Định dạng CSV: <code>id,rule_id,new_value,issuer_tier,doc_tier,line,expected[,phenomenon]</code> với expected ∈ AUTO, U1, U2, U3, NONE (ca bẫy: dòng không mang giá trị cũ, không được đụng tới). Cả hai tập đều là dữ liệu tổng hợp; giám khảo có thể tải CSV của mình lên để chấm trực tiếp.</p>' +
         (r ? evalReportHtml(r) : '<div class="empty">Chưa chạy. Kết quả sẽ hiện tỉ lệ bỏ sót, tỉ lệ chuyển tiếp thừa, ma trận nhầm lẫn và từng ca sai.</div>') +
       '</div></section>';
   }
 
   function evalReportHtml(r) {
-    const labels = ['AUTO', 'U1', 'U2', 'U3'];
+    const labels = ['AUTO', 'U1', 'U2', 'U3'].concat(r.expectedNone ? ['NONE'] : []);
     const actuals = ['AUTO', 'U1', 'U2', 'U3', 'HOLD', 'NONE'];
     return '<div class="row"><span class="tag neutral">' + esc(ui.evalSource || '') + '</span>' + (r.aiCalls !== undefined ? '<span class="xs muted">' + esc(r.aiCalls + ' lượt gọi AI' + (r.aiUnavailable ? ', ' + r.aiUnavailable + ' lượt AI không trả lời được' : '')) + '</span>' : '') + btn('eval-download', 'Tải báo cáo CSV', { cls: 'sm' }) + '</div>' +
-      '<div class="grid g4">' + stat('auto', pct(r.accuracy), 'Đúng hoàn toàn', r.correct + '/' + r.total + ' ca') +
-        stat('U3', pct(r.missRate), 'Tỉ lệ bỏ sót', r.misses + '/' + r.expectedEscalate + ' ca cần người mà hệ thống tự sửa') +
-        stat('U1', pct(r.overEscalationRate), 'Tỉ lệ chuyển tiếp thừa', r.overEscalations + '/' + r.expectedAuto + ' ca tự sửa được mà vẫn hỏi') +
+      '<div class="grid g4" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' + stat('auto', pct(r.accuracy), 'Đúng hoàn toàn', r.correct + '/' + r.total + ' ca') +
+        stat('U3', nf.format(r.wrongEdits || 0), 'Tự sửa sai', 'trên ' + (r.autoActions || 0) + ' lần máy tự sửa' + (r.autoPrecision === null || r.autoPrecision === undefined ? '' : ' · chính xác ' + pct(r.autoPrecision))) +
+        stat('U3', pct(r.missRate), 'Tỉ lệ bỏ sót', r.misses + '/' + r.expectedEscalate + ' ca cần người mà máy không hỏi') +
+        stat('U1', pct(r.overEscalationRate), 'Tỉ lệ báo lên thừa', r.overEscalations + '/' + (r.expectedAuto + (r.expectedNone || 0)) + ' ca lẽ ra không cần hỏi') +
         stat('', r.categoryAccuracy === null ? '—' : pct(r.categoryAccuracy), 'Đúng loại U1/U2/U3', 'trong các ca đã chuyển tiếp') + '</div>' +
       '<div class="tablewrap"><table class="matrix"><caption class="sr-only">Ma trận nhầm lẫn: hàng là nhãn kỳ vọng, cột là kết quả hệ thống</caption><thead><tr><th scope="col">Kỳ vọng \\ Thực tế</th>' + actuals.map(a => '<th scope="col">' + a + '</th>').join('') + '</tr></thead><tbody>' +
-        labels.map(e => '<tr><th scope="row">' + e + '</th>' + actuals.map(a => { const v = (r.confusion[e] || {})[a] || 0; const good = e === a || (e !== 'AUTO' && a === 'HOLD'); return '<td class="num ' + (v ? (good ? 'hit' : 'bad') : '') + '">' + v + '</td>'; }).join('') + '</tr>').join('') +
+        labels.map(e => '<tr><th scope="row">' + e + '</th>' + actuals.map(a => { const v = (r.confusion[e] || {})[a] || 0; const good = e === a || (e !== 'AUTO' && e !== 'NONE' && a === 'HOLD'); return '<td class="num ' + (v ? (good ? 'hit' : 'bad') : '') + '">' + v + '</td>'; }).join('') + '</tr>').join('') +
       '</tbody></table></div>' +
       (r.rows.some(x => !x.ok) ? '<h3>Các ca sai</h3><div class="tablewrap"><table><thead><tr><th>Ca</th><th>Dòng</th><th>Kỳ vọng</th><th>Thực tế</th><th>Loại lỗi</th></tr></thead><tbody>' +
-        r.rows.filter(x => !x.ok).map(x => '<tr><td class="mono">' + esc(x.id) + '</td><td class="small">' + esc(x.line) + '</td><td>' + esc(x.expected) + '</td><td>' + esc(x.actual) + '</td><td>' +
+        r.rows.filter(x => !x.ok).map(x => '<tr><td class="mono">' + esc(x.id) + '</td><td class="small">' + esc(x.line) + (x.phenomenon ? '<div class="xs muted">' + esc(x.phenomenon) + '</div>' : '') + '</td><td>' + esc(x.expected) + '</td><td>' + esc(x.actual) + '</td><td>' +
           ({ miss: '<span class="tag U3">Bỏ sót</span>', over: '<span class="tag U1">Chuyển thừa</span>', wrong_category: '<span class="tag U2">Sai loại</span>', wrong: '<span class="tag neutral">Không phát hiện</span>' }[x.kind] || '') + '</td></tr>').join('') + '</tbody></table></div>' : '');
   }
 
@@ -640,6 +646,8 @@
   function analyzeFromForm() {
     const res = app.analyze({ ruleId: ui.form.ruleId, newValue: ui.form.newValue, issuerTier: Number(ui.form.issuerTier), requestText: ui.form.text });
     ui.ratify = false;
+    // Có AI thật thì tự rà các dòng tự sửa ngay sau khi phân tích (không chặn giao diện).
+    if (res.ok && S.ai.status === 'ready') app.ensureSemanticReview().then(() => render());
     if (!res.ok) { const el = document.getElementById(!ui.form.newValue ? 'newVal' : !ui.form.issuerTier ? 'tierSel' : 'newVal'); if (el) el.focus(); }
     return res;
   }
@@ -735,17 +743,18 @@
     }),
     'add-anchor': el => withBusy('add-anchor', async () => {
       const id = el.dataset.rule;
-      const res = await app.addAnchor(id, (ui.anchorDraft[id] || '').trim(), 'Bổ sung thủ công bởi trưởng đơn vị');
+      const res = await app.addAnchor(id, (ui.anchorDraft[id] || '').trim(), 'Bổ sung thủ công bởi trưởng đơn vị', ui.anchorField[id] === 'measures' ? 'measures' : 'aliases');
       if (res.ok) ui.anchorDraft[id] = '';
     }),
-    'accept-suggestion': el => withBusy('accept-suggestion', () => app.addAnchor(el.dataset.rule, el.dataset.phrase, 'Học từ ' + el.dataset.support + ' phản hồi “Có” ở hồ sơ U1')),
+    'accept-suggestion': el => withBusy('accept-suggestion', () => app.addAnchor(el.dataset.rule, el.dataset.phrase, 'Học từ ' + el.dataset.support + ' phản hồi “Có” ở hồ sơ U1', /** @type {any} */ (el.dataset.field || 'aliases'))),
     'verify': () => {
       const env = { registry: Engine.cloneRegistry(Data.SEED_REGISTRY), seedDocuments: Data.SEED_DOCUMENTS };
       ui.verify = [...Data.SUITE_REQUIRED, ...Data.SUITE_ESCALATION].map(tc => Workflow.runVerifyCase(tc, env));
       render();
     },
-    'eval-builtin': () => runEval(G.PolicyChangeHoldoutCsv, 'Tập độc lập 48 ca · động cơ tiền định', false),
-    'eval-ai': () => runEval(ui.evalCsv || G.PolicyChangeHoldoutCsv, (ui.evalCsv ? 'CSV của bạn' : 'Tập độc lập 48 ca') + ' · động cơ + AI ngữ nghĩa', true),
+    'eval-blind': () => runEval(G.PolicyChangeBlindCsv, 'Tập mù 40 ca · động cơ tiền định', false),
+    'eval-builtin': () => runEval(G.PolicyChangeHoldoutCsv, 'Tập phát triển 48 ca · động cơ tiền định', false),
+    'eval-ai': () => runEval(ui.evalCsv || G.PolicyChangeBlindCsv, (ui.evalCsv ? 'CSV của bạn' : 'Tập mù 40 ca') + ' · động cơ + AI ngữ nghĩa', true),
     'eval-download': () => download('bao-cao-danh-gia.csv', '﻿' + Evaluation.toCsv(ui.evalReport), 'text/csv;charset=utf-8'),
     'export-json': () => download('so-kiem-toan-' + S.workspace.id + '.json', JSON.stringify(S.ledger, null, 2), 'application/json'),
     'export-csv': () => {

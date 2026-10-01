@@ -21,7 +21,7 @@
 
   /**
    * @typedef {{ ruleId:string, category:string, docId:string, lineIndex:number, line:string, answer:'accept'|'reject', ts?:string, actor?:string }} Feedback
-   * @typedef {{ ruleId:string, phrase:string, support:number, lines:{docId:string, lineIndex:number}[] }} Suggestion
+   * @typedef {{ ruleId:string, phrase:string, support:number, lines:{docId:string, lineIndex:number}[], field:'aliases'|'measures'|'both' }} Suggestion
    */
 
   /** Từ chức năng / từ quá chung — cụm từ bắt đầu hoặc kết thúc bằng chúng bị bỏ. */
@@ -52,6 +52,28 @@
       }
     }
     return out;
+  }
+
+  /** Khớp trọn từ, không phân biệt hoa thường. @param {string} line @param {string} phrase */
+  function hasWords(line, phrase) {
+    const words = String(phrase || '').toLowerCase().trim().split(/\s+/).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    try { return new RegExp('(?<![\\p{L}\\p{N}])' + words.join('\\s+') + '(?![\\p{L}\\p{N}])', 'u').test(String(line || '').toLowerCase()); }
+    catch (_) { return String(line || '').toLowerCase().includes(String(phrase || '').toLowerCase()); }
+  }
+
+  /**
+   * Dòng U1 được trả lời "Có" thiếu loại neo nào? Có neo chủ đề mà thiếu đại lượng → học đại lượng; có đại lượng
+   * mà thiếu chủ đề → học chủ đề; thiếu cả hai → cụm học được dùng cho cả hai.
+   * @param {any} rule @param {string} line @returns {'aliases'|'measures'|'both'}
+   */
+  function missingField(rule, line) {
+    const low = String(line || '').toLowerCase();
+    const topic = (rule.aliases || []).some((/** @type {string} */ a) => low.includes(String(a).toLowerCase()));
+    const measures = Array.isArray(rule.measures) ? rule.measures : [];
+    const measured = !measures.length || measures.some((/** @type {string} */ m) => hasWords(line, m));
+    if (topic && !measured) return 'measures';
+    if (!topic && measured) return 'aliases';
+    return 'both';
   }
 
   /** @param {string} a @param {string} b */
@@ -92,13 +114,22 @@
         }
       }
       const others = (registry || []).filter(r => r.id !== rule.id).flatMap(r => r.aliases || []);
+      const ownMeasures = Array.isArray(rule.measures) ? rule.measures : [];
+      /** @type {Map<string, 'aliases'|'measures'|'both'>} */ const fieldOfLine = new Map();
+      for (const f of accepted.values()) fieldOfLine.set(f.docId + '\u0000' + f.lineIndex, missingField(rule, f.line));
       /** @type {Suggestion[]} */
       let candidates = [...support.entries()]
         .filter(([phrase, lines]) => lines.length >= minSupport &&
           !rule.aliases.some((/** @type {string} */ a) => overlaps(a, phrase)) &&
+          !ownMeasures.some((/** @type {string} */ a) => overlaps(a, phrase)) &&
           !others.some((/** @type {string} */ a) => overlaps(a, phrase)) &&
           !rejectedPhrases.has(phrase))
-        .map(([phrase, lines]) => ({ ruleId: rule.id, phrase, support: lines.length, lines }));
+        .map(([phrase, lines]) => {
+          const fields = new Set(lines.map(l => fieldOfLine.get(l.docId + '\u0000' + l.lineIndex) || 'both'));
+          /** @type {'aliases'|'measures'|'both'} */
+          const field = fields.size === 1 ? /** @type {any} */ ([...fields][0]) : 'both';
+          return { ruleId: rule.id, phrase, support: lines.length, lines, field };
+        });
       // Giữ cụm dài nhất trong các cụm lồng nhau có cùng độ ủng hộ ("lưu bài thi" thay vì "lưu bài").
       candidates = candidates.filter(c => !candidates.some(o => o !== c && o.support === c.support &&
         o.phrase.length > c.phrase.length && (' ' + o.phrase + ' ').includes(' ' + c.phrase + ' ')));
@@ -131,5 +162,5 @@
     return { total, byCategory, byRule };
   }
 
-  return Object.freeze({ STOPWORDS, phrasesOf, suggestAnchors, escalationStats });
+  return Object.freeze({ STOPWORDS, phrasesOf, missingField, suggestAnchors, escalationStats });
 });

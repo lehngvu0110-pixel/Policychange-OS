@@ -36,7 +36,8 @@
 
   /** @param {any} row */
   function fromDbPolicy(row) {
-    return { id: row.id, name: row.name, value: row.value, tier: row.tier, source: row.source, owner: row.owner, aliases: [...row.aliases] };
+    return { id: row.id, name: row.name, value: row.value, tier: row.tier, source: row.source, owner: row.owner, aliases: [...row.aliases],
+      measures: Array.isArray(row.measures) ? [...row.measures] : [] };
   }
   /** @param {any} row */
   function fromDbDocument(row) {
@@ -73,7 +74,7 @@
 
   /** @param {ServerContext} ctx */
   function stateOf(ctx) {
-    return { registry: ctx.registry.map(r => ({ ...r, aliases: [...r.aliases] })), docs: Engine.cloneDocs(ctx.docs),
+    return { registry: Engine.cloneRegistry(ctx.registry), docs: Engine.cloneDocs(ctx.docs),
       current: /** @type {any} */ (null), ledger: ctx.ledger.map(e => ({ ...e })) };
   }
 
@@ -240,12 +241,12 @@
     /** @type {any[]} */ const policyUpdates = [];
     let ratifyMessage = null;
     if (req.ratify === true) {
-      const before = state.registry.find(r => r.id === change.rule.id);
+      const before = state.registry.find((/** @type {any} */ r) => r.id === change.rule.id);
       const expectedValue = before ? before.value : null;
       const ratified = Workflow.ratifyRule(state, { now: ctx.now, actor: actorLabel(ctx.member) });
       ratifyMessage = ratified.message;
       if (ratified.ok && before) {
-        policyUpdates.push({ id: before.id, expectedValue, value: before.value, aliases: before.aliases });
+        policyUpdates.push({ id: before.id, expectedValue, value: before.value, aliases: before.aliases, measures: Engine.measuresOf(before) });
         records = [...state.ledger.slice(ctx.ledger.length)];
       }
     }
@@ -371,12 +372,13 @@
     if (!allowed.ok) return fail(403, 'forbidden_registry', allowed.reason || 'Không đủ thẩm quyền.');
     const state = stateOf(ctx);
     const reason = typeof request.reason === 'string' ? request.reason.slice(0, 300) : undefined;
-    const result = Workflow.addAnchor(state, rule.id, request.phrase, { now: ctx.now, actor: actorLabel(ctx.member), reason });
+    const field = request.field === 'measures' || request.field === 'both' ? request.field : 'aliases';
+    const result = Workflow.addAnchor(state, rule.id, request.phrase, { now: ctx.now, actor: actorLabel(ctx.member), reason, field });
     if (!result.ok) return fail(422, 'anchor_rejected', result.message);
-    const updated = state.registry.find(r => r.id === rule.id);
+    const updated = state.registry.find((/** @type {any} */ r) => r.id === rule.id);
     return { ok: true, status: 200, body: { message: result.message, records: result.records },
       rpc: { p_workspace: ctx.workspace.id, p_expected_seq: ctx.workspace.ledger_seq, p_expected_tail: ctx.workspace.ledger_tail,
-        p_doc_updates: [], p_policy_updates: [{ id: rule.id, expectedValue: rule.value, value: updated.value, aliases: updated.aliases }],
+        p_doc_updates: [], p_policy_updates: [{ id: rule.id, expectedValue: rule.value, value: updated.value, aliases: updated.aliases, measures: Engine.measuresOf(updated) }],
         p_new_documents: [], p_records: (result.records || []).map((/** @type {any} */ r) => toRpcRecord(r, ctx.member.userId)), p_feedback: [] } };
   }
 

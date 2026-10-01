@@ -95,7 +95,8 @@
   function extractMessages(input) {
     const registry = (Array.isArray(input.registry) ? input.registry : []).slice(0, LIMITS.registryRules).map(r => ({
       id: clip(r.id, 40), name: clip(r.name, 200), value: clip(r.value, 40), tier: r.tier, owner: clip(r.owner, 120),
-      aliases: (Array.isArray(r.aliases) ? r.aliases : []).slice(0, 20).map((/** @type {any} */ a) => clip(a, 60))
+      aliases: (Array.isArray(r.aliases) ? r.aliases : []).slice(0, 20).map((/** @type {any} */ a) => clip(a, 60)),
+      measures: (Array.isArray(r.measures) ? r.measures : []).slice(0, 20).map((/** @type {any} */ a) => clip(a, 60))
     }));
     return [
       { role: 'system', content: EXTRACT_SYSTEM },

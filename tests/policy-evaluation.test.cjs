@@ -70,17 +70,18 @@ test('evaluateWithSemantics: AI chỉ giữ lại AUTO_PATCH, không nâng ca ch
   const Semantic = require('../js/semantic-discovery.js');
   const csv = [HEADER,
     'A,R-PK-01,5 ngày,2,2,Tiếp nhận đơn phúc khảo trong 7 ngày.,AUTO',
-    'B,R-PK-01,5 ngày,2,2,Kết quả phúc khảo được thông báo sau 7 ngày.,U1',
+    'B,R-XN-01,2 ngày,2,2,Giấy xác nhận sinh viên có giá trị sử dụng trong 3 ngày kể từ ngày cấp.,U1',
     'C,R-PK-01,5 ngày,2,1,Bản nháp tự huỷ sau 7 ngày.,U1'].join('\n');
   const { cases } = Evaluation.parseCsv(csv);
   let calls = 0;
-  // Adapter giả lập trong test: đánh dấu dòng có "Kết quả" là 'unrelated', còn lại 'supports'.
+  // Adapter giả lập trong test: đánh dấu dòng nói về "giá trị sử dụng" là 'unrelated', còn lại 'supports'.
+  // (Ca B là ca động cơ tiền định vẫn bỏ sót — có neo chủ đề và cả từ "cấp" — nên chỉ lớp AI mới bắt được.)
   const adapter = { async discover(payload) {
     calls++;
     return { available: true, output: { schemaVersion: 1, candidates: payload.candidates.map(c => {
-      const q = '7 ngày'; const start = c.line.indexOf(q);
+      const q = c.line.match(/\d+ ngày/)[0]; const start = c.line.indexOf(q);
       return { ruleId: c.ruleId, documentId: c.documentId, lineIndex: c.lineIndex, quote: q, start, end: start + q.length,
-        relation: c.line.includes('Kết quả') ? 'unrelated' : 'supports', explanation: 'test', evidence: [{ quote: q, start, end: start + q.length }] };
+        relation: c.line.includes('giá trị sử dụng') ? 'unrelated' : 'supports', explanation: 'test', evidence: [{ quote: q, start, end: start + q.length }] };
     }) } };
   } };
   const plain = Evaluation.evaluate(cases, { registry: Data.SEED_REGISTRY });
@@ -96,4 +97,16 @@ test('evaluateWithSemantics: AI chỉ giữ lại AUTO_PATCH, không nâng ca ch
 test('js/holdout-data.js đồng bộ với bench/holdout.csv', () => {
   const embedded = require('../js/holdout-data.js');
   assert.equal(embedded, fs.readFileSync(path.join(__dirname, '..', 'bench', 'holdout.csv'), 'utf8'), 'chạy npm run build:holdout');
+});
+
+test('js/blind-data.js đồng bộ với bench/blind.csv; tập mù đúng mã băm đã đóng băng', () => {
+  const crypto = require('node:crypto');
+  const text = fs.readFileSync(path.join(__dirname, '..', 'bench', 'blind.csv'), 'utf8');
+  assert.equal(require('../js/blind-data.js'), text, 'chạy npm run build:holdout');
+  const sha = crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, '..', 'bench', 'blind.csv'))).digest('hex');
+  const provenance = fs.readFileSync(path.join(__dirname, '..', 'bench', 'BLIND-PROVENANCE.md'), 'utf8');
+  assert.ok(provenance.includes(sha), 'tập mù đã bị sửa sau khi đóng băng');
+  const { cases, errors } = Evaluation.parseCsv(text);
+  assert.deepEqual(errors, []);
+  assert.equal(cases.length, 40);
 });

@@ -270,6 +270,19 @@
       return result(res.status === 'complete' || res.status === 'no_candidates', /** @type {any} */ (messages)[res.status] || 'Đã kiểm tra.', { status: res.status, holds });
     }
 
+    /**
+     * Phản hồi doanh nghiệp: "nối mô hình thật, giữ bộ chứng minh tất định làm lớp kiểm tra". Khi máy chủ AI sẵn sàng,
+     * mọi dòng động cơ muốn tự sửa đều được mô hình rà lại TRƯỚC khi ban hành — không cần ai nhớ bấm nút.
+     * AI chỉ có thể giữ lại (chuyển cho người), không bao giờ biến một hồ sơ chuyển tiếp thành tự sửa.
+     */
+    async function ensureSemanticReview() {
+      const analysis = S.current;
+      if (!analysis || S.ai.status !== 'ready' || !deps.aiAdapter) return { ok: true, skipped: true, message: 'AI đang tắt; dùng kết quả tiền định.' };
+      if (analysis.semanticStatus) return { ok: true, skipped: true, message: 'Đã rà soát.' };
+      if (!analysis.props.some((/** @type {any} */ p) => p.outcome === 'AUTO_PATCH' && !p.applied)) return { ok: true, skipped: true, message: 'Không có dòng tự sửa để rà.' };
+      return discoverSemantics(deps.aiAdapter, 'openai');
+    }
+
     /** @param {any} p */
     function decisionRight(p) {
       if (!S.current) return { ok: false, reason: 'Chưa có phân tích.', requirement: null };
@@ -330,6 +343,7 @@
       if (!S.current) return result(false, 'Chưa có phân tích.');
       const issue = canIssueCurrent();
       if (!issue.ok) return result(false, issue.reason || 'Không đủ thẩm quyền ban hành.');
+      await ensureSemanticReview();
       if (S.source === 'remote') return commitRemote(options);
       const fresh = S.current.props.filter((/** @type {any} */ p) => p.decided && !p.fed);
       const approvedSemantic = S.current.props.filter((/** @type {any} */ p) => p.semanticHoldApproved && !p.fed);
@@ -459,19 +473,19 @@
       return Learning.suggestAnchors(S.feedback, S.registry);
     }
 
-    /** @param {string} ruleId @param {string} phrase @param {string} [reason] */
-    async function addAnchor(ruleId, phrase, reason) {
+    /** @param {string} ruleId @param {string} phrase @param {string} [reason] @param {'aliases'|'measures'|'both'} [field] */
+    async function addAnchor(ruleId, phrase, reason, field) {
       const rule = S.registry.find(r => r.id === ruleId);
       const right = Authz.canEditRegistry(member(), rule);
       if (!rule) return result(false, 'Quy định không có trong sổ đăng ký.');
       if (!right.ok) return result(false, right.reason || 'Không đủ thẩm quyền.');
       if (S.source === 'remote') {
-        const res = await deps.remote.call({ action: 'add_anchor', workspace: S.workspace.id, persona: S.persona, ruleId, phrase, reason });
+        const res = await deps.remote.call({ action: 'add_anchor', workspace: S.workspace.id, persona: S.persona, ruleId, phrase, reason, field });
         if (!res.ok) { if (res.status === 409) await reload(); return result(false, res.data.message || 'Máy chủ từ chối.'); }
         await reload();
         return result(true, res.data.message);
       }
-      const res = Workflow.addAnchor(S, ruleId, phrase, { now, actor: actor(), reason });
+      const res = Workflow.addAnchor(S, ruleId, phrase, { now, actor: actor(), reason, field });
       if (!res.ok) return result(false, res.message);
       S.revision++;
       await persist();
@@ -522,7 +536,7 @@
       subscribe(/** @type {(state:any) => void} */ fn) { listeners.add(fn); return () => listeners.delete(fn); },
       emit, member, actor, setPersona, init, switchSource, reload, poll, signIn, signOut, checkAI,
       enterSandbox, exitSandbox, resolveRequest, analyze, canIssueCurrent, discoverSemantics, decisionRight,
-      decide, undoDecision, reviewSemantic, committableCount, commit, undo, canUndo, suggestions, addAnchor,
+      decide, undoDecision, reviewSemantic, ensureSemanticReview, committableCount, commit, undo, canUndo, suggestions, addAnchor,
       caseItems, caseRight, decideCase,
       addDocument, resetWorkspace, clearAnalysis, dismissNotice
     };
