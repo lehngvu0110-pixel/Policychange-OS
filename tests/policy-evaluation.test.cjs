@@ -40,7 +40,7 @@ test('CSV có BOM, CRLF, dòng trống và dấu phẩy trong ngoặc kép', () 
   const report = Evaluation.evaluate(cases, { registry: Data.SEED_REGISTRY });
   assert.equal(report.rows[0].actual, 'AUTO');
   const back = Evaluation.parseRows(Evaluation.toCsv(report));
-  assert.equal(back[1][4], cases[0].line);
+  assert.equal(back[1][5], cases[0].line);
 });
 
 test('CSV thiếu cột → báo lỗi rõ ràng, không ném ngoại lệ', () => {

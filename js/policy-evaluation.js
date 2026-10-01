@@ -25,10 +25,12 @@
   const LABELS = Object.freeze(['AUTO', 'U1', 'U2', 'U3']);
   const ACTUAL_LABELS = Object.freeze(['AUTO', 'U1', 'U2', 'U3', 'NONE']);
   const COLUMNS = Object.freeze(['id', 'rule_id', 'new_value', 'issuer_tier', 'doc_tier', 'line', 'expected']);
+  /** Nhãn kỳ vọng hợp lệ: thêm NONE cho ca bẫy (dòng không chứa giá trị cũ, không được đụng tới). */
+  const EXPECTED_LABELS = Object.freeze([...LABELS, 'NONE']);
 
   /**
-   * @typedef {{ id:string, ruleId:string, newValue:string, issuerTier:number, docTier:number, line:string, expected:'AUTO'|'U1'|'U2'|'U3' }} EvalCase
-   * @typedef {{ id:string, expected:string, actual:string, ok:boolean, kind:'correct'|'miss'|'over'|'wrong_category'|'wrong', line:string, reason:string }} EvalRow
+   * @typedef {{ id:string, ruleId:string, newValue:string, issuerTier:number, docTier:number, line:string, expected:'AUTO'|'U1'|'U2'|'U3'|'NONE', phenomenon?:string }} EvalCase
+   * @typedef {{ id:string, expected:string, actual:string, ok:boolean, kind:'correct'|'miss'|'over'|'wrong_category'|'wrong', line:string, reason:string, phenomenon:string }} EvalRow
    */
 
   /**
@@ -78,9 +80,10 @@
       const get = (/** @type {string} */ c) => String(cells[index[c]] ?? '').trim();
       const item = { id: get('id') || 'row-' + (n + 2), ruleId: get('rule_id'), newValue: get('new_value'),
         issuerTier: Number(get('issuer_tier')), docTier: Number(get('doc_tier')), line: get('line'),
-        expected: /** @type {any} */ (get('expected').toUpperCase()) };
+        expected: /** @type {any} */ (get('expected').toUpperCase()),
+        phenomenon: header.includes('phenomenon') ? String(cells[header.indexOf('phenomenon')] ?? '').trim() : '' };
       if (!item.ruleId || !item.newValue || !item.line || ![1, 2, 3].includes(item.issuerTier) || ![1, 2, 3].includes(item.docTier) ||
-          !LABELS.includes(item.expected)) {
+          !EXPECTED_LABELS.includes(item.expected)) {
         errors.push('Dòng ' + (n + 2) + ' (' + item.id + ') không hợp lệ.');
         return;
       }
@@ -110,16 +113,23 @@
    */
   function summarize(cases, results) {
     /** @type {Record<string, Record<string, number>>} */
-    const confusion = Object.fromEntries(LABELS.map(e => [e, Object.fromEntries([...ACTUAL_LABELS, 'HOLD'].map(a => [a, 0]))]));
+    const confusion = Object.fromEntries(EXPECTED_LABELS.map(e => [e, Object.fromEntries([...ACTUAL_LABELS, 'HOLD'].map(a => [a, 0]))]));
     /** @type {EvalRow[]} */ const rows = [];
-    let misses = 0, over = 0, expectedEscalate = 0, expectedAuto = 0, catRight = 0, catTotal = 0;
+    let misses = 0, over = 0, expectedEscalate = 0, expectedAuto = 0, expectedNone = 0, catRight = 0, catTotal = 0;
+    let autoActions = 0, wrongEdits = 0, escalations = 0;
     cases.forEach((c, i) => {
       const { actual, reason } = results[i];
       confusion[c.expected][actual] = (confusion[c.expected][actual] || 0) + 1;
-      const expectEsc = c.expected !== 'AUTO';
       const actualEsc = actual === 'U1' || actual === 'U2' || actual === 'U3' || actual === 'HOLD';
+      if (actualEsc) escalations++;
+      if (actual === 'AUTO') { autoActions++; if (c.expected !== 'AUTO') wrongEdits++; }
       /** @type {EvalRow['kind']} */ let kind = 'correct';
-      if (expectEsc) {
+      if (c.expected === 'NONE') {
+        // Ca bẫy: đúng khi không đụng tới; tự sửa là sửa sai (tính vào bỏ sót), chuyển tiếp là báo lên thừa.
+        expectedNone++;
+        if (actual === 'AUTO') kind = 'miss';
+        else if (actualEsc) { over++; kind = 'over'; }
+      } else if (c.expected !== 'AUTO') {
         expectedEscalate++;
         if (!actualEsc) { misses++; kind = 'miss'; }
         else if (actual !== 'HOLD') { catTotal++; if (actual === c.expected) catRight++; else kind = 'wrong_category'; }
@@ -128,14 +138,19 @@
         if (actualEsc) { over++; kind = 'over'; }
         else if (actual !== 'AUTO') kind = 'wrong';
       }
-      rows.push({ id: c.id, expected: c.expected, actual, ok: kind === 'correct', kind, line: c.line, reason });
+      rows.push({ id: c.id, expected: c.expected, actual, ok: kind === 'correct', kind, line: c.line, reason, phenomenon: c.phenomenon || '' });
     });
     const correct = rows.filter(r => r.ok).length;
     const rate = (/** @type {number} */ a, /** @type {number} */ b) => b ? a / b : 0;
     return {
       total: rows.length, correct, accuracy: rate(correct, rows.length),
-      expectedEscalate, expectedAuto, misses, overEscalations: over,
-      missRate: rate(misses, expectedEscalate), overEscalationRate: rate(over, expectedAuto),
+      expectedEscalate, expectedAuto, expectedNone, misses, overEscalations: over,
+      // Bỏ sót: ca cần người nhưng máy tự sửa hoặc bỏ qua. Báo lên thừa: ca lẽ ra tự sửa (hoặc không đụng tới) bị đẩy lên người.
+      missRate: rate(misses, expectedEscalate), overEscalationRate: rate(over, expectedAuto + expectedNone),
+      // Sửa sai: máy tự sửa một dòng mà người kiểm định nói không được tự sửa — chỉ số an toàn quan trọng nhất.
+      autoActions, wrongEdits, autoPrecision: autoActions ? (autoActions - wrongEdits) / autoActions : null,
+      // Tỉ lệ hồ sơ thừa trong số hồ sơ đã đẩy lên người (góc nhìn của người phải trả lời).
+      escalations, unnecessaryEscalationShare: rate(over, escalations),
       categoryAccuracy: catTotal ? catRight / catTotal : null,
       confusion, rows
     };
@@ -177,8 +192,8 @@
   /** @param {ReturnType<typeof evaluate>} report @returns {string} */
   function toCsv(report) {
     const esc = (/** @type {unknown} */ v) => { const s = String(v ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-    return ['id,expected,actual,kind,line,reason', ...report.rows.map(r => [r.id, r.expected, r.actual, r.kind, r.line, r.reason].map(esc).join(','))].join('\n');
+    return ['id,expected,actual,kind,phenomenon,line,reason', ...report.rows.map(r => [r.id, r.expected, r.actual, r.kind, r.phenomenon, r.line, r.reason].map(esc).join(','))].join('\n');
   }
 
-  return Object.freeze({ LABELS, COLUMNS, parseRows, parseCsv, classify, evaluate, evaluateWithSemantics, toCsv });
+  return Object.freeze({ LABELS, EXPECTED_LABELS, COLUMNS, parseRows, parseCsv, classify, evaluate, evaluateWithSemantics, toCsv });
 });
