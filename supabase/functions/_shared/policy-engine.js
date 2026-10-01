@@ -208,7 +208,8 @@
     }
     if (!parts.length) return null;
     try {
-      return new RegExp('(?<![\\p{L}\\p{N}])(?<!(?:mười|mươi|trăm|linh|lẻ|nghìn|ngàn)\\s+)(?:' + parts.join('|') + ')(?![\\p{L}\\p{N}])', 'giu');
+      // Không khớp "mười bảy" (17) như "bảy", và không khớp "mười triệu rưỡi" (10,5) như "mười triệu".
+      return new RegExp('(?<![\\p{L}\\p{N}])(?<!(?:mười|mươi|trăm|linh|lẻ|nghìn|ngàn)\\s+)(?:' + parts.join('|') + ')(?![\\p{L}\\p{N}])(?!\\s+(?:rưỡi|lẻ|linh|mốt|tư|lăm))', 'giu');
     } catch (_) { return null; }
   }
 
@@ -236,7 +237,7 @@
     const plain = new RegExp(stripDiacritics(re.source), re.flags);
     while ((m = plain.exec(plainLine)) !== null) {
       const original = line.slice(m.index, m.index + m[0].length);
-      if (stripDiacritics(original) === original && !taken(m.index, m[0].length) && !isStructuredNumericOccurrence(line, m.index, original)) {
+      if (!taken(m.index, m[0].length) && !isStructuredNumericOccurrence(line, m.index, original)) {
         out.push({ index: m.index, text: original, form: 'no_diacritics' });
       }
       if (m.index === plain.lastIndex) plain.lastIndex++;
@@ -250,11 +251,30 @@
   }
 
   /**
-   * Cụm từ đại lượng của quy định có trong dòng (khớp trọn từ, không phân biệt hoa thường).
-   * @param {string} line @param {Rule|null|undefined} rule @returns {string[]}
+   * Mệnh đề chứa vị trí `index`: cắt theo ";", "?", "!" và dấu chấm kết câu (". " hoặc cuối dòng — không cắt
+   * "10.000.000" hay "24.1"). Neo đại lượng phải nằm cùng mệnh đề với con số.
+   * @param {string} line @param {number} index @returns {string}
    */
-  function measureCuesInLine(line, rule) {
-    const low = String(line || '').toLowerCase();
+  function clauseAt(line, index) {
+    const text = String(line || '');
+    const delim = /[;?!]|\.(?=\s|$)/g;
+    let start = 0, end = text.length;
+    /** @type {RegExpExecArray|null} */ let m;
+    while ((m = delim.exec(text)) !== null) {
+      if (m.index < index) start = m.index + 1;
+      else { end = m.index; break; }
+    }
+    return text.slice(start, end);
+  }
+
+  /**
+   * Cụm từ đại lượng của quy định có trong dòng (khớp trọn từ, không phân biệt hoa thường).
+   * Truyền `hits` để chỉ tìm trong mệnh đề chứa con số.
+   * @param {string} line @param {Rule|null|undefined} rule @param {ReadonlyArray<Hit>} [hits] @returns {string[]}
+   */
+  function measureCuesInLine(line, rule, hits) {
+    const scope = Array.isArray(hits) && hits.length ? hits.map(h => clauseAt(line, h.index)).join(' | ') : String(line || '');
+    const low = scope.toLowerCase();
     return measuresOf(rule).filter(cue => {
       const c = cue.toLowerCase().trim();
       try { return new RegExp('(?<![\\p{L}\\p{N}])' + c.split(/\s+/).map(escRe).join('\\s+') + '(?![\\p{L}\\p{N}])', 'u').test(low); }
@@ -262,21 +282,25 @@
     });
   }
 
+  /** Cụm chỉ một đại lượng KHÁC của cùng chủ đề; có mặt trong mệnh đề thì neo chủ đề không còn chi phối con số. */
+  const OTHER_QUANTITY = Object.freeze(['kết quả', 'lưu', 'lưu trữ', 'hiệu lực', 'giá trị sử dụng', 'số dư', 'dư', 'tổng']);
+
   /**
-   * Neo chủ đề chi phối trực tiếp con số: "phúc khảo trong 7 ngày", "tạm ứng đến 10 triệu" — giữa neo và giá trị
-   * chỉ có tối đa hai tiếng rồi tới một khung thời hạn / hạn mức, không qua dấu câu. Khi đó con số chính là thời hạn
-   * hay hạn mức của việc được neo, nên tính như đã có neo đại lượng.
+   * Neo chủ đề chi phối trực tiếp con số: "phúc khảo (bài thi) trong 7 ngày", "tạm ứng đến 10 triệu" — sau neo tối
+   * đa hai tiếng rồi tới một khung thời hạn / hạn mức và giá trị, không qua dấu câu, và mệnh đề KHÔNG nhắc một đại
+   * lượng khác ("kết quả", "lưu", "số dư", "tổng"…). Khi đó con số chính là thời hạn hay hạn mức của việc được neo.
    * @param {string} line @param {Rule|null|undefined} rule @param {ReadonlyArray<Hit>} hits
    */
   function anchorGovernsValue(line, rule, hits) {
     if (!rule || !Array.isArray(rule.aliases)) return false;
     const low = String(line || '').toLowerCase();
     const frame = /^\s*(?:[\p{L}]+\s+){0,2}?(?:trong(?:\s+vòng|\s+thời\s+hạn)?|tối\s+đa|không\s+quá|đến|từ)\s*$/u;
-    return rule.aliases.some(alias => {
+    const blocked = (/** @type {Hit} */ h) => OTHER_QUANTITY.some(w => new RegExp('(?<![\\p{L}\\p{N}])' + w.split(' ').map(escRe).join('\\s+') + '(?![\\p{L}\\p{N}])', 'u').test(clauseAt(low, h.index)));
+    return rule.aliases.filter(a => typeof a === 'string' && a.trim()).some(alias => {
       const a = String(alias).toLowerCase();
       for (let i = low.indexOf(a); i >= 0; i = low.indexOf(a, i + 1)) {
         const end = i + a.length;
-        if (hits.some(h => h.index >= end && frame.test(low.slice(end, h.index)))) return true;
+        if (hits.some(h => h.index >= end && frame.test(low.slice(end, h.index)) && !blocked(h))) return true;
       }
       return false;
     });
@@ -364,7 +388,7 @@
           plain = owners.length
             ? 'Dòng này có thể nhắc nhiều quy định hoặc chỉ nhắc quy định khác. Người phụ trách cần xác nhận trước khi sửa.'
             : 'Ở dòng này con số đứng trơ một mình, không có chữ nào cho biết nó là hạn mức nào. Đoán bừa thì rủi ro nên hỏi lại người phụ trách.';
-        } else if (measuresOf(rule).length && !measureCuesInLine(line, rule).length && !anchorGovernsValue(line, rule, hits)) {
+        } else if (measuresOf(rule).length && !measureCuesInLine(line, rule, hits).length && !anchorGovernsValue(line, rule, hits)) {
           // §5.4 — có neo chủ đề nhưng không có neo đại lượng: con số có thể đo một việc khác của cùng chủ đề.
           outcome = 'ESCALATE'; cat = 'U1';
           reason = 'Dòng có neo chủ đề của ' + rule.id + ' nhưng không có cụm nào cho biết con số đo “' + rule.name.toLowerCase() + '” (ví dụ: ' + measuresOf(rule).slice(0, 3).map(x => '“' + x + '”').join(', ') + '). Con số có thể là một đại lượng khác của cùng chủ đề.';
@@ -375,19 +399,24 @@
           plain = 'Đây là chỗ nhắc lại đúng quy định vừa đổi, sửa máy móc được nên hệ thống tự sửa.';
         }
 
-        let newLine = line.replace(re, (mm, index) => isStructuredNumericOccurrence(line, index, mm) ? mm : renderValue(mm, change.newValue));
-        if (variantOnly) {
-          // Bản sửa đề xuất cho dạng khác: thay đúng đoạn khớp bằng giá trị mới (giữ kiểu không dấu nếu dòng không dấu).
-          newLine = line;
-          for (const v of [...variants].sort((a, b) => b.index - a.index)) {
-            const rendered = renderValue(v.text, change.newValue);
-            newLine = newLine.slice(0, v.index) + (v.form === 'no_diacritics' ? stripDiacritics(rendered) : rendered) + newLine.slice(v.index + v.text.length);
+        // Bản sửa đề xuất thay MỌI chỗ khớp — dạng chuẩn lẫn dạng khác — từ phải sang trái để vị trí không lệch.
+        // (Dạng khác không bao giờ được tự sửa; bản này chỉ để người duyệt đọc lại và chấp thuận.)
+        /** @type {{ index:number, text:string, form?:string }[]} */
+        const spans = [...hits.filter(h => !isStructuredNumericOccurrence(line, h.index, h.text)), ...variants].sort((a, b) => b.index - a.index);
+        let newLine = line;
+        for (const v of spans) {
+          let rendered = renderValue(v.text, change.newValue);
+          if (v.form === 'no_diacritics') {
+            rendered = stripDiacritics(rendered);
+            const suffix = v.text.match(/\s(?:dong|vnd)$/i);
+            if (suffix && !/(?:dong|vnd)$/i.test(rendered)) rendered += suffix[0];
           }
+          newLine = newLine.slice(0, v.index) + rendered + newLine.slice(v.index + v.text.length);
         }
         props.push({
           id: 'P' + (++seq),
           docId: doc.id, docTitle: doc.title, docOwner: doc.owner, docTier: doc.tier,
-          lineIndex: li, line, newLine, hits: variantOnly ? variants : hits, variantOnly, outcome, category: cat, reason, plain,
+          lineIndex: li, line, newLine, hits: variantOnly ? variants : hits, variants, variantOnly, outcome, category: cat, reason, plain,
           citation: rule ? (rule.id + ' — ' + rule.source) : '—',
           decided: false, accepted: false, decisionLabel: null
         });
@@ -408,7 +437,7 @@
     const who = TIER_APPROVER[p.docTier];
     if (p.category === 'U1') {
       return {
-        q: 'Tài liệu ' + p.docId + ' — ' + p.docTitle + ', dòng ' + (p.lineIndex + 1) + ': “' + p.line.trim() + '”. ' + (p.variantOnly ? 'Giá trị “' + change.oldValue + '” xuất hiện ở dạng khác (“' + p.hits[0].text + '”). ' : 'Giá trị “' + change.oldValue + '” ở đây chưa được xác định chắc chắn thuộc quy định nào. ') + 'Đề xuất đổi thành “' + change.newValue + '”. ' +
+        q: 'Tài liệu ' + p.docId + ' — ' + p.docTitle + ', dòng ' + (p.lineIndex + 1) + ': “' + p.line.trim() + '”. ' + (p.variants && p.variants.length ? 'Giá trị “' + change.oldValue + '” xuất hiện ở dạng khác (“' + p.variants[0].text + '”). ' : 'Giá trị “' + change.oldValue + '” ở đây chưa được xác định chắc chắn thuộc quy định nào. ') + 'Đề xuất đổi thành “' + change.newValue + '”. ' +
            'Chuyên viên phụ trách tài liệu quyết định: giá trị này có thuộc ' + (rule ? rule.name.toLowerCase() : 'quy định vừa sửa') + ' không?',
         a: 'Có — sửa thành “' + change.newValue + '”',
         b: 'Không — giữ nguyên “' + change.oldValue + '”'
@@ -536,7 +565,7 @@
     TIER_LABEL, TIER_APPROVER,
     escRe, parseValue, valueRegex, isStructuredNumericOccurrence, renderValue,
     ownersOfLine, matchesOldValue, analyze, stripDiacritics, numberWords, equivalentRegex, equivalentHits,
-    measuresOf, measureCuesInLine, anchorGovernsValue, escalationQuestion, actAccepts,
+    measuresOf, measureCuesInLine, anchorGovernsValue, clauseAt, OTHER_QUANTITY, escalationQuestion, actAccepts,
     parseFreeText, policyValueKey, changeError, bumpVersion, cloneDocs, cloneRegistry
   });
 });

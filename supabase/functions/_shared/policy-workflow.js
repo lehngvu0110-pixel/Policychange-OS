@@ -238,7 +238,8 @@
     const title = String(input && input.title || '').trim().slice(0, 160);
     const owner = String(input && input.owner || '').trim().slice(0, 120) || 'Do người dùng nhập';
     const tier = Number(input && input.tier);
-    const lines = (Array.isArray(input && input.lines) ? input.lines : []).map(l => String(l).trim()).filter(Boolean);
+    // Chuẩn hoá NFC: văn bản dán từ Word/macOS có thể ở dạng NFD ("ngày" = n-g-a-\u0300-y) và sẽ không khớp neo nào.
+    const lines = (Array.isArray(input && input.lines) ? input.lines : []).map(l => String(l).normalize('NFC').trim()).filter(Boolean);
     if (!title || !lines.length) return { ok: false, message: 'Cần cả tên tài liệu và nội dung.' };
     if (![1, 2, 3].includes(tier)) return { ok: false, message: 'Cấp tài liệu không hợp lệ.' };
     if (lines.length > 200 || lines.some(l => l.length > 1500)) return { ok: false, message: 'Tài liệu quá dài (tối đa 200 dòng, mỗi dòng 1.500 ký tự).' };

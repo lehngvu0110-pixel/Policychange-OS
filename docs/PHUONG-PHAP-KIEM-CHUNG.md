@@ -9,7 +9,7 @@ Mọi số trong tài liệu này chạy lại được bằng một lệnh (M�
 
 | Lớp | Trả lời câu hỏi | Ở đâu | Ai viết |
 |---|---|---|---|
-| Kiểm thử đơn vị và E2E | Từng thành phần có làm đúng điều nó hứa không? | `tests/*.test.cjs` (210+ ca), `tests/e2e/` (Playwright) | nhóm |
+| Kiểm thử đơn vị và E2E | Từng thành phần có làm đúng điều nó hứa không? | `tests/*.test.cjs` (219 ca), `tests/e2e/` (Playwright) | nhóm |
 | `npm run verify` | Phần mềm có thi hành **đúng từng điều** của QT-KSTL-01 không? | `scripts/verify.cjs`: 14 điều, mỗi điều một phép thử | nhóm |
 | Tập phát triển 48 ca | Động cơ có ổn trên các cách viết nhóm nghĩ ra không? | `bench/holdout.csv` | nhóm, gắn nhãn tay |
 | **Tập mù 40 ca** | Động cơ có ổn trên cách viết **người khác** nghĩ ra không? | `bench/blind.csv` | tác tử độc lập, **không xem mã** |
@@ -121,7 +121,7 @@ cùng một đơn vị. Đó là trường hợp phổ biến trong tổ chức 
 ## 6. Chạy lại
 
 ```bash
-npm test               # 210+ kiểm thử đơn vị
+npm test               # 219 kiểm thử đơn vị
 npm run verify         # 14 điều của QT-KSTL-01, bảng ĐẠT/TRƯỢT, mã thoát ≠ 0 nếu trượt
 npm run eval:blind     # tập mù 40 ca
 node bench/blind.cjs --csv=bench/holdout.csv   # tập phát triển với cùng bộ chỉ số

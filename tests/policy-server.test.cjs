@@ -181,5 +181,8 @@ test('thêm neo đại lượng: gói RPC mang cả measures, bản ghi ghi rõ 
   assert.ok(upd.measures.includes('phiếu đăng ký'));
   assert.ok(!upd.aliases.includes('phiếu đăng ký'));
   assert.equal(plan.rpc.p_records[0].action, 'THÊM NEO ĐẠI LƯỢNG R-PK-01');
-  assert.deepEqual(Server.fromDbPolicy({ id: 'X', name: 'n', value: '1 ngày', tier: 1, source: 's', owner: 'o', aliases: ['a'] }).measures, []);
+  assert.equal(Server.fromDbPolicy({ id: 'X', name: 'n', value: '1 ngày', tier: 1, source: 's', owner: 'o', aliases: ['a'] }).measures, undefined, 'thiếu cột ≠ mảng rỗng');
+  const Data2 = require('../js/policy-data.js');
+  assert.ok(Data2.withSeedMeasures([{ id: 'R-PK-01', aliases: ['phúc khảo'] }])[0].measures.includes('nộp'));
+  assert.deepEqual(Data2.withSeedMeasures([{ id: 'R-PK-01', aliases: ['a'], measures: [] }])[0].measures, [], 'mảng rỗng khai rõ được giữ');
 });

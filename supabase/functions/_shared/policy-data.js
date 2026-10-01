@@ -158,5 +158,19 @@
     expect:{ outcome:"ESCALATE", category:"U3" } }
 ];
 
-  return deepFreeze({ SEED_REGISTRY, SEED_DOCUMENTS, SUITE_REQUIRED, SUITE_ESCALATION });
+  /**
+   * Dữ liệu lưu từ trước khi có neo đại lượng (bản ngoại tuyến cũ, CSDL chưa chạy migration 7) không có trường
+   * `measures`. Thiếu trường KHÁC với mảng rỗng: thiếu thì lấy neo đại lượng mẫu theo mã quy định, để không lặng lẽ
+   * tắt điều kiện §5.4. Quy định không có trong mẫu giữ []: neo chủ đề tự chịu trách nhiệm (hành vi cũ).
+   * @param {ReadonlyArray<any>} registry @returns {any[]}
+   */
+  function withSeedMeasures(registry) {
+    return (Array.isArray(registry) ? registry : []).map(r => {
+      if (!r || Array.isArray(r.measures)) return r;
+      const seed = SEED_REGISTRY.find(x => x.id === r.id);
+      return { ...r, measures: seed ? [...seed.measures] : [] };
+    });
+  }
+
+  return deepFreeze({ SEED_REGISTRY, SEED_DOCUMENTS, SUITE_REQUIRED, SUITE_ESCALATION, withSeedMeasures });
 });

@@ -120,3 +120,15 @@ test('thêm tài liệu: kiểm tra đầu vào, cấp mã NEW-xx và ghi sổ',
   assert.deepEqual(r.doc.lines, ['Nộp đơn phúc khảo trong 7 ngày.']);
   assert.equal(state.ledger[0].action, 'THÊM TÀI LIỆU NEW-01');
 });
+
+test('nạp tài liệu: chuẩn hoá NFC để văn bản dạng NFD vẫn khớp neo và giá trị', () => {
+  const Workflow = require('../js/policy-workflow.js');
+  const Engine = require('../js/policy-engine.js');
+  const Data = require('../js/policy-data.js');
+  const state = { registry: Engine.cloneRegistry(Data.SEED_REGISTRY), docs: [], current: null, ledger: [] };
+  const nfd = 'Sinh viên nộp đơn phúc khảo trong 7 ngày.'.normalize('NFD');
+  const res = Workflow.addDocument(state, { title: 'NFD', owner: 'Phòng Đào tạo', tier: 1, lines: [nfd] }, { now: () => 't' });
+  assert.equal(res.ok, true);
+  Workflow.startAnalysis(state, Workflow.buildChange(state.registry, 'R-PK-01', '5 ngày', 2).change);
+  assert.equal(state.current.props[0].outcome, 'AUTO_PATCH');
+});

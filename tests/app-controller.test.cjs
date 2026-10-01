@@ -191,3 +191,39 @@ test('có AI thật: Ban hành tự cho mô hình rà các dòng tự sửa trư
   assert.ok(!held.applied, 'dòng AI nghi ngờ không được tự sửa');
   assert.equal(res.applied, 5);
 });
+
+test('bản lưu ngoại tuyến cũ (chưa có neo đại lượng) không lặng lẽ tắt điều kiện §5.4', async () => {
+  const backend = Store.memoryBackend();
+  const Data = require('../js/policy-data.js');
+  const old = Data.SEED_REGISTRY.map(({ measures, ...r }) => ({ ...r, aliases: [...r.aliases] }));
+  const store = Store.createLocalStore({ backend, workspace: 'local' });
+  await store.save({ registry: old, docs: require('../js/policy-engine.js').cloneDocs(Data.SEED_DOCUMENTS), ledger: [], feedback: [] });
+  const app = App.createController(deps({ localStore: Store.createLocalStore({ backend, workspace: 'local' }) }));
+  await app.init({ prefer: 'local' });
+  assert.ok(app.state.registry.find(r => r.id === 'R-PK-01').measures.includes('nộp'));
+});
+
+test('đổi vai trò trong lúc AI đang rà → không ban hành; bấm Ban hành lần hai khi AI chưa xong → bị chặn', async () => {
+  let release;
+  const gate = new Promise(r => { release = r; });
+  const aiAdapter = {
+    status: async () => ({ available: true, model: 'm' }),
+    discover: async payload => { await gate; return { available: true, output: { schemaVersion: 1, candidates: [] } }; },
+    extract: async () => ({ available: false })
+  };
+  const app = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend(), workspace: 'local' }), aiAdapter }));
+  await app.init({ prefer: 'local' });
+  await new Promise(r => setTimeout(r, 0));
+  app.analyze(CHANGE);
+  app.setPersona('tp-dt');
+  const first = app.commit();
+  await new Promise(r => setTimeout(r, 0));
+  const second = await app.commit();
+  assert.equal(second.ok, false, 'lần bấm thứ hai không được bỏ qua bước rà soát');
+  app.setPersona('cv-dt');
+  release();
+  const res = await first;
+  assert.equal(res.ok, false);
+  assert.match(res.message, /vai trò vừa thay đổi/);
+  assert.equal(app.state.ledger.length, 0);
+});

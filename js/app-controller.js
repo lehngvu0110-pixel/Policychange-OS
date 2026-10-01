@@ -87,7 +87,7 @@
     async function loadLocal() {
       const snapshot = await deps.localStore.load();
       if (snapshot && Ledger.verify(snapshot.ledger)) {
-        S.registry = snapshot.registry; S.docs = snapshot.docs; S.ledger = snapshot.ledger; S.feedback = snapshot.feedback || [];
+        S.registry = Data.withSeedMeasures(snapshot.registry); S.docs = snapshot.docs; S.ledger = snapshot.ledger; S.feedback = snapshot.feedback || [];
       } else {
         if (snapshot) notify('warn', 'Dữ liệu lưu trên máy có chuỗi kiểm toán không hợp lệ; đã khôi phục dữ liệu mẫu.');
         seedLocal();
@@ -110,7 +110,7 @@
       S.connection = 'online';
       S.source = 'remote';
       S.workspace = { id: res.workspace.id, name: res.workspace.name, mode: res.workspace.mode };
-      S.registry = res.registry; S.docs = res.docs; S.ledger = res.ledger; S.feedback = res.feedback;
+      S.registry = Data.withSeedMeasures(res.registry); S.docs = res.docs; S.ledger = res.ledger; S.feedback = res.feedback;
       S.openChanges = res.openChanges || []; S.decisions = res.decisions || [];
       S.stale = false; S.revision++;
       if (S.workspace.mode === 'live') {
@@ -278,7 +278,9 @@
     async function ensureSemanticReview() {
       const analysis = S.current;
       if (!analysis || S.ai.status !== 'ready' || !deps.aiAdapter) return { ok: true, skipped: true, message: 'AI đang tắt; dùng kết quả tiền định.' };
-      if (analysis.semanticStatus) return { ok: true, skipped: true, message: 'Đã rà soát.' };
+      if (analysis.semanticStatus === 'pending') return { ok: false, pending: true, message: 'AI đang rà soát; đợi xong rồi bấm Ban hành.' };
+      // Chỉ bỏ qua khi lần rà trước đã xong thật; lần trước lỗi / hết giờ thì thử lại.
+      if (analysis.semanticStatus === 'complete' || analysis.semanticStatus === 'no_candidates') return { ok: true, skipped: true, message: 'Đã rà soát.' };
       if (!analysis.props.some((/** @type {any} */ p) => p.outcome === 'AUTO_PATCH' && !p.applied)) return { ok: true, skipped: true, message: 'Không có dòng tự sửa để rà.' };
       return discoverSemantics(deps.aiAdapter, 'openai');
     }
@@ -343,7 +345,12 @@
       if (!S.current) return result(false, 'Chưa có phân tích.');
       const issue = canIssueCurrent();
       if (!issue.ok) return result(false, issue.reason || 'Không đủ thẩm quyền ban hành.');
-      await ensureSemanticReview();
+      const analysis = S.current, persona = S.persona;
+      const review = await ensureSemanticReview();
+      // Trong lúc chờ AI, người dùng có thể đổi vai trò, phân tích lại hoặc bấm Ban hành lần nữa: không ban hành
+      // một phân tích khác với cái vừa được kiểm quyền và rà soát.
+      if (S.current !== analysis || S.persona !== persona) return result(false, 'Phân tích hoặc vai trò vừa thay đổi trong lúc AI rà soát; hãy kiểm tra lại rồi bấm Ban hành.');
+      if (review && review.pending) return result(false, review.message);
       if (S.source === 'remote') return commitRemote(options);
       const fresh = S.current.props.filter((/** @type {any} */ p) => p.decided && !p.fed);
       const approvedSemantic = S.current.props.filter((/** @type {any} */ p) => p.semanticHoldApproved && !p.fed);

@@ -51,9 +51,10 @@ test('sau khi người duyệt thêm neo, vị trí U1 cũ được tự xử l�
 
   const [suggestion] = Learning.suggestAnchors([fb('X-1', LINE_A, 'accept'), fb('X-2', LINE_B, 'accept')], state.registry)
     .filter(s => s.phrase === 'lưu bài thi');
-  const added = Workflow.addAnchor(state, suggestion.ruleId, suggestion.phrase, { now: () => '2026-10-01T00:00:00.000Z', actor: 'Người · Trưởng phòng Đào tạo' });
+  assert.equal(suggestion.field, 'both', 'dòng thiếu cả neo chủ đề lẫn neo đại lượng');
+  const added = Workflow.addAnchor(state, suggestion.ruleId, suggestion.phrase, { now: () => '2026-10-01T00:00:00.000Z', actor: 'Người · Trưởng phòng Đào tạo', field: suggestion.field });
   assert.equal(added.ok, true);
-  assert.equal(state.ledger.at(-1).action, 'THÊM NEO R-PK-01');
+  assert.equal(state.ledger.at(-1).action, 'THÊM NEO CHỦ ĐỀ + ĐẠI LƯỢNG R-PK-01');
 
   const after = Engine.analyze(Workflow.buildChange(state.registry, 'R-PK-01', '5 ngày', 2).change, state.docs, state.registry).props[0];
   assert.equal(after.outcome, 'AUTO_PATCH');
@@ -94,4 +95,12 @@ test('missingField: phân biệt thiếu chủ đề, thiếu đại lượng, t
   assert.equal(Learning.missingField(rule, 'Kết quả phúc khảo thông báo sau 7 ngày.'), 'measures');
   assert.equal(Learning.missingField(rule, 'Hạn nộp phiếu xem lại bài là 7 ngày.'), 'aliases');
   assert.equal(Learning.missingField(rule, 'Phiếu xem lại bài gửi khoa sau 7 ngày.'), 'both');
+});
+
+test('dòng U1 đã đủ cả neo chủ đề lẫn đại lượng (ví dụ giá trị viết bằng chữ) không dùng để học', () => {
+  const registry = Engine.cloneRegistry(Data.SEED_REGISTRY);
+  const out = Learning.suggestAnchors([
+    fb('Z-1', 'Hạn nộp đơn phúc khảo ở khoa là một tuần.', 'accept'),
+    fb('Z-2', 'Hạn nộp đơn phúc khảo ở khoa là bảy ngày.', 'accept')], registry);
+  assert.deepEqual(out.filter(s => s.ruleId === 'R-PK-01'), []);
 });

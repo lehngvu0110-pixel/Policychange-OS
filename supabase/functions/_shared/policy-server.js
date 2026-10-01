@@ -37,7 +37,8 @@
   /** @param {any} row */
   function fromDbPolicy(row) {
     return { id: row.id, name: row.name, value: row.value, tier: row.tier, source: row.source, owner: row.owner, aliases: [...row.aliases],
-      measures: Array.isArray(row.measures) ? [...row.measures] : [] };
+      // Thiếu cột (CSDL chưa chạy migration 7) → để undefined cho tầng trên điền neo mẫu; KHÔNG coi là [].
+      ...(Array.isArray(row.measures) ? { measures: [...row.measures] } : {}) };
   }
   /** @param {any} row */
   function fromDbDocument(row) {

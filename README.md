@@ -80,7 +80,7 @@ Mở thẳng `index.html` bằng trình duyệt cũng chạy được.
 ```bash
 npm install                       # chỉ cần cho Playwright và TypeScript
 npm run verify                    # kiểm từng điều của QT-KSTL-01 v2.0 — bảng ĐẠT/TRƯỢT (không cần npm install)
-npm test                          # 211 unit test: động cơ, sổ, phân quyền, máy chủ, học, đánh giá, bộ điều khiển
+npm test                          # 219 unit test: động cơ, sổ, phân quyền, máy chủ, học, đánh giá, bộ điều khiển
 npm run eval:blind                # tập mù 40 ca (đóng băng, do tác tử độc lập viết)
 npm run bench                     # benchmark 26 fixture (naive / LLM-only / PolicyChange OS)
 npm run eval                      # tập phát triển bench/holdout.csv

@@ -137,3 +137,48 @@ test('hồi quy: "10 trang" không bị coi là "10 tr(iệu)" và không bị s
     assert.deepEqual(EngineX.numberWords(0), []);
   });
 }
+
+// Các ca do người review tìm ra: khung chi phối không được che một đại lượng khác; neo đại lượng phải cùng mệnh đề.
+{
+  const EngineY = require('../js/policy-engine.js');
+  const DataY = require('../js/policy-data.js');
+  const Prover = require('../js/policy-prover.js');
+  const lab = (ruleId, nv, line) => {
+    const registry = EngineY.cloneRegistry(DataY.SEED_REGISTRY);
+    const rule = registry.find(r => r.id === ruleId);
+    const p = EngineY.analyze({ rule, oldValue: rule.value, newValue: nv, issuerTier: 3 }, [{ id: 'T', title: 't', owner: 'o', tier: 1, version: '1', lines: [line] }], registry).props[0];
+    return !p ? 'NONE' : p.outcome === 'AUTO_PATCH' ? 'AUTO' : p.category;
+  };
+  test('khung "neo + trong/tối đa" không áp dụng khi mệnh đề nói về đại lượng khác', () => {
+    assert.equal(lab('R-PK-01', '5 ngày', 'Kết quả phúc khảo thông báo trong 7 ngày.'), 'U1');
+    assert.equal(lab('R-PK-01', '5 ngày', 'Bài thi phúc khảo được lưu trong 7 ngày.'), 'U1');
+    assert.equal(lab('R-TC-01', '15 triệu', 'Tổng dư tạm ứng tối đa 10 triệu đồng mỗi quý.'), 'U1');
+    assert.equal(lab('R-PK-01', '5 ngày', 'Sinh viên phúc khảo bài thi trong 7 ngày.'), 'AUTO');
+  });
+  test('neo đại lượng ở mệnh đề khác không tính', () => {
+    assert.equal(lab('R-PK-01', '5 ngày', 'Sinh viên nộp đơn phúc khảo; bài thi lưu 7 ngày.'), 'U1');
+    assert.equal(lab('R-PK-01', '5 ngày', 'Quá 7 ngày kể từ ngày công bố điểm, đơn phúc khảo không được tiếp nhận.'), 'AUTO');
+    assert.equal(lab('R-TC-01', '15 triệu', 'Khoản tạm ứng đến 10.000.000 đồng do Trưởng đơn vị duyệt.'), 'AUTO', 'dấu chấm hàng nghìn không cắt mệnh đề');
+  });
+  test('không dấu kèm hậu tố có dấu, dòng vừa chuẩn vừa khác dạng, "mười triệu rưỡi"', () => {
+    assert.equal(lab('R-KN-01', '5 ngày', 'Don khieu nai tra loi trong 7 ngay làm việc.'), 'U1');
+    const registry = EngineY.cloneRegistry(DataY.SEED_REGISTRY);
+    const rule = registry.find(r => r.id === 'R-PK-01');
+    const p = EngineY.analyze({ rule, oldValue: '7 ngày', newValue: '5 ngày', issuerTier: 3 }, [{ id: 'T', title: 't', owner: 'o', tier: 1, version: '1', lines: ['Nộp đơn phúc khảo trong 7 ngày (một tuần).'] }], registry).props[0];
+    assert.equal(p.category, 'U1');
+    assert.equal(p.newLine, 'Nộp đơn phúc khảo trong 5 ngày (5 ngày).', 'sửa cả dạng chuẩn lẫn dạng khác');
+    assert.equal(lab('R-TC-01', '15 triệu', 'Trưởng đơn vị duyệt tạm ứng mười triệu rưỡi.'), 'NONE', '10,5 triệu không phải 10 triệu');
+  });
+  test('prover độc lập: dòng bị khung chặn thì registered_measure_cue trượt', () => {
+    const registry = EngineY.cloneRegistry(DataY.SEED_REGISTRY);
+    const rule = registry.find(r => r.id === 'R-PK-01');
+    const line = 'Bài thi phúc khảo được lưu trong 7 ngày.';
+    const doc = { id: 'T', title: 't', owner: 'o', tier: 1, version: '1', lines: [line] };
+    const change = { rule, oldValue: '7 ngày', newValue: '5 ngày', issuerTier: 3 };
+    const forged = { ...EngineY.analyze(change, [doc], registry).props[0], outcome: 'AUTO_PATCH', category: null };
+    const proof = Prover.proveAutomaticPatch(change, doc, forged, { registry, docs: [doc], parseValue: EngineY.parseValue, valueRegex: EngineY.valueRegex,
+      renderValue: EngineY.renderValue, ownersOfLine: l => EngineY.ownersOfLine(l, registry), analyze: (c, d) => EngineY.analyze(c, d, registry) });
+    assert.equal(proof.allowed, false);
+    assert.equal(proof.checks.find(c => (c.id || c.name) === 'registered_measure_cue').passed, false);
+  });
+}

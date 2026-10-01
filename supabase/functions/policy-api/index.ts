@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
   }
   const ctx = {
     workspace, member,
-    registry: policies.data.map(Server.fromDbPolicy),
+    registry: Data.withSeedMeasures(policies.data.map(Server.fromDbPolicy)),
     docs: documents.data.map(Server.fromDbDocument),
     ledger: audit.data.map(Server.fromDbRecord),
     openChanges: openChanges.data.map(Server.fromDbOpenChange),

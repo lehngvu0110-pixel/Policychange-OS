@@ -151,12 +151,23 @@
     const measures = rule && Array.isArray(rule.measures) ? rule.measures.filter(m => typeof m === 'string' && m.trim()) : [];
     const lowLine = typeof line === 'string' ? line.toLowerCase() : '';
     const wordRe = phrase => new RegExp('(?<![\\p{L}\\p{N}])' + phrase.toLowerCase().trim().split(/\s+/).map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+') + '(?![\\p{L}\\p{N}])', 'u');
-    const measureCues = measures.filter(m => { try { return wordRe(m).test(lowLine); } catch (_e) { return false; } });
+    // Mệnh đề chứa con số: cắt theo ; ? ! và dấu chấm kết câu (không cắt 10.000.000).
+    const clauseOf = index => {
+      let start = 0, end = lowLine.length;
+      const delim = /[;?!]|\.(?=\s|$)/g;
+      let d;
+      while ((d = delim.exec(lowLine)) !== null) { if (d.index < index) start = d.index + 1; else { end = d.index; break; } }
+      return lowLine.slice(start, end);
+    };
+    const clauses = currentHits.map(h => clauseOf(h.index));
+    const measureCues = measures.filter(m => { try { return clauses.some(c => wordRe(m).test(c)); } catch (_e) { return false; } });
+    const otherQuantity = ['kết quả', 'lưu', 'lưu trữ', 'hiệu lực', 'giá trị sử dụng', 'số dư', 'dư', 'tổng'];
     const frame = /^\s*(?:[\p{L}]+\s+){0,2}?(?:trong(?:\s+vòng|\s+thời\s+hạn)?|tối\s+đa|không\s+quá|đến|từ)\s*$/u;
     const governs = aliases.some(alias => {
       const a = alias.toLowerCase();
       for (let i = lowLine.indexOf(a); i >= 0; i = lowLine.indexOf(a, i + 1)) {
-        if (currentHits.some(h => h.index >= i + a.length && frame.test(lowLine.slice(i + a.length, h.index)))) return true;
+        if (currentHits.some(h => h.index >= i + a.length && frame.test(lowLine.slice(i + a.length, h.index)) &&
+            !otherQuantity.some(w => wordRe(w).test(clauseOf(h.index))))) return true;
       }
       return false;
     });

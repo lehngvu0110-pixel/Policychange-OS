@@ -63,8 +63,9 @@
 
   /**
    * Dòng U1 được trả lời "Có" thiếu loại neo nào? Có neo chủ đề mà thiếu đại lượng → học đại lượng; có đại lượng
-   * mà thiếu chủ đề → học chủ đề; thiếu cả hai → cụm học được dùng cho cả hai.
-   * @param {any} rule @param {string} line @returns {'aliases'|'measures'|'both'}
+   * mà thiếu chủ đề → học chủ đề; thiếu cả hai → cụm học được dùng cho cả hai. Đã đủ cả hai (U1 vì giá trị viết khác
+   * dạng hoặc dòng neo nhiều quy định) → null: thêm neo không giúp gì, dòng đó không dùng để học.
+   * @param {any} rule @param {string} line @returns {'aliases'|'measures'|'both'|null}
    */
   function missingField(rule, line) {
     const low = String(line || '').toLowerCase();
@@ -73,6 +74,7 @@
     const measured = !measures.length || measures.some((/** @type {string} */ m) => hasWords(line, m));
     if (topic && !measured) return 'measures';
     if (!topic && measured) return 'aliases';
+    if (topic && measured) return null;
     return 'both';
   }
 
@@ -106,6 +108,12 @@
       // Dòng vừa được trả lời "Có" rồi sau đó "Không" (hoặc ngược lại) — lấy câu trả lời mới nhất theo thứ tự nhập.
       for (const f of about) if (f.answer === 'reject') accepted.delete(lineKey(f));
 
+      /** @type {Map<string, 'aliases'|'measures'|'both'>} */ const fieldOfLine = new Map();
+      for (const [key, f] of [...accepted.entries()]) {
+        const field = missingField(rule, f.line);
+        if (field) fieldOfLine.set(f.docId + '\u0000' + f.lineIndex, field); else accepted.delete(key);
+      }
+
       /** @type {Map<string, {docId:string, lineIndex:number}[]>} */ const support = new Map();
       for (const f of accepted.values()) {
         for (const phrase of phrasesOf(f.line)) {
@@ -115,8 +123,6 @@
       }
       const others = (registry || []).filter(r => r.id !== rule.id).flatMap(r => r.aliases || []);
       const ownMeasures = Array.isArray(rule.measures) ? rule.measures : [];
-      /** @type {Map<string, 'aliases'|'measures'|'both'>} */ const fieldOfLine = new Map();
-      for (const f of accepted.values()) fieldOfLine.set(f.docId + '\u0000' + f.lineIndex, missingField(rule, f.line));
       /** @type {Suggestion[]} */
       let candidates = [...support.entries()]
         .filter(([phrase, lines]) => lines.length >= minSupport &&
