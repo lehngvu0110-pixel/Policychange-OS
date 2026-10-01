@@ -140,7 +140,7 @@
     async function checkAI() {
       if (!deps.aiAdapter) return;
       const res = await deps.aiAdapter.status();
-      S.ai = res.available ? { status: 'ready', reason: 'OpenAI qua máy chủ', model: res.model || null }
+      S.ai = res.available ? { status: 'ready', reason: 'Mô hình AI qua máy chủ', model: res.model || null }
         : { status: 'off', reason: res.reason || 'AI không khả dụng.', model: null };
       emit();
     }

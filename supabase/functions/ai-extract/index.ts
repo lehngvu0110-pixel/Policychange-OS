@@ -17,14 +17,14 @@ Deno.serve(async (req) => {
   if (body.probe === true) {
     return json(200, openAIConfigured()
       ? { available: true, output: null, model: openAIModel(), probe: true }
-      : { available: false, reason: "Máy chủ chưa cấu hình OPENAI_API_KEY; hệ thống dùng động cơ tiền định." });
+      : { available: false, reason: "Máy chủ chưa cấu hình khoá AI (OPENAI_API_KEY hoặc AI_API_KEY); hệ thống dùng động cơ tiền định." });
   }
   const requestText = typeof body.requestText === "string" ? body.requestText : "";
   const registry = Array.isArray(body.registry) ? body.registry : [];
   if (!requestText.trim() || requestText.length > Mapping.LIMITS.requestChars || !registry.length || registry.length > Mapping.LIMITS.registryRules) {
     return json(200, { available: false, reason: "Yêu cầu hoặc sổ đăng ký vượt giới hạn cho phép." });
   }
-  if (!openAIConfigured()) return json(200, { available: false, reason: "Máy chủ chưa cấu hình OPENAI_API_KEY; hệ thống dùng động cơ tiền định." });
+  if (!openAIConfigured()) return json(200, { available: false, reason: "Máy chủ chưa cấu hình khoá AI (OPENAI_API_KEY hoặc AI_API_KEY); hệ thống dùng động cơ tiền định." });
   if (!(await consumeAIQuota(req))) return json(200, { available: false, reason: "Đã hết hạn mức gọi AI trong ngày; hệ thống dùng động cơ tiền định." });
 
   const result = await callStructured(Mapping.extractMessages({ requestText, registry }), "policy_change_extraction", Mapping.EXTRACT_SCHEMA, 400);

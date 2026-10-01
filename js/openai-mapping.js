@@ -133,7 +133,9 @@
   /** @param {unknown} raw */
   function parse(raw) {
     if (typeof raw !== 'string') return raw;
-    try { return JSON.parse(raw); } catch (_) { return null; }
+    // Một số nhà cung cấp tương thích OpenAI (ví dụ Gemini) đôi khi bọc JSON trong khối ```json … ```.
+    const text = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    try { return JSON.parse(text); } catch (_) { return null; }
   }
 
   /**

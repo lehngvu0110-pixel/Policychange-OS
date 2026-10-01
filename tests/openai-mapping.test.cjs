@@ -104,3 +104,9 @@ test('adapter trình duyệt: lỗi mạng, 500, JSON hỏng đều trả availa
   } });
   assert.deepEqual(await ok.extract({ requestText, registry }), { available: true, output: { a: 1 }, model: 'm', dropped: 0 });
 });
+
+test('JSON bọc trong khối ```json (Gemini) vẫn được đọc', () => {
+  const Mapping = require('../js/openai-mapping.js');
+  const out = Mapping.toExtractContract('```json\n{"status":"refuse","reason":"x"}\n```', 'abc');
+  assert.equal(out.status, 'refuse');
+});

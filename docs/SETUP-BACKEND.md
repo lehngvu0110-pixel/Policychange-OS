@@ -19,6 +19,24 @@ vì liên quan tới khoá bí mật hoặc tài khoản người thật.
 3. Mở ứng dụng, tải lại trang: ô **AI** trên thanh trên cùng chuyển thành “AI · gpt-4o-mini”.
    Nút **Hiểu yêu cầu bằng AI** và **Rà soát ngữ nghĩa bằng AI** bắt đầu gọi mô hình thật.
 
+### Không có tiền? Dùng gói miễn phí của Google Gemini
+
+Hệ thống gọi mô hình qua API chuẩn OpenAI, nên đổi nhà cung cấp chỉ cần đổi Secrets, không cần sửa mã:
+
+1. Vào https://aistudio.google.com/apikey (đăng nhập Gmail) → **Create API key** → copy khoá.
+2. Trong Supabase → Edge Functions → Secrets, thêm:
+
+   | Tên | Giá trị |
+   |---|---|
+   | `AI_API_KEY` | khoá vừa tạo ở AI Studio |
+   | `AI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai` |
+   | `AI_MODEL` | `gemini-3.5-flash-lite` (không bắt buộc; mặc định khi trỏ tới Gemini) |
+
+3. Xoá secret `OPENAI_API_KEY` cũ nếu không dùng nữa (`AI_API_KEY` được ưu tiên nếu có cả hai).
+
+Lưu ý: ở gói miễn phí, Google có thể dùng nội dung gửi lên để cải thiện sản phẩm. Dữ liệu demo là dữ liệu tổng hợp nên
+không sao; khi thí điểm với văn bản thật của trường thì cân nhắc gói trả phí hoặc chỉ gửi văn bản đã công khai.
+
 Khoá chỉ nằm ở máy chủ; trình duyệt không bao giờ nhận được. **Không** dán khoá vào `js/config.js` hay commit lên
 GitHub. Nếu lỡ lộ khoá, thu hồi ngay trên trang OpenAI rồi dán khoá mới vào Secrets.
 

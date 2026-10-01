@@ -269,7 +269,7 @@
       '</div>' +
       '<section class="card"><div class="card-head"><h2>Luồng xử lý một thay đổi</h2><p>Động cơ tiền định là nơi duy nhất quyết định tự sửa hay chuyển người; AI chỉ đưa bằng chứng và chỉ có thể làm kết quả thận trọng hơn.</p></div>' +
         '<div class="card-body"><div class="pipeline">' +
-        step('Hiểu yêu cầu', 'AI (OpenAI) hoặc bộ phân tích tiếng Việt bóc tách: quy định nào, giá trị cũ → mới, cấp ban hành.') +
+        step('Hiểu yêu cầu', 'Mô hình AI (OpenAI hoặc Gemini) hoặc bộ phân tích tiếng Việt bóc tách: quy định nào, giá trị cũ → mới, cấp ban hành.') +
         step('Tìm vị trí', 'Quét toàn bộ kho, nhận mọi cách viết: 10 triệu = 10.000.000 = 10tr.') +
         step('Phân xử', 'AUTO_PATCH, hoặc chuyển U1 / U2 / U3 kèm đúng một câu hỏi, hai lựa chọn.') +
         step('Chứng minh', 'Prover kiểm 14 điều kiện trước khi cho tự sửa (có neo chủ đề + neo đại lượng); thiếu một là chặn.') +
@@ -317,7 +317,7 @@
         '<label class="field" for="reqText">Câu mô tả thay đổi <span class="hint">Ví dụ: “Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành.” · Ctrl/⌘ + Enter để gửi</span></label>' +
         '<textarea id="reqText" name="requestText" data-bind="form.text" placeholder="Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành…">' + esc(f.text) + '</textarea>' +
         '<div class="row">' + btn('understand', S.ai.status === 'ready' ? 'Hiểu yêu cầu bằng AI' : 'Hiểu yêu cầu', { icon: 'spark' }) +
-          '<span class="xs muted">' + esc(S.ai.status === 'ready' ? 'OpenAI chỉ được trả trích dẫn nguyên văn; kết quả được kiểm lại với sổ đăng ký.' : 'AI đang tắt — dùng bộ phân tích tiếng Việt tiền định.') + '</span></div>' +
+          '<span class="xs muted">' + esc(S.ai.status === 'ready' ? 'Mô hình AI chỉ được trả trích dẫn nguyên văn; kết quả được kiểm lại với sổ đăng ký.' : 'AI đang tắt — dùng bộ phân tích tiếng Việt tiền định.') + '</span></div>' +
         understandingBox() +
         '<div class="hr"></div>' +
         '<div class="grid g4">' +
@@ -383,7 +383,7 @@
 
   function semanticLabel(cur) {
     const holds = cur.props.filter(p => p.semanticHold).length;
-    const src = cur.semanticSource === 'fixture_mock' ? 'Bằng chứng mẫu (mock, không phải mô hình thật): ' : cur.semanticSource === 'openai' ? 'OpenAI: ' : '';
+    const src = cur.semanticSource === 'fixture_mock' ? 'Bằng chứng mẫu (mock, không phải mô hình thật): ' : cur.semanticSource === 'openai' ? 'AI · ' + (S.ai.model || 'mô hình') + ': ' : '';
     const m = { complete: src + 'đã rà ' + cur.props.length + ' vị trí; ' + holds + ' vị trí được giữ lại cho người duyệt.',
       unavailable: 'AI ngữ nghĩa không khả dụng; giữ nguyên kết quả động cơ tiền định.', timeout: 'AI hết thời gian chờ; giữ nguyên kết quả tiền định.',
       provider_failure: 'AI gặp lỗi; giữ nguyên kết quả tiền định.', rejected: 'Bằng chứng AI không qua bộ kiểm tra; giữ nguyên kết quả tiền định.', no_candidates: 'Không có vị trí để rà soát.' };
@@ -600,7 +600,7 @@
           : '<div class="empty">Bấm “Chạy Verify”. Bộ kiểm thử độc lập với dữ liệu bạn đang thao tác.</div>') +
       '</div></section>' +
       '<section class="card"><div class="card-head"><h2>Tập kiểm thử độc lập</h2><div class="row">' +
-        btn('eval-blind', 'Chạy tập mù 40 ca', { cls: 'primary' }) + btn('eval-builtin', 'Tập phát triển 48 ca') + btn('eval-ai', 'Chạy kèm AI ngữ nghĩa', { disabled: S.ai.status !== 'ready', title: S.ai.status === 'ready' ? 'Gọi OpenAI cho các ca động cơ muốn tự sửa' : 'AI đang tắt' }) +
+        btn('eval-blind', 'Chạy tập mù 40 ca', { cls: 'primary' }) + btn('eval-builtin', 'Tập phát triển 48 ca') + btn('eval-ai', 'Chạy kèm AI ngữ nghĩa', { disabled: S.ai.status !== 'ready', title: S.ai.status === 'ready' ? 'Gọi mô hình AI cho các ca động cơ muốn tự sửa' : 'AI đang tắt' }) +
         '<label class="btn" for="evalFile">Tải CSV của bạn…</label><input id="evalFile" type="file" accept=".csv,text/csv" class="sr-only" data-action-change="eval-file">' +
       '</div></div><div class="card-body stack">' +
         '<p class="small muted">Định dạng CSV: <code>id,rule_id,new_value,issuer_tier,doc_tier,line,expected[,phenomenon]</code> với expected ∈ AUTO, U1, U2, U3, NONE (ca bẫy: dòng không mang giá trị cũ, không được đụng tới). Cả hai tập đều là dữ liệu tổng hợp; giám khảo có thể tải CSV của mình lên để chấm trực tiếp.</p>' +
