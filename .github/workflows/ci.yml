@@ -25,6 +25,8 @@ jobs:
         run: npm run bench
       - name: Báo cáo tập độc lập
         run: npm run eval
+      - name: Kiểm chứng theo từng điều của QT-KSTL-01 + tập mù
+        run: npm run verify && npm run eval:blind
       - name: Kiểm tra kiểu (tsc, JSDoc)
         run: npm run typecheck
       - name: Edge Function dùng đúng bản module mới nhất

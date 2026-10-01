@@ -67,7 +67,7 @@ CI kiểm tra `supabase/functions/_shared` luôn khớp với `js/` (bước “
 
 ## 4. Dựng trên một dự án Supabase mới
 
-1. Tạo dự án, rồi `supabase link --project-ref <ref>` và `supabase db push` (chạy 6 migration trong `supabase/migrations/`).
+1. Tạo dự án, rồi `supabase link --project-ref <ref>` và `supabase db push` (chạy 7 migration trong `supabase/migrations/`).
 2. `npm run sync:edge && supabase functions deploy policy-api ai-extract ai-discover`.
 3. Sửa `js/config.js`: `supabaseUrl` = `https://<ref>.supabase.co`, `anonKey` = khoá **anon (legacy JWT)** trong
    Project Settings → API. Edge Function bật `verify_jwt` nên cần khoá dạng JWT.

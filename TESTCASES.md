@@ -80,3 +80,17 @@ quyết định vượt quyền kể cả khi giao diện bị sửa (`tests/pol
 
 Độ trễ mỗi ca dưới 10 ms trên máy để bàn thông thường. Con số hiển thị trong bảng là đo thực tế tại thời
 điểm bấm nút, không phải giá trị ghi sẵn.
+
+## Ca bổ sung theo phản hồi doanh nghiệp (QT-KSTL-01 v2.0)
+
+| Mã | Dòng (đổi hạn phúc khảo 7 → 5 ngày, trừ khi ghi khác) | Kỳ vọng | Điều |
+|---|---|---|---|
+| DN-01 | Kết quả phúc khảo được thông báo cho sinh viên sau 7 ngày. | U1 — đúng chủ đề, sai đại lượng | §5.3.c |
+| DN-02 | Sinh viên có một tuần để nộp đơn phúc khảo. | U1 — quy đổi tuần; bản sửa đề xuất “5 ngày” | §5.3.b |
+| DN-03 | Han nop don phuc khao la 7 ngay. | U1 — không dấu; bản sửa đề xuất “5 ngay” | §5.3.b |
+| DN-04 | Tra cứu kết quả sau mười bảy ngày. | Không đụng tới (“mười bảy” ≠ “bảy”) | §5.3.b |
+| DN-05 | Sinh viên phúc khảo trong 7 ngày. | Tự sửa — neo chủ đề chi phối trực tiếp con số | §5.4 |
+| DN-06 | (R-DK-01, 24 → 30 tín chỉ) Đăng ký học phần không quá hai mươi bốn tín chỉ. | U1 — số viết bằng chữ | §5.3.b |
+
+Chạy tự động: `npm run verify` (14 điều) và E2E “câu giám khảo tự nghĩ ra”.
+

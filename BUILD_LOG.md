@@ -35,4 +35,5 @@ Sprint 2 đã nối model sống (OpenAI, bật bằng secret ở máy chủ). *
 | 2026-09-29 | Supabase: schema + RLS chỉ đọc, hàm `apply_change` giao dịch, `policy-api`; OpenAI qua `ai-extract` / `ai-discover`; phân quyền cấp × đơn vị. |
 | 2026-09-29 | Học neo từ phản hồi, tập độc lập 48 ca và báo cáo tỉ lệ bỏ sót / chuyển tiếp thừa. |
 | 2026-09-30 | Giao diện 7 màn hình, đồ thị tác động SVG, E2E Playwright, kiểm thử tải, CI; sửa lỗi máy chủ chỉ đọc 1.000 bản ghi sổ. |
+| 2026-10-01 | Theo phản hồi doanh nghiệp: tập mù 40 ca đóng băng trước; neo chủ đề + neo đại lượng; nhận ra giá trị viết khác dạng; AI tự rà trước khi ban hành; QT-KSTL-01 v2.0 có truy vết; `npm run verify`; tài liệu phương pháp và giá trị kinh doanh. |
 | 2026-09-30 | Hàng đợi duyệt dùng chung (hồ sơ `CR-n`, mỗi người quyết phần của mình trên máy mình), sổ ghi đúng người quyết, quyền hoàn tác theo cấp ban hành, hạn mức AI theo máy khách. |

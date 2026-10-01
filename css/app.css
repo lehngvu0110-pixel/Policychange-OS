@@ -337,3 +337,4 @@ dialog form{padding:20px;display:flex;flex-direction:column;gap:12px}
   .bar{grid-template-columns:84px 1fr 40px}
   .hide-sm{display:none}
 }
+.nowrap{white-space:nowrap}

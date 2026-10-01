@@ -272,7 +272,7 @@
         step('Hiểu yêu cầu', 'AI (OpenAI) hoặc bộ phân tích tiếng Việt bóc tách: quy định nào, giá trị cũ → mới, cấp ban hành.') +
         step('Tìm vị trí', 'Quét toàn bộ kho, nhận mọi cách viết: 10 triệu = 10.000.000 = 10tr.') +
         step('Phân xử', 'AUTO_PATCH, hoặc chuyển U1 / U2 / U3 kèm đúng một câu hỏi, hai lựa chọn.') +
-        step('Chứng minh', 'Prover kiểm 13 điều kiện trước khi cho tự sửa; thiếu một là chặn.') +
+        step('Chứng minh', 'Prover kiểm 14 điều kiện trước khi cho tự sửa (có neo chủ đề + neo đại lượng); thiếu một là chặn.') +
         step('Người duyệt', 'Chỉ người đúng cấp và đúng đơn vị phụ trách mới bấm được.') +
         step('Ban hành & kiểm toán', 'Ghi sổ băm SHA-256; hoàn tác thêm bản ghi mới, không xoá vết.') +
       '</div></div></section>' +
@@ -582,8 +582,8 @@
             '<div class="prop-body"><div class="row"><span class="stat" style="padding:6px 12px;box-shadow:none"><span class="v" style="font-size:20px">' + esc(r.value) + '</span></span><span class="xs muted">' + esc(r.owner + ' · ' + r.source) + '</span></div>' +
             '<div class="row"><span class="xs muted" style="min-width:76px">Chủ đề</span>' + r.aliases.map(a => '<span class="chip">' + esc(a) + '</span>').join('') + '</div>' +
             '<div class="row"><span class="xs muted" style="min-width:76px">Đại lượng</span>' + ((r.measures || []).length ? (r.measures || []).map(a => '<span class="chip measure">' + esc(a) + '</span>').join('') : '<span class="xs muted">— neo chủ đề đã đủ hẹp</span>') + '</div>' +
-            (right.ok ? '<div class="row"><label class="sr-only" for="' + esc(draftKey) + '">Cụm từ neo mới cho ' + esc(r.id) + '</label><input id="' + esc(draftKey) + '" type="text" autocomplete="off" name="' + esc(draftKey) + '" data-bind="anchorDraft.' + esc(r.id) + '" placeholder="Thêm cụm từ neo…" value="' + esc(ui.anchorDraft[r.id] || '') + '" style="flex:1;min-width:160px">' +
-              '<label class="sr-only" for="' + esc(draftKey) + '-field">Loại neo</label><select id="' + esc(draftKey) + '-field" data-bind="anchorField.' + esc(r.id) + '"><option value="aliases"' + ((ui.anchorField[r.id] || 'aliases') === 'aliases' ? ' selected' : '') + '>Chủ đề</option><option value="measures"' + (ui.anchorField[r.id] === 'measures' ? ' selected' : '') + '>Đại lượng</option></select>' +
+            (right.ok ? '<div class="row"><label class="sr-only" for="' + esc(draftKey) + '">Cụm từ neo mới cho ' + esc(r.id) + '</label><input id="' + esc(draftKey) + '" type="text" autocomplete="off" name="' + esc(draftKey) + '" data-bind="anchorDraft.' + esc(r.id) + '" placeholder="Thêm cụm từ neo…" value="' + esc(ui.anchorDraft[r.id] || '') + '" style="flex:1 1 140px;width:auto;min-width:0">' +
+              '<label class="sr-only" for="' + esc(draftKey) + '-field">Loại neo</label><select id="' + esc(draftKey) + '-field" data-bind="anchorField.' + esc(r.id) + '" style="width:auto;flex:0 0 auto"><option value="aliases"' + ((ui.anchorField[r.id] || 'aliases') === 'aliases' ? ' selected' : '') + '>Chủ đề</option><option value="measures"' + (ui.anchorField[r.id] === 'measures' ? ' selected' : '') + '>Đại lượng</option></select>' +
               btn('add-anchor', 'Thêm', { cls: 'sm', data: { rule: r.id } }) + '</div>'
               : '<div class="lock xs">' + icon('lock', 14) + '<span>' + esc(right.reason) + '</span></div>') + '</div></div>';
         }).join('') + '</div></div></section>';
@@ -621,8 +621,8 @@
         labels.map(e => '<tr><th scope="row">' + e + '</th>' + actuals.map(a => { const v = (r.confusion[e] || {})[a] || 0; const good = e === a || (e !== 'AUTO' && e !== 'NONE' && a === 'HOLD'); return '<td class="num ' + (v ? (good ? 'hit' : 'bad') : '') + '">' + v + '</td>'; }).join('') + '</tr>').join('') +
       '</tbody></table></div>' +
       (r.rows.some(x => !x.ok) ? '<h3>Các ca sai</h3><div class="tablewrap"><table><thead><tr><th>Ca</th><th>Dòng</th><th>Kỳ vọng</th><th>Thực tế</th><th>Loại lỗi</th></tr></thead><tbody>' +
-        r.rows.filter(x => !x.ok).map(x => '<tr><td class="mono">' + esc(x.id) + '</td><td class="small">' + esc(x.line) + (x.phenomenon ? '<div class="xs muted">' + esc(x.phenomenon) + '</div>' : '') + '</td><td>' + esc(x.expected) + '</td><td>' + esc(x.actual) + '</td><td>' +
-          ({ miss: '<span class="tag U3">Bỏ sót</span>', over: '<span class="tag U1">Chuyển thừa</span>', wrong_category: '<span class="tag U2">Sai loại</span>', wrong: '<span class="tag neutral">Không phát hiện</span>' }[x.kind] || '') + '</td></tr>').join('') + '</tbody></table></div>' : '');
+        r.rows.filter(x => !x.ok).map(x => '<tr><td class="mono nowrap">' + esc(x.id) + '</td><td class="small">' + esc(x.line) + (x.phenomenon ? '<div class="xs muted">' + esc(x.phenomenon) + '</div>' : '') + '</td><td>' + esc(x.expected) + '</td><td>' + esc(x.actual) + '</td><td>' +
+          ({ miss: '<span class="tag U3">Bỏ sót</span>', over: '<span class="tag U1">Báo lên thừa</span>', wrong_category: '<span class="tag U2">Sai loại</span>', wrong: '<span class="tag neutral">Không phát hiện</span>' }[x.kind] || '') + '</td></tr>').join('') + '</tbody></table></div>' : '');
   }
 
   // ---------- Hành động ----------

@@ -12,7 +12,9 @@
     "serve": "node scripts/serve.mjs",
     "eval": "node bench/holdout.cjs",
     "build:holdout": "node scripts/build-holdout-data.mjs",
-    "load": "node bench/load.cjs"
+    "load": "node bench/load.cjs",
+    "verify": "node scripts/verify.cjs",
+    "eval:blind": "node bench/blind.cjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

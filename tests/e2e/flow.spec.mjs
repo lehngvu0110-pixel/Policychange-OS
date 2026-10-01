@@ -123,3 +123,18 @@ test('học từ phản hồi: trưởng đơn vị thêm neo, quy định cập
   await page.goto(APP + '#/so-kiem-toan');
   await expect(page.locator('tbody')).toContainText('THÊM NEO R-PK-01');
 });
+
+test('câu giám khảo tự nghĩ ra: sai đại lượng, quy đổi tuần, không dấu → đều hỏi người, không dòng nào tự sửa', async ({ page }) => {
+  await open(page, 'kho-tai-lieu');
+  await persona(page, 'tp-dt');
+  await page.fill('#ndTitle', 'Câu giám khảo');
+  await page.fill('#ndBody', ['Kết quả phúc khảo được thông báo sau 7 ngày.', 'Sinh viên có một tuần để nộp đơn phúc khảo.', 'Han nop don phuc khao la 7 ngay.'].join('\n'));
+  await page.getByRole('button', { name: 'Nạp vào kho' }).click();
+  await expect(page.getByText(/Đã thêm .* vào kho./).first()).toBeVisible();
+  await analyze(page);
+  const judge = page.locator('article.prop').filter({ hasText: 'Câu giám khảo' });
+  await expect(judge).toHaveCount(3);
+  await expect(judge.filter({ hasText: 'U1' })).toHaveCount(3);
+  await expect(judge.filter({ hasText: /quy đổi theo tuần/ })).toHaveCount(1);
+  await expect(judge.filter({ hasText: /gõ không dấu/ })).toHaveCount(1);
+});

@@ -21,15 +21,29 @@ chắc chắn, hoặc **dừng lại và hỏi đúng một câu, cho đúng ng�
 
 | | Khi nào | Ai quyết (được phân quyền thật) |
 |---|---|---|
-| **U1** · chưa rõ dữ kiện | Con số không có cụm từ nào neo nó vào một quy định đã đăng ký | Người phụ trách đơn vị sở hữu tài liệu |
+| **U1** · chưa rõ dữ kiện | Con số không có neo vào quy định nào; hoặc đúng chủ đề nhưng không rõ con số đo cái gì; hoặc giá trị viết khác dạng (“một tuần”, “hai mươi bốn”, gõ không dấu) | Người phụ trách đơn vị sở hữu tài liệu |
 | **U2** · ngoài phạm vi | Dòng đang nói về một quy định **khác** cùng giá trị | Trưởng đơn vị sở hữu quy định bị đụng |
 | **U3** · vượt thẩm quyền | Tài liệu do cấp cao hơn cấp ra thay đổi ban hành | Người đủ cấp của đơn vị ban hành tài liệu |
 
-Động cơ tiền định là nơi duy nhất quyết định tự sửa hay chuyển người. Một bộ **prover** kiểm 13 điều kiện
-trước mỗi bản vá tự động. **AI (OpenAI)** chỉ làm hai việc: hiểu câu yêu cầu tiếng Việt và rà soát ngữ nghĩa
-các vị trí động cơ định tự sửa; AI chỉ được trả **trích dẫn nguyên văn** và chỉ có thể làm kết quả **thận trọng
+Quy trình mà phần mềm thi hành được viết thành văn bản quy định **QT-KSTL-01 v2.0** (`docs/QT-KSTL-01_Quy-trinh-kiem-soat-tai-lieu.md`);
+`npm run verify` kiểm từng điều của nó. Động cơ tiền định là nơi duy nhất quyết định tự sửa hay chuyển người, và chỉ tự
+sửa khi dòng có **cả neo chủ đề lẫn neo đại lượng**. Một bộ **prover** độc lập kiểm 14 điều kiện trước mỗi bản vá tự động. **AI (OpenAI)** chỉ làm hai việc: hiểu câu yêu cầu tiếng Việt và **tự động** rà soát ngữ nghĩa
+mọi vị trí động cơ định tự sửa trước khi ban hành; AI chỉ được trả **trích dẫn nguyên văn** và chỉ có thể làm kết quả **thận trọng
 hơn**, không bao giờ biến một ca chuyển tiếp thành tự sửa. Mọi thay đổi ghi vào **sổ kiểm toán SHA-256** chỉ
 ghi thêm và hoàn tác được.
+
+## Đã sửa theo phản hồi doanh nghiệp (Sprint 1)
+
+| Phản hồi | Đã làm | Bằng chứng |
+|---|---|---|
+| **Rào cản bắt buộc:** phân loại chỉ dùng regex, trượt cách diễn đạt mới | Tự sửa chỉ khi có neo chủ đề **và** neo đại lượng; nhận ra số viết bằng chữ / quy đổi tuần / không dấu nhưng luôn hỏi người; mô hình thật (OpenAI, schema ràng buộc) tự rà mọi dòng tự sửa, prover tất định vẫn là lớp kiểm | Tập **mù** 40 ca: tự sửa sai **3 → 0**, bỏ sót **8/23 → 0/23** |
+| Bộ dữ liệu thử ≥ 15 ca, diễn đạt cố tình đa dạng | Tập mù 40 ca do tác tử **không xem mã** viết, đóng băng bằng SHA-256 trước khi sửa động cơ; giữ tập 48 ca làm tập phát triển | `bench/blind.csv`, `bench/BLIND-PROVENANCE.md` |
+| Đo tỷ lệ báo lên sai | Báo cáo bỏ sót, **tự sửa sai**, **báo lên thừa**, ma trận nhầm lẫn, ca bẫy | `npm run eval:blind`; màn hình Đánh giá |
+| Policy doc *Partial* | QT-KSTL-01 v2.0: mỗi điều có mã, bảng truy vết điều → mã → kiểm thử | Phụ lục A của QT-KSTL-01 |
+| Verify run *Partial* · Method *Gap* | `npm run verify`: 14 điều, ĐẠT/TRƯỢT, chạy trong CI; tài liệu phương pháp có khoảng tin cậy và mối đe doạ | `docs/PHUONG-PHAP-KIEM-CHUNG.md` |
+| Đi tìm con số chi phí một lần công bố sai | Bằng chứng có nguồn (Air Canada 2024, NĐ 04/2021, ĐH Khoa học Huế 2024) + mô hình chi phí + bảng hỏi số thật | `docs/GIA-TRI-KINH-DOANH.md` |
+
+Đối chiếu đầy đủ từng mục: `docs/PHAN-HOI-DOANH-NGHIEP-SPRINT-1.md`.
 
 ## Sprint 2 có gì mới
 
@@ -65,9 +79,11 @@ Mở thẳng `index.html` bằng trình duyệt cũng chạy được.
 
 ```bash
 npm install                       # chỉ cần cho Playwright và TypeScript
-npm test                          # 195 unit test: động cơ, sổ, phân quyền, máy chủ, học, đánh giá, bộ điều khiển
+npm run verify                    # kiểm từng điều của QT-KSTL-01 v2.0 — bảng ĐẠT/TRƯỢT (không cần npm install)
+npm test                          # 211 unit test: động cơ, sổ, phân quyền, máy chủ, học, đánh giá, bộ điều khiển
+npm run eval:blind                # tập mù 40 ca (đóng băng, do tác tử độc lập viết)
 npm run bench                     # benchmark 26 fixture (naive / LLM-only / PolicyChange OS)
-npm run eval                      # báo cáo trên tập độc lập bench/holdout.csv
+npm run eval                      # tập phát triển bench/holdout.csv
 npm run load                      # kiểm thử tải cục bộ
 npm run typecheck                 # tsc trên các module có // @ts-check
 npx playwright install chromium && npm run e2e
@@ -77,11 +93,14 @@ npx playwright install chromium && npm run e2e
 
 - **Verify của đề bài:** 9/9 ca (màn hình Đánh giá).
 - **Benchmark 26 fixture tổng hợp:** PolicyChange OS tự sửa sai **0/13**; naive 16/25; LLM-only (mock) 13/18.
-- **Tập độc lập 48 ca** (nhóm gắn nhãn tay, tách biệt dữ liệu phát triển), *chỉ động cơ tiền định*:
-  đúng 39/48 (81,3 %), **bỏ sót 6/27 (22,2 %)**, chuyển tiếp thừa 3/21 (14,3 %), đúng loại U1/U2/U3 100 %.
-  Các ca bỏ sót là ca ngữ nghĩa (“kết quả phúc khảo được thông báo sau 7 ngày” không phải hạn nộp đơn) —
-  đúng loại lỗi mà lớp AI ngữ nghĩa và cơ chế học neo nhắm tới. Nút **Chạy kèm AI ngữ nghĩa** đo lại khi đã
-  cấu hình khoá OpenAI; chúng tôi chưa công bố số đó vì chưa chạy trên khoá thật.
+- **`npm run verify`:** 14/14 điều của QT-KSTL-01 v2.0 đạt.
+- **Tập mù 40 ca** (tác tử độc lập viết, không xem mã; đóng băng trước khi sửa), *chỉ động cơ tiền định*:
+  **tự sửa sai 0/5**, **bỏ sót 0/23** (KTC 95 %: 0–14,3 %), báo lên thừa 9/17 (52,9 %), đúng 29/40.
+  Trước đợt sửa: sửa sai 3, bỏ sót 8/23. Báo lên thừa còn cao vì từ đồng nghĩa chưa có trong sổ (“phúc tra”,
+  “ứng trước”, “ghi danh”…) — máy hỏi thêm thay vì đoán; vòng học neo và lớp AI nhắm vào đây.
+- **Tập phát triển 48 ca** (nhóm gắn nhãn, đã dùng để thiết kế): sửa sai 5 → 2, bỏ sót 22,2 % → 7,4 %. Hai ca còn
+  sai (H40, H47) được giữ lại làm bằng chứng giới hạn của lớp tiền định — cần lớp AI.
+- **Lớp AI:** chưa công bố số vì nhóm chưa cấu hình khoá thật; cách đo ở `docs/PHUONG-PHAP-KIEM-CHUNG.md` §4.3.
 - **Tải:** 2.400 tài liệu / 9.200 dòng phân tích trong ~30 ms; máy chủ lập kế hoạch ghi với sổ 10.000 bản ghi
   trong ~0,3 s (kiểm lại toàn chuỗi SHA-256 mỗi lần ghi). Số đo trên máy phát triển, chạy `npm run load` để tái lập.
 
@@ -104,9 +123,10 @@ Chi tiết: `docs/ARCHITECTURE.md`. Cài backend, khoá OpenAI và cấp tài kh
 ## Giới hạn đã biết
 
 1. Chỉ xử lý thay đổi dạng **thay giá trị**; thêm mới hoặc bãi bỏ điều khoản nằm ngoài phạm vi.
-2. Chất lượng phân loại phụ thuộc độ đầy đủ của cụm từ neo. Thiếu neo làm tăng U1 (hỏi nhiều hơn cần), không
-   làm sửa sai — hướng lệch có chủ đích; cơ chế học neo thu hẹp dần khoảng này.
-3. Bỏ sót ngữ nghĩa (con số có neo nhưng nói về việc khác) chỉ được bắt khi bật lớp AI ngữ nghĩa.
+2. Chất lượng phân loại phụ thuộc độ đầy đủ của neo chủ đề và neo đại lượng. Thiếu neo làm tăng U1 (hỏi nhiều hơn
+   cần) — hướng lệch có chủ đích; cơ chế học neo thu hẹp dần khoảng này.
+3. Dòng có đủ neo nhưng con số đo việc khác (“giấy xác nhận vay vốn được cấp trong 3 ngày”) vẫn có thể bị tự sửa
+   nếu tắt AI; lớp AI ngữ nghĩa (tự chạy khi có khoá) là lớp bắt các ca này.
 4. Chưa đọc tài liệu ảnh quét hay PDF không có lớp văn bản; chưa nối Google Drive / SharePoint.
 5. Workspace **trình diễn** cho phép ai có đường dẫn cũng thao tác với vai trò giả lập và khôi phục dữ liệu mẫu —
    có chủ đích cho buổi chấm. Workspace **thí điểm** bắt buộc đăng nhập và được cấp quyền.
@@ -126,7 +146,8 @@ js/semantic-discovery.js, js/policy-prover.js, js/policy-ai.js, js/policy-impact
 supabase/migrations/          schema, RLS, hàm SQL giao dịch, hạn mức AI
 supabase/functions/           policy-api, ai-extract, ai-discover (+ _shared: bản sao module, `npm run sync:edge`)
 tests/                        unit test Node; tests/e2e: Playwright
-bench/                        benchmark 26 fixture, tập độc lập holdout.csv, kiểm thử tải
+bench/                        benchmark 26 fixture, tập phát triển holdout.csv, tập mù blind.csv, mô phỏng học, kiểm thử tải
+scripts/verify.cjs            kiểm chứng theo từng điều của QT-KSTL-01
 docs/                         kiến trúc, cài backend, phản hồi BTC, kịch bản demo, quy trình QT-KSTL-01
 ```
 

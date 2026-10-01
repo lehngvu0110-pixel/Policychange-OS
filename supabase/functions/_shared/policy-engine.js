@@ -408,25 +408,28 @@
     const who = TIER_APPROVER[p.docTier];
     if (p.category === 'U1') {
       return {
-        q: 'Tài liệu ' + p.docId + ' — ' + p.docTitle + ', dòng ' + (p.lineIndex + 1) + ': “' + p.line.trim() + '”. Giá trị “' + change.oldValue + '” ở đây không gắn với quy định nào trong sổ đăng ký. ' +
+        q: 'Tài liệu ' + p.docId + ' — ' + p.docTitle + ', dòng ' + (p.lineIndex + 1) + ': “' + p.line.trim() + '”. ' + (p.variantOnly ? 'Giá trị “' + change.oldValue + '” xuất hiện ở dạng khác (“' + p.hits[0].text + '”). ' : 'Giá trị “' + change.oldValue + '” ở đây chưa được xác định chắc chắn thuộc quy định nào. ') + 'Đề xuất đổi thành “' + change.newValue + '”. ' +
            'Chuyên viên phụ trách tài liệu quyết định: giá trị này có thuộc ' + (rule ? rule.name.toLowerCase() : 'quy định vừa sửa') + ' không?',
         a: 'Có — sửa thành “' + change.newValue + '”',
         b: 'Không — giữ nguyên “' + change.oldValue + '”'
       };
     }
+    // QT-KSTL-01 §6.1: mọi câu hỏi nêu đủ mã tài liệu, số dòng, trích nguyên văn, giá trị cũ và giá trị mới đề xuất.
+    const where = 'Tài liệu ' + p.docId + ' — ' + p.docTitle + ', dòng ' + (p.lineIndex + 1) + ': “' + p.line.trim() + '”. ';
+    const proposal = 'Đề xuất đổi “' + change.oldValue + '” → “' + change.newValue + '”';
     if (p.category === 'U2') {
       const low = p.line.toLowerCase();
       const other = (registry || []).find(r => r.id !== (rule ? rule.id : null) && r.aliases.some(a => low.includes(a.toLowerCase())));
       return {
-        q: 'Dòng ' + (p.lineIndex + 1) + ' của ' + p.docId + ' đang diễn đạt ' + (other ? other.id + ' — ' + other.name : 'một quy định khác') + ', hiện vẫn giữ giá trị ' + (other ? other.value : change.oldValue) + '. ' +
-           'Sửa ở đây sẽ thay đổi cả quy định đó. ' + (other ? other.owner : who) + ' quyết định: có sửa kèm không?',
+        q: where + 'Dòng này đang diễn đạt ' + (other ? other.id + ' — ' + other.name + ' (' + other.source + ')' : 'một quy định khác') + ', hiện vẫn giữ giá trị ' + (other ? other.value : change.oldValue) + '. ' +
+           proposal + ' tại đây sẽ thay đổi cả quy định đó. ' + (other ? other.owner : who) + ' quyết định: có sửa kèm không?',
         a: 'Không — chỉ sửa ' + (rule ? rule.id : 'quy định đích') + ', giữ nguyên dòng này',
         b: 'Có — sửa cả ' + (other ? other.id : 'quy định kia') + ' và ghi nhận là sửa đổi có chủ đích'
       };
     }
     return {
-      q: p.docId + ' — ' + p.docTitle + ' do ' + p.docOwner + ' ban hành ở ' + TIER_LABEL[p.docTier] + ', cao hơn cấp ra thay đổi lần này (' + TIER_APPROVER[change.issuerTier] + '). ' +
-         'Hệ thống đã khoá quyền sửa. ' + TIER_APPROVER[p.docTier] + ' quyết định: xử lý thế nào?',
+      q: where + 'Văn bản do ' + p.docOwner + ' ban hành ở ' + TIER_LABEL[p.docTier] + ', cao hơn cấp ra thay đổi lần này (' + TIER_APPROVER[change.issuerTier] + '). ' +
+         proposal + ' đã bị khoá quyền sửa. ' + TIER_APPROVER[p.docTier] + ' quyết định: xử lý thế nào?',
       a: 'Từ chối — giữ nguyên, yêu cầu ban hành quyết định sửa đổi đúng cấp',
       b: 'Chấp thuận sửa ngay và ghi nhận ngoại lệ có phê duyệt'
     };

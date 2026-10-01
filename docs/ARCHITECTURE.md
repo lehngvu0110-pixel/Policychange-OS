@@ -10,7 +10,12 @@
    AUTO_PATCH lại cho người duyệt; không thể biến một ca chuyển tiếp thành tự sửa.
 3. **Client chỉ gửi ý định.** Trình duyệt gửi “quy định nào, giá trị mới, cấp khai, người đã chọn A hay B ở dòng
    nào”. Máy chủ tự nạp dữ liệu, chạy lại động cơ + prover, kiểm quyền, rồi mới ghi.
-4. **Sổ chỉ ghi thêm.** Mỗi bản ghi băm SHA-256 trên nội dung của nó nối với bản ghi trước. Hoàn tác là một bản
+4. **Tự sửa cần hai tín hiệu.** Một dòng chỉ được tự sửa khi có *neo chủ đề* (đang nói về việc gì) **và** *neo đại
+   lượng* (con số đo cái gì) — hoặc neo chủ đề chi phối trực tiếp con số. Giá trị viết bằng chữ, quy đổi tuần hay gõ
+   không dấu được nhận ra nhưng luôn chuyển người. Prover kiểm lại độc lập 14 điều kiện (QT-KSTL-01 §5.3–5.4).
+5. **Có khoá AI thì AI luôn rà trước khi ban hành.** `app.ensureSemanticReview()` chạy tự động khi phân tích xong và
+   trước khi gửi lệnh ban hành.
+6. **Sổ chỉ ghi thêm.** Mỗi bản ghi băm SHA-256 trên nội dung của nó nối với bản ghi trước. Hoàn tác là một bản
    ghi mới.
 
 ## Thành phần
