@@ -1,0 +1,30 @@
+{
+  "note": "Kết quả gọi thật ai-discover (Gemini 3.5 Flash-Lite, gói miễn phí, qua Edge Function) ngày 01/10/2026 cho mọi ca mà động cơ tiền định muốn TỰ SỬA trong tập mù và tập phát triển. Chỉ lưu nhãn quan hệ và lời giải thích của mô hình; trích dẫn của mô hình đều là chuỗi con nguyên văn của dòng (máy chủ đã định vị bằng indexOf). Phát lại: node bench/ai-replay.cjs",
+  "model": "gemini-3.5-flash-lite",
+  "relations": {
+    "blind:B01": ["supports", "Dòng này quy định thời hạn nộp đơn phúc khảo là 7 ngày, khớp với giá trị cũ cần rà soát."],
+    "blind:B06": ["supports", "Dòng tài liệu quy định rõ ngưỡng chi tiền từ 10 triệu đồng phải có hai chữ ký, khớp trực tiếp với giá trị cũ cần rà soát."],
+    "blind:B18": ["supports", "Dòng tài liệu quy định đơn vị phải trả lời khiếu nại của người học trong 7 ngày, khớp với giá trị cũ cần kiểm soát."],
+    "blind:B28": ["supports", "Dòng này quy định thời hạn phản hồi đơn khiếu nại là 7 ngày, khớp với giá trị cũ cần rà soát."],
+    "blind:B38": ["supports", "Dòng này quy định cụ thể hạn mức tạm ứng 10.000.000 đồng thuộc thẩm quyền duyệt của Trưởng đơn vị, khớp với giá trị cũ cần kiểm soát."],
+    "holdout:H01": ["supports", "Dòng này đề cập trực tiếp đến thời hạn 7 ngày sinh viên phải nộp đơn phúc khảo, trùng khớp với giá trị cũ của quy định."],
+    "holdout:H02": ["supports", "Dòng này đề cập trực tiếp đến thời hạn nộp đơn phúc khảo là 7 ngày giống với quy định cũ."],
+    "holdout:H03": ["supports", "Dòng này quy định thời hạn 7 ngày để sinh viên đề nghị chấm lại bài thi, trùng khớp với giá trị cũ cần rà soát."],
+    "holdout:H04": ["supports", "Dòng tài liệu đề cập rõ ràng về thời hạn 7 ngày nộp đơn phúc khảo, trùng khớp với quy định cũ cần rà soát."],
+    "holdout:H05": ["supports", "Dòng tài liệu đề cập rõ ràng đến thời hạn 7 ngày làm việc để trả lời đơn khiếu nại, khớp với quy định cần rà soát."],
+    "holdout:H06": ["supports", "Dòng tài liệu đề cập đến mốc thời gian 7 ngày cho việc phản hồi đơn thư, khớp với giá trị cũ của quy định."],
+    "holdout:H07": ["supports", "Dòng tài liệu đề cập đến khoảng thời gian cũ là 3 ngày làm việc đúng với giá trị cần kiểm soát."],
+    "holdout:H08": ["supports", "Dòng tài liệu đề cập trực tiếp đến thời gian cấp giấy xác nhận sinh viên là 3 ngày, khớp với giá trị cũ cần kiểm soát."],
+    "holdout:H09": ["supports", "Dòng tài liệu đề cập trực tiếp đến giới hạn số tín chỉ tối đa đăng ký mỗi học kỳ chính là 24 tín chỉ."],
+    "holdout:H10": ["supports", "Dòng này quy định giới hạn 24 tín chỉ, khớp với giá trị cũ của quy định cần kiểm tra."],
+    "holdout:H11": ["supports", "Dòng tài liệu đề cập trực tiếp đến hạn mức tạm ứng 10 triệu đồng cần xem xét."],
+    "holdout:H13": ["supports", "Dòng tài liệu đề cập đến ngưỡng khoản chi 10 triệu đồng cần hai chữ ký, hoàn toàn khớp với quy định đích."],
+    "holdout:H14": ["supports", "Dòng tài liệu đề cập đến ngưỡng khoản chi yêu cầu đồng ký duyệt là 10 triệu, phù hợp với quy định cũ cần kiểm soát."],
+    "holdout:H15": ["supports", "Dòng tài liệu này đề cập trực tiếp đến thời hạn 7 ngày nộp đơn phúc khảo của sinh viên."],
+    "holdout:H40": ["unrelated", "Dòng này nói về thời hạn sử dụng của giấy xác nhận chứ không phải thời gian cấp giấy."],
+    "holdout:H44": ["supports", "Dòng tài liệu đề cập đến thời hạn nộp đơn phúc khảo là 07 ngày, đúng với giá trị cũ của quy định."],
+    "holdout:H45": ["supports", "Dòng tài liệu đề cập trực tiếp đến hạn mức tạm ứng 10 triệu đồng cần thay đổi."],
+    "holdout:H47": ["unrelated", "Dòng này nói về giấy xác nhận vay vốn trong khi quy định đích nói về giấy xác nhận sinh viên."],
+    "holdout:H48": ["supports", "Dòng tài liệu đề cập đến giới hạn cũ là 24 tín chỉ, phù hợp với quy định cần rà soát."]
+  }
+}

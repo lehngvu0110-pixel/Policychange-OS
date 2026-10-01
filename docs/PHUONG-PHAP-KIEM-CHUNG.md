@@ -91,12 +91,34 @@ Hai ca còn tự sửa sai được giữ lại làm bằng chứng về giới 
 Bắt được hai ca này cần đọc nghĩa: lớp AI §5.6, hoặc neo chủ đề hẹp hơn mà người phụ trách duyệt qua vòng học.
 Chúng tôi không thêm luật riêng cho hai câu này, vì làm vậy chỉ là học thuộc đề.
 
-### 4.3. Lớp AI (OpenAI, bật khi có khoá)
+### 4.3. Lớp AI (đo thật ngày 01/10/2026, Gemini 3.5 Flash-Lite gói miễn phí)
 
-Khi máy chủ có `OPENAI_API_KEY`, mô hình **tự động** rà mọi dòng sắp tự sửa trước khi ban hành (§5.6) và chỉ có thể
-giữ lại. Lớp này **chưa được đo** vì nhóm chưa cấu hình khoá. Cách đo: màn hình Đánh giá → "Chạy kèm AI ngữ nghĩa" trên
-tập mù, hoặc `Evaluation.evaluateWithSemantics`. Chỉ số cần xem: số ca chuyển từ AUTO sang HOLD (bắt được H40/H47?) và
-số AUTO đúng bị giữ oan (chi phí của lớp AI).
+Khi máy chủ có khoá AI, mô hình **tự động** rà mọi dòng sắp tự sửa trước khi ban hành (§5.6). Mô hình chỉ có thể giữ
+lại một dòng, không bao giờ biến một hồ sơ chuyển tiếp thành tự sửa. Chúng tôi gọi thật `ai-discover` qua Edge Function
+cho **cả 24 dòng** mà động cơ muốn tự sửa (5 ở tập mù, 19 ở tập phát triển), rồi cho kết quả đi qua đúng bộ kiểm tra
+bằng chứng của sản phẩm. Kết quả lưu ở `bench/ai-run-2026-10-01.json`; phát lại bằng `npm run eval:ai`.
+
+| | Chỉ động cơ | Động cơ + AI |
+|---|---|---|
+| Tập mù · tự sửa sai | 0 / 5 | 0 / 5 |
+| Tập mù · bỏ sót | 0 / 23 | 0 / 23 |
+| Tập phát triển · tự sửa sai | 2 / 19 | **0 / 17** |
+| Tập phát triển · bỏ sót | 2 / 27 | **0 / 27** |
+| Dòng đúng bị AI giữ oan | — | **0 / 22** |
+
+- AI bắt được đúng hai ca mà lớp tiền định bỏ sót:
+  - H40: *"nói về thời hạn sử dụng của giấy xác nhận chứ không phải thời gian cấp giấy"*;
+  - H47: *"nói về giấy xác nhận vay vốn trong khi quy định đích nói về giấy xác nhận sinh viên"*.
+- 22 dòng tự sửa đúng thì AI đều xác nhận "supports", nên không có dòng nào bị giữ oan.
+- Lớp AI **không** làm giảm báo lên thừa. Đó là thiết kế có chủ đích, vì AI không được phép bỏ một điểm dừng.
+
+**Giới hạn của lần đo này:**
+
+- Mới có 24 lần gọi, với một mô hình, vào một ngày.
+- Mô hình không đơn định tuyệt đối, dù đã đặt `temperature = 0`.
+- Bản ghi chỉ lưu nhãn quan hệ và lời giải thích; trích dẫn được phát lại dưới dạng cả dòng.
+
+Lần đo sau nên chạy lại từ màn hình Đánh giá → "Chạy kèm AI ngữ nghĩa", hoặc chạy trên tập mù số 2.
 
 ### 4.4. Học từ phản hồi
 

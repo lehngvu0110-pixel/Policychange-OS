@@ -43,8 +43,12 @@ Phiếu phản hồi đúng ở điểm: một từ đồng nghĩa chưa liệt 
 **Còn mở**
 
 - Báo lên thừa trên tập mù còn **52,9 %**, chủ yếu do từ đồng nghĩa ("phúc tra", "ứng trước", "ghi danh"…).
-- Lớp AI chưa được đo vì nhóm chưa dán khoá.
-- Hai ca của tập phát triển (H40, H47) vẫn bị lớp tiền định tự sửa sai khi tắt AI.
+- Lớp AI đã đo thật bằng Gemini 3.5 Flash-Lite (gói miễn phí):
+  - AI giữ lại đúng 2 ca lớp tiền định tự sửa sai trên tập phát triển (H40, H47);
+  - AI không giữ oan dòng đúng nào trong 22 dòng;
+  - **khi bật AI, cả hai tập đều 0 sửa sai, 0 bỏ sót**.
+
+  Cỡ mẫu còn nhỏ (24 lần gọi), và nếu tắt AI thì H40, H47 vẫn bị sửa sai.
 
 Chi tiết: `docs/PHUONG-PHAP-KIEM-CHUNG.md`.
 
@@ -93,8 +97,8 @@ Chi tiết: `docs/PHUONG-PHAP-KIEM-CHUNG.md`.
 
 ## 6. Việc nhóm cần làm tiếp
 
-1. Dán `OPENAI_API_KEY` vào Supabase Secrets, rồi chạy "Chạy kèm AI ngữ nghĩa" trên tập mù và ghi số vào
-   `docs/PHUONG-PHAP-KIEM-CHUNG.md` §4.3.
+1. Lớp AI đã chạy bằng Gemini miễn phí (`AI_API_KEY`, `AI_BASE_URL` trong Supabase Secrets). Mỗi khi đổi mô hình
+   hoặc có tập mù mới, chạy lại "Chạy kèm AI ngữ nghĩa" và cập nhật `docs/PHUONG-PHAP-KIEM-CHUNG.md` §4.3.
 2. Thử nghiệm với 3 nhân sự (`docs/THU-NGHIEM-NGUOI-DUNG.md`):
    - mời mỗi người **viết 5 câu** theo cách của đơn vị mình, gom thành tập mù số 2;
    - lấy số cho bảng ở `docs/GIA-TRI-KINH-DOANH.md` §3.

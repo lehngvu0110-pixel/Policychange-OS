@@ -100,7 +100,8 @@ npx playwright install chromium && npm run e2e
   “ứng trước”, “ghi danh”…) — máy hỏi thêm thay vì đoán; vòng học neo và lớp AI nhắm vào đây.
 - **Tập phát triển 48 ca** (nhóm gắn nhãn, đã dùng để thiết kế): sửa sai 5 → 2, bỏ sót 22,2 % → 7,4 %. Hai ca còn
   sai (H40, H47) được giữ lại làm bằng chứng giới hạn của lớp tiền định — cần lớp AI.
-- **Lớp AI:** chưa công bố số vì nhóm chưa cấu hình khoá thật; cách đo ở `docs/PHUONG-PHAP-KIEM-CHUNG.md` §4.3.
+- **Lớp AI (đo thật, Gemini 3.5 Flash-Lite miễn phí):** trên 24 dòng động cơ muốn tự sửa, AI giữ lại đúng 2 ca lớp tiền
+  định bỏ sót (H40, H47) và không giữ oan dòng đúng nào → tập phát triển còn **0 sửa sai, 0 bỏ sót**. `npm run eval:ai`.
 - **Tải:** 2.400 tài liệu / 9.200 dòng phân tích trong ~30 ms; máy chủ lập kế hoạch ghi với sổ 10.000 bản ghi
   trong ~0,3 s (kiểm lại toàn chuỗi SHA-256 mỗi lần ghi). Số đo trên máy phát triển, chạy `npm run load` để tái lập.
 
@@ -126,7 +127,7 @@ Chi tiết: `docs/ARCHITECTURE.md`. Cài backend, khoá OpenAI và cấp tài kh
 2. Chất lượng phân loại phụ thuộc độ đầy đủ của neo chủ đề và neo đại lượng. Thiếu neo làm tăng U1 (hỏi nhiều hơn
    cần) — hướng lệch có chủ đích; cơ chế học neo thu hẹp dần khoảng này.
 3. Dòng có đủ neo nhưng con số đo việc khác (“giấy xác nhận vay vốn được cấp trong 3 ngày”) vẫn có thể bị tự sửa
-   nếu tắt AI; lớp AI ngữ nghĩa (tự chạy khi có khoá) là lớp bắt các ca này.
+   nếu tắt AI; lớp AI ngữ nghĩa (tự chạy khi có khoá) đã bắt được các ca này trong lần đo thật.
 4. Chưa đọc tài liệu ảnh quét hay PDF không có lớp văn bản; chưa nối Google Drive / SharePoint.
 5. Workspace **trình diễn** cho phép ai có đường dẫn cũng thao tác với vai trò giả lập và khôi phục dữ liệu mẫu —
    có chủ đích cho buổi chấm. Workspace **thí điểm** bắt buộc đăng nhập và được cấp quyền.
