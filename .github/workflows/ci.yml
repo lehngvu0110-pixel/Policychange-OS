@@ -52,4 +52,4 @@ jobs:
           deno-version: v2.x
       - name: deno check
         working-directory: supabase/functions
-        run: deno check --no-lock policy-api/index.ts ai-extract/index.ts ai-discover/index.ts
+          run: deno check --no-lock --node-modules-dir=none policy-api/index.ts ai-extract/index.ts ai-discover/index.ts
