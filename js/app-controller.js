@@ -304,7 +304,14 @@
         analysis.props = Semantic.mergeSemanticReview(analysis.props, res.props);
         analysis.semanticSettled = true;
         analysis.semanticSource = sourceLabel || (S.ai.status === 'ready' ? 'openai' : 'none');
-        analysis.semanticResult = { status: res.status, valid: res.status === 'complete' ? res.valid : [], rejected: res.rejected };
+        // Bằng chứng được giữ lại từ lượt trước vẫn phải có trong danh sách đã kiểm chứng để prover chấp nhận:
+        // cộng dồn (bỏ trùng) thay vì thay mới.
+        const previousValid = analysis.semanticResult && Array.isArray(analysis.semanticResult.valid) ? analysis.semanticResult.valid : [];
+        const seen = new Set();
+        const valid = previousValid.concat(res.status === 'complete' ? res.valid : []).filter((/** @type {any} */ item) => {
+          const key = JSON.stringify(item); if (seen.has(key)) return false; seen.add(key); return true;
+        });
+        analysis.semanticResult = { status: res.status, valid, rejected: res.rejected };
       }
       analysis.semanticStatus = res.status;
       analysis.semanticLastAttempt = { status: res.status, previousStatus, at: now() };

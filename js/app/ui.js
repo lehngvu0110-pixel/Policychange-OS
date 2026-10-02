@@ -121,6 +121,11 @@
     if (S.source !== 'sandbox') ui.savedForm = { form: { ...ui.form }, understanding: ui.understanding, ratify: ui.ratify };
     app.enterSandbox(scenario);
   }
+  /** Biểu mẫu khớp phân tích VÀ câu yêu cầu gần nhất không bị từ chối / cần làm rõ. */
+  function formStillMatches() {
+    const u = ui.understanding;
+    return app.matchesInput(formInput()) && !(u && (u.status === 'refusal' || u.status === 'clarification'));
+  }
   function liveWorkspace() { return S.source === 'remote' && S.workspace.mode === 'live'; }
   function formInput() { return { ruleId: ui.form.ruleId, newValue: ui.form.newValue, issuerTier: ui.form.issuerTier, requestText: ui.form.text }; }
   function mine(list) { return list.filter(p => app.decisionRight(p).ok); }
@@ -464,7 +469,7 @@
     const rule = S.registry.find(r => r.id === cur.change.rule.id);
     const canRatify = rule && cur.change.issuerTier >= rule.tier && Engine.parseValue(rule.value).num !== Engine.parseValue(cur.change.newValue).num;
     const nothing = n === 0 && rejections === 0 && !(shared && open);
-    const formMatches = app.matchesInput(formInput());
+    const formMatches = formStillMatches();
     const cases = shared ? app.caseItems().length : 0;
     const waiting = open ? open + ' vị trí của phân tích này còn chờ người quyết — ' + (shared ? 'khi ban hành, các vị trí này được chuyển thành hồ sơ dùng chung để đúng người quyết trên máy của họ.' : 'có thể ban hành phần đã sẵn sàng trước.')
       : 'Phân tích này không còn vị trí chờ.';
@@ -480,7 +485,7 @@
 
   function refreshFormGuard() {
     if (!S.current) return;
-    const ok = app.matchesInput(formInput());
+    const ok = formStillMatches();
     document.querySelectorAll('[data-form-guard]').forEach(el => { el.hidden = ok; });
     document.querySelectorAll('button[data-action="commit"]').forEach(b => { b.disabled = !ok || b.dataset.base !== 'on' || !!ui.busy; });
   }
@@ -682,6 +687,8 @@
   function analyzeFromForm(opts) {
     const res = app.analyze({ ruleId: ui.form.ruleId, newValue: ui.form.newValue, issuerTier: Number(ui.form.issuerTier), requestText: ui.form.text });
     ui.ratify = false;
+    // Người dùng tự điền biểu mẫu rồi phân tích: lời từ chối của câu trước không còn áp cho phân tích mới.
+    if (res.ok && ui.understanding && (ui.understanding.status === 'refusal' || ui.understanding.status === 'clarification')) ui.understanding = null;
     // Có AI thật thì tự rà các dòng tự sửa ngay sau khi phân tích (không chặn giao diện). Minh hoạ tự chọn nguồn rà
     // soát của mình (dữ liệu mẫu hoặc rà ngay lúc Ban hành), nên không chạy song song hai nguồn (báo cáo kiểm thử F03).
     if (res.ok && S.ai.status === 'ready' && !(opts && opts.autoReview === false)) app.ensureSemanticReview().then(() => render());

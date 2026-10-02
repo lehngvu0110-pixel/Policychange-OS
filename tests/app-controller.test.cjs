@@ -454,3 +454,26 @@ test('F05: lỗi máy chủ tạm thời không đổi workspace; chỉ lùi v�
   await b.switchSource('remote', 'demo');
   assert.equal(b.state.fallbackFrom, null, 'chọn tay thì được ghi nhớ bình thường');
 });
+
+test('rà lại lần hai không làm prover chặn dòng đã được người duyệt hay dòng tự sửa có bằng chứng cũ', async () => {
+  for (const [first, second, approve] of [['supports', 'empty', false], ['hold', 'empty', true], ['hold', 'supports', true]]) {
+    const adapter = scriptedAdapter([first, 'supports']);
+    if (second === 'empty') adapter.discover = (orig => async payload => (adapter.calls.length ? (adapter.calls.push(payload), { available: true, output: { schemaVersion: 1, candidates: [] } }) : orig(payload)))(adapter.discover);
+    const app = await offlineWithAI(adapter);
+    app.analyze(CHANGE);
+    await app.discoverSemantics();
+    app.setPersona('tp-dt');
+    if (approve) for (const p of app.state.current.props.filter(x => x.semanticHold)) {
+      app.setPersona(app.decisionRight(p).ok ? 'tp-dt' : 'ht');
+      await app.reviewSemantic(p.id, true);
+    }
+    const before = app.committableCount();
+    assert.ok(before > 0);
+    await app.discoverSemantics();
+    assert.equal(app.committableCount(), before, [first, second].join('→') + ': số dòng ban hành được không đổi');
+    app.setPersona('ht');
+    const res = await app.commit();
+    assert.equal(res.ok, true, res.message);
+    assert.ok(res.applied > 0, [first, second].join('→') + ': ' + res.message);
+  }
+});
