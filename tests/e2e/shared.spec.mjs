@@ -39,3 +39,18 @@ test('dùng chung: trưởng phòng ban hành, vị trí U2 thành hồ sơ; tr�
   expect(backend.db.openChanges[0].status).toBe('closed');
   expect(errors).toEqual([]);
 });
+
+test('F05: tải lại trang giữ lựa chọn nguồn dữ liệu (ngoại tuyến / dùng chung)', async ({ page }) => {
+  const backend = createFakeBackend();
+  await backend.attach(page);
+  await page.goto('/index.html#/tong-quan');
+  await expect(page.locator('#connPill')).toContainText('Dùng chung');
+  await page.getByRole('button', { name: 'Làm ngoại tuyến' }).click();
+  await expect(page.locator('#connPill')).toContainText('Ngoại tuyến');
+  await page.reload();
+  await expect(page.locator('#connPill')).toContainText('Ngoại tuyến');
+  await page.getByRole('button', { name: 'Dùng chung', exact: true }).click();
+  await expect(page.locator('#connPill')).toContainText('Dùng chung');
+  await page.reload();
+  await expect(page.locator('#connPill')).toContainText('Dùng chung');
+});

@@ -182,3 +182,17 @@ test('hồi quy: "10 trang" không bị coi là "10 tr(iệu)" và không bị s
     assert.equal(proof.checks.find(c => (c.id || c.name) === 'registered_measure_cue').passed, false);
   });
 }
+
+test('F06: parseFreeText mượn đơn vị của giá trị mới chỉ khi khớp một giá trị trong sổ', () => {
+  const E = require('../js/policy-engine.js');
+  const D = require('../js/policy-data.js');
+  const ok = E.parseFreeText('Rút thời hạn nộp đơn phúc khảo từ 7 xuống 5 ngày, do Trưởng phòng Đào tạo ban hành.', D.SEED_REGISTRY);
+  assert.equal(ok.ok, true, ok.msg);
+  assert.equal(ok.oldValue, '7 ngày');
+  assert.equal(ok.unitBorrowed, true);
+  const money = E.parseFreeText('Nâng hạn mức tạm ứng từ 10 lên 12 triệu đồng, do Hiệu trưởng ban hành.', D.SEED_REGISTRY);
+  assert.equal(money.oldValue, '10 triệu đồng');
+  assert.equal(E.parseFreeText('Đổi hạn nộp đơn phúc khảo từ 70 xuống 5 ngày, Trưởng phòng Đào tạo.', D.SEED_REGISTRY).ok, false);
+  assert.equal(E.shareUnit('10.000.000', '12 triệu'), '10.000.000', 'không ghép “triệu” vào số đã đủ hàng nghìn');
+  assert.equal(E.shareUnit('7 ngày', '5 ngày'), '7 ngày');
+});

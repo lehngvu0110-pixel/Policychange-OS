@@ -185,7 +185,9 @@
       maxCandidates: options && options.maxCandidates,
       maxLineLength: options && options.maxLineLength
     });
-    const untouched = (Array.isArray(props) ? props : []).map(prop => ({ ...withoutSemanticMetadata(prop), semanticHold: false }));
+    // Lần rà không thành (không có AI, hết giờ, lỗi, bằng chứng bị loại) KHÔNG được xoá bằng chứng hay cờ giữ lại
+    // của một lần rà trước đó: giữ nguyên từng đề xuất như đang có. Chỉ lần rà hợp lệ mới thay metadata ngữ nghĩa.
+    const untouched = (Array.isArray(props) ? props : []).map(prop => ({ ...prop, semanticHold: prop.semanticHold === true }));
     if (!adapter || typeof adapter.discover !== 'function') {
       return { status: 'unavailable', props: untouched, candidateSet, valid: [], rejected: [] };
     }

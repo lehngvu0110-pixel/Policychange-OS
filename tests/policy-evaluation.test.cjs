@@ -94,19 +94,37 @@ test('evaluateWithSemantics: AI chỉ giữ lại AUTO_PATCH, không nâng ca ch
   assert.equal(withAi.rows.find(r => r.id === 'C').actual, 'U1');
 });
 
+// Checkout trên Windows (core.autocrlf) có thể đổi kiểu xuống dòng. So sánh trên nội dung đã chuẩn hoá LF để test
+// không đỏ chỉ vì ký tự xuống dòng, mà vẫn bắt được mọi sửa nội dung (báo cáo kiểm thử F08).
+const readLf = name => fs.readFileSync(path.join(__dirname, '..', 'bench', name), 'utf8').replace(/\r\n/g, '\n');
+
 test('js/holdout-data.js đồng bộ với bench/holdout.csv', () => {
   const embedded = require('../js/holdout-data.js');
-  assert.equal(embedded, fs.readFileSync(path.join(__dirname, '..', 'bench', 'holdout.csv'), 'utf8'), 'chạy npm run build:holdout');
+  assert.equal(embedded.replace(/\r\n/g, '\n'), readLf('holdout.csv'), 'chạy npm run build:holdout');
 });
 
 test('js/blind-data.js đồng bộ với bench/blind.csv; tập mù đúng mã băm đã đóng băng', () => {
   const crypto = require('node:crypto');
-  const text = fs.readFileSync(path.join(__dirname, '..', 'bench', 'blind.csv'), 'utf8');
-  assert.equal(require('../js/blind-data.js'), text, 'chạy npm run build:holdout');
-  const sha = crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, '..', 'bench', 'blind.csv'))).digest('hex');
+  const text = readLf('blind.csv');
+  assert.equal(require('../js/blind-data.js').replace(/\r\n/g, '\n'), text, 'chạy npm run build:holdout');
+  // Tệp được đóng băng với xuống dòng CRLF; băm trên dạng CRLF đó dù bản checkout dùng kiểu xuống dòng nào.
+  const sha = crypto.createHash('sha256').update(Buffer.from(text.replace(/\n/g, '\r\n'), 'utf8')).digest('hex');
   const provenance = fs.readFileSync(path.join(__dirname, '..', 'bench', 'BLIND-PROVENANCE.md'), 'utf8');
   assert.ok(provenance.includes(sha), 'tập mù đã bị sửa sau khi đóng băng');
   const { cases, errors } = Evaluation.parseCsv(text);
   assert.deepEqual(errors, []);
   assert.equal(cases.length, 40);
+});
+
+test('F08: so khớp và mã băm tập mù không phụ thuộc kiểu xuống dòng của bản checkout', () => {
+  const crypto = require('node:crypto');
+  const provenance = fs.readFileSync(path.join(__dirname, '..', 'bench', 'BLIND-PROVENANCE.md'), 'utf8');
+  const lf = readLf('blind.csv');
+  for (const checkout of [lf, lf.replace(/\n/g, '\r\n')]) {
+    const canonical = checkout.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n');
+    assert.ok(provenance.includes(crypto.createHash('sha256').update(Buffer.from(canonical, 'utf8')).digest('hex')));
+    assert.deepEqual(Evaluation.parseCsv(checkout).cases.map(c => c.id), Evaluation.parseCsv(lf).cases.map(c => c.id));
+  }
+  const holdout = readLf('holdout.csv');
+  assert.equal(require('../js/holdout-data.js').replace(/\r\n/g, '\n'), holdout.replace(/\n/g, '\r\n').replace(/\r\n/g, '\n'));
 });

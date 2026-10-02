@@ -428,6 +428,17 @@
   }
 
   /**
+   * Nhắc người quyết U1 con số đang đo đại lượng gì. Sổ kiểm toán thí điểm (bản ghi #8, HD-04 “lưu bài trong 7 ngày”)
+   * cho thấy người duyệt dễ chọn “Có” khi dòng có đúng chủ đề nhưng con số đo việc khác.
+   * @param {Proposal} p @param {Rule|undefined} rule
+   */
+  function measureHint(p, rule) {
+    const cues = measuresOf(rule);
+    if (!rule || !cues.length || measureCuesInLine(p.line, rule).length) return '';
+    return 'Quy định này đo ' + cues.slice(0, 3).map(c => '“' + c + '”').join(' / ') + '; dòng này không có cụm nào như vậy — nếu con số ở đây đo việc khác (ví dụ thời gian lưu, thời gian chờ kết quả) thì chọn Không. ';
+  }
+
+  /**
    * Câu hỏi chuyển tiếp đơn lượt: đúng một câu, đúng hai lựa chọn.
    * @param {Proposal} p @param {Change} change @param {ReadonlyArray<Rule>} registry
    * @returns {{ q:string, a:string, b:string }}
@@ -438,6 +449,7 @@
     if (p.category === 'U1') {
       return {
         q: 'Tài liệu ' + p.docId + ' — ' + p.docTitle + ', dòng ' + (p.lineIndex + 1) + ': “' + p.line.trim() + '”. ' + (p.variants && p.variants.length ? 'Giá trị “' + change.oldValue + '” xuất hiện ở dạng khác (“' + p.variants[0].text + '”). ' : 'Giá trị “' + change.oldValue + '” ở đây chưa được xác định chắc chắn thuộc quy định nào. ') + 'Đề xuất đổi thành “' + change.newValue + '”. ' +
+           measureHint(p, rule) +
            'Chuyên viên phụ trách tài liệu quyết định: giá trị này có thuộc ' + (rule ? rule.name.toLowerCase() : 'quy định vừa sửa') + ' không?',
         a: 'Có — sửa thành “' + change.newValue + '”',
         b: 'Không — giữ nguyên “' + change.oldValue + '”'
@@ -490,6 +502,11 @@
       if (m) { oldV = m[1].trim(); newV = m[2].trim(); }
     }
     if (!oldV || !newV) return { ok: false, msg: 'Không nhận ra cặp giá trị cũ → mới. Hãy viết dạng “từ 7 ngày xuống 5 ngày” hoặc “7 ngày → 5 ngày”.' };
+    // “từ 7 xuống 5 ngày”: hai giá trị dùng chung đơn vị viết một lần ở giá trị sau. Chỉ mượn đơn vị khi kết quả
+    // khớp đúng giá trị hiện hành của một quy định trong sổ; ngược lại giữ nguyên để bước sau từ chối như cũ.
+    let unitBorrowed = false;
+    const shared = shareUnit(oldV, newV);
+    if (shared !== oldV && (registry || []).some(r => policyValueKey(r.value) === policyValueKey(shared))) { oldV = shared; unitBorrowed = true; }
     if (parseValue(oldV).num === null || parseValue(newV).num === null)
       return { ok: false, msg: 'Giá trị không đúng định dạng số Việt Nam. Dùng dấu chấm cho hàng nghìn và dấu phẩy cho phần thập phân.' };
 
@@ -516,7 +533,19 @@
     if (candidates.length > 1 && candidates[0].score === candidates[1].score) {
       return { ok: false, msg: 'Câu lệnh có thể khớp với nhiều quy định. Chưa rõ policy đích — hãy chọn một quy định cụ thể.' };
     }
-    return { ok: true, ruleId: candidates[0].r.id, oldValue: oldV, newValue: newV, issuerTier };
+    return { ok: true, ruleId: candidates[0].r.id, oldValue: oldV, newValue: newV, issuerTier, ...(unitBorrowed ? { unitBorrowed: true } : {}) };
+  }
+
+  /**
+   * Viết đầy đủ giá trị cũ khi nó chỉ là con số và giá trị mới mang đơn vị: (“7”, “5 ngày”) → “7 ngày”,
+   * (“10”, “12 triệu đồng”) → “10 triệu đồng”. Không đụng tới giá trị cũ đã có đơn vị hoặc có dấu chấm hàng nghìn.
+   * @param {string} oldValue @param {string} newValue @returns {string}
+   */
+  function shareUnit(oldValue, newValue) {
+    const o = String(oldValue || '').trim();
+    const m = String(newValue || '').trim().match(/^(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?\s*(\D.*)$/u);
+    if (!/^\d+(?:,\d+)?$/.test(o) || !m || !m[1].trim()) return o;
+    return o + ' ' + m[1].trim();
   }
 
   /**
@@ -566,6 +595,6 @@
     escRe, parseValue, valueRegex, isStructuredNumericOccurrence, renderValue,
     ownersOfLine, matchesOldValue, analyze, stripDiacritics, numberWords, equivalentRegex, equivalentHits,
     measuresOf, measureCuesInLine, anchorGovernsValue, clauseAt, OTHER_QUANTITY, escalationQuestion, actAccepts,
-    parseFreeText, policyValueKey, changeError, bumpVersion, cloneDocs, cloneRegistry
+    parseFreeText, shareUnit, policyValueKey, changeError, bumpVersion, cloneDocs, cloneRegistry
   });
 });

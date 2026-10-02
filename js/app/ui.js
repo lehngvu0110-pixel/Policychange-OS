@@ -24,6 +24,11 @@
   const S = app.state;
   G.PolicyChangeUI = { app };
 
+  // Workspace đã chọn được nhớ trên trình duyệt này để tải lại trang không quay về Trình diễn (báo cáo kiểm thử F05).
+  const WORKSPACE_KEY = 'policychange-os:workspace';
+  const readWorkspace = () => { try { return localStorage.getItem(WORKSPACE_KEY) || ''; } catch (_) { return ''; } };
+  const writeWorkspace = id => { try { if (readWorkspace() !== id) localStorage.setItem(WORKSPACE_KEY, id); } catch (_) { /* bỏ qua */ } };
+
   const ui = {
     route: 'tong-quan', query: new URLSearchParams(),
     form: { text: '', ruleId: 'R-PK-01', newValue: '', issuerTier: '' },
@@ -108,6 +113,8 @@
     if (!S.current) return [];
     return S.current.props.filter(p => !p.inCase && !p.applied && !p.logged && ((p.outcome === 'ESCALATE' && !p.decided) || (p.semanticHold && !p.semanticHoldReviewed)));
   }
+  function liveWorkspace() { return S.source === 'remote' && S.workspace.mode === 'live'; }
+  function formInput() { return { ruleId: ui.form.ruleId, newValue: ui.form.newValue, issuerTier: ui.form.issuerTier, requestText: ui.form.text }; }
   function mine(list) { return list.filter(p => app.decisionRight(p).ok); }
   /** Mọi việc đang chờ: của phân tích đang mở trên máy này + hồ sơ dùng chung trên máy chủ. */
   function queueEntries() {
@@ -343,8 +350,9 @@
       const how = r.status === 'ai_candidate' ? '<span class="tag done">AI · đã kiểm chứng</span>' : '<span class="tag neutral">Bộ phân tích tiền định</span>';
       const quotes = Array.isArray(r.evidence) && r.evidence.length ? '<div class="xs muted">Trích dẫn: ' + r.evidence.map(e => '“' + esc(e.quote) + '”').join(' · ') + '</div>' : '';
       const why = r.status === 'deterministic_fallback' && r.aiReason ? '<div class="xs muted">Không dùng AI vì: ' + esc(vi(r.aiReason)) + '</div>' : '';
+      const unit = r.unitBorrowed ? '<div class="xs"><b>Lưu ý:</b> câu chỉ ghi đơn vị một lần, hệ thống hiểu giá trị cũ là “' + esc(c.oldValue) + '”. Kiểm tra lại trước khi phân tích.</div>' : '';
       return '<div class="notice ok"><div class="grow small stack" style="gap:4px"><div class="row">' + how + '<b>' + esc(c.ruleId + (rule ? ' — ' + rule.name : '')) + '</b></div>' +
-        '<div>' + esc(c.oldValue) + ' → <b>' + esc(c.newValue) + '</b> · cấp ban hành ' + esc(c.issuerTier) + ' (' + esc(Engine.TIER_APPROVER[c.issuerTier]) + ')</div>' + quotes + why +
+        '<div>' + esc(c.oldValue) + ' → <b>' + esc(c.newValue) + '</b> · cấp ban hành ' + esc(c.issuerTier) + ' (' + esc(Engine.TIER_APPROVER[c.issuerTier]) + ')</div>' + quotes + why + unit +
         '<div class="xs">Đã điền vào biểu mẫu bên dưới. Kiểm tra lại rồi bấm “Phân tích tác động”.</div></div></div>';
     }
     return '<div class="notice ' + (r.status === 'refusal' ? 'error' : 'warn') + '" role="status"><div class="grow small"><b>' + (r.status === 'refusal' ? 'Từ chối xử lý' : 'Cần làm rõ') + ':</b> ' + esc(vi(r.reason)) + '</div></div>';
@@ -415,7 +423,7 @@
         const choice = (act, label) => caseItem ? btn('decide-case', label, { data: { idx: o.caseIdx, act }, busyKey: 'case-' + o.caseIdx }) : btn('decide', label, { data: { p: p.id, act } });
         action = '<div class="question"><div class="q-label">Câu hỏi chuyển tiếp · một lượt, quyết dứt điểm</div>' + esc(q.q) + '</div>' +
           (right.ok ? '<div class="choices">' + choice('a', 'A · ' + q.a) + choice('b', 'B · ' + q.b) + '</div>'
-            : '<div class="lock">' + icon('lock', 16) + '<span>' + esc(right.reason) + ' Đổi vai trò ở thanh trên để thử.</span></div>') +
+            : '<div class="lock">' + icon('lock', 16) + '<span>' + esc(right.reason) + (!liveWorkspace() ? ' Đổi vai trò ở thanh trên để thử.' : caseItem ? ' Người có thẩm quyền quyết hồ sơ này trên máy của họ.' : ' Khi ban hành, vị trí này được chuyển thành hồ sơ dùng chung cho người có thẩm quyền.') + '</span></div>') +
           '<div class="xs muted"><b>Giải thích dễ hiểu:</b> ' + esc(p.plain) + '</div>';
       } else if (p.outcome === 'ESCALATE' && p.decided) {
         action = '<div class="row small"><span>✔ ' + esc(p.decisionLabel) + (p.decidedBy ? ' · ' + esc(p.decidedBy) : '') + '</span>' + btn('undo-decision', 'Đổi quyết định', { cls: 'sm ghost', data: { p: p.id } }) + '</div>';
@@ -448,13 +456,25 @@
     const rule = S.registry.find(r => r.id === cur.change.rule.id);
     const canRatify = rule && cur.change.issuerTier >= rule.tier && Engine.parseValue(rule.value).num !== Engine.parseValue(cur.change.newValue).num;
     const nothing = n === 0 && rejections === 0 && !(shared && open);
-    return '<div class="commitbar" role="region" aria-label="Ban hành">' +
+    const formMatches = app.matchesInput(formInput());
+    const cases = shared ? app.caseItems().length : 0;
+    const waiting = open ? open + ' vị trí của phân tích này còn chờ người quyết — ' + (shared ? 'khi ban hành, các vị trí này được chuyển thành hồ sơ dùng chung để đúng người quyết trên máy của họ.' : 'có thể ban hành phần đã sẵn sàng trước.')
+      : 'Phân tích này không còn vị trí chờ.';
+    return '<div class="notice warn" role="status" data-form-guard' + (formMatches ? ' hidden' : '') + '><div class="grow small">Biểu mẫu ở trên đã khác với phân tích đang hiện (' + esc(cur.change.rule.id + ' ' + cur.change.oldValue + ' → ' + cur.change.newValue + ', cấp ' + cur.change.issuerTier) + '). Bấm “Phân tích tác động” lại trước khi ban hành.</div>' + btn('analyze', 'Phân tích lại', { cls: 'sm' }) + '</div>' +
+      '<div class="commitbar" role="region" aria-label="Ban hành">' +
       '<div class="grow"><b>' + nf.format(n) + ' thay đổi sẵn sàng ban hành</b>' + (rejections ? ' · ' + nf.format(rejections) + ' quyết định giữ nguyên sẽ được ghi sổ' : '') +
-      '<div class="xs muted">' + esc(open ? open + ' vị trí còn chờ người quyết — ' + (shared ? 'khi ban hành, các vị trí này được chuyển thành hồ sơ dùng chung để đúng người quyết trên máy của họ.' : 'có thể ban hành phần đã sẵn sàng trước.') : 'Không còn vị trí chờ.') +
+      '<div class="xs muted">' + esc(waiting) + (cases ? ' ' + esc('Hàng đợi dùng chung còn ' + cases + ' vị trí ở các hồ sơ đã ban hành trước.') : '') +
       (!issue.ok ? ' ' + esc(issue.reason) : '') + '</div></div>' +
       (canRatify ? '<label class="check small"><input type="checkbox" id="ratifyChk" name="ratify" data-bind="ratify"' + (ui.ratify ? ' checked' : '') + '> Cập nhật luôn giá trị gốc ' + esc(rule.id) + ' trong sổ đăng ký</label>'
         : (rule && cur.change.issuerTier < rule.tier ? '<span class="xs muted hide-sm" style="max-width:260px">' + esc(rule.id + ' là quy định cấp ' + rule.tier + '; giá trị gốc chỉ đổi khi cấp ' + rule.tier + ' ban hành.') + '</span>' : '')) +
-      btn('commit', 'Ban hành', { cls: 'primary', disabled: nothing || !issue.ok || S.busy }) + '</div>';
+      btn('commit', 'Ban hành', { cls: 'primary', disabled: nothing || !issue.ok || S.busy || !formMatches, data: { base: nothing || !issue.ok || S.busy ? 'off' : 'on' } }) + '</div>';
+  }
+
+  function refreshFormGuard() {
+    if (!S.current) return;
+    const ok = app.matchesInput(formInput());
+    document.querySelectorAll('[data-form-guard]').forEach(el => { el.hidden = ok; });
+    document.querySelectorAll('button[data-action="commit"]').forEach(b => { b.disabled = !ok || b.dataset.base !== 'on' || !!ui.busy; });
   }
 
   function sandboxBanner() {
@@ -492,7 +512,7 @@
         [['mine', 'Việc của tôi · ' + mineList.length], ['all', 'Tất cả đang chờ · ' + all.length], ['done', 'Đã quyết (chưa ban hành) · ' + decided.length]]
           .map(([k, l]) => '<button type="button" data-action="queue-tab" data-value="' + k + '" aria-pressed="' + (tab === k) + '">' + esc(l) + '</button>').join('') + '</div>' +
       '<div class="stack">' + (body ||
-        '<div class="empty"><b>' + (tab === 'mine' ? 'Không có vị trí nào thuộc thẩm quyền của bạn' : 'Không có vị trí nào') + '</b>' + (tab === 'mine' && all.length ? 'Còn ' + all.length + ' vị trí cần người khác — xem tab “Tất cả” hoặc đổi vai trò.' : '') + '</div>') + '</div>' + commitBar());
+        '<div class="empty"><b>' + (tab === 'mine' ? 'Không có vị trí nào thuộc thẩm quyền của bạn' : 'Không có vị trí nào') + '</b>' + (tab === 'mine' && all.length ? 'Còn ' + all.length + ' vị trí cần người khác — xem tab “Tất cả”' + (liveWorkspace() ? '.' : ' hoặc đổi vai trò.') : '') + '</div>') + '</div>' + commitBar());
   }
 
   // ---------- Màn hình: Sổ kiểm toán ----------
@@ -640,14 +660,22 @@
     const r = await app.resolveRequest(text);
     ui.understanding = r;
     if (r.status === 'ai_candidate' || r.status === 'deterministic_fallback') syncFormFromChange(r.change);
+    else {
+      // Câu mới bị từ chối / cần làm rõ: không để lại phân tích và giá trị của câu trước, kẻo người dùng tưởng
+      // nút Ban hành áp cho câu vừa nhập (báo cáo kiểm thử F02).
+      ui.form.newValue = ''; ui.form.issuerTier = '';
+      app.clearAnalysis();
+    }
     return r;
   }
 
-  function analyzeFromForm() {
+  /** @param {{ autoReview?:boolean }} [opts] */
+  function analyzeFromForm(opts) {
     const res = app.analyze({ ruleId: ui.form.ruleId, newValue: ui.form.newValue, issuerTier: Number(ui.form.issuerTier), requestText: ui.form.text });
     ui.ratify = false;
-    // Có AI thật thì tự rà các dòng tự sửa ngay sau khi phân tích (không chặn giao diện).
-    if (res.ok && S.ai.status === 'ready') app.ensureSemanticReview().then(() => render());
+    // Có AI thật thì tự rà các dòng tự sửa ngay sau khi phân tích (không chặn giao diện). Minh hoạ tự chọn nguồn rà
+    // soát của mình (dữ liệu mẫu hoặc rà ngay lúc Ban hành), nên không chạy song song hai nguồn (báo cáo kiểm thử F03).
+    if (res.ok && S.ai.status === 'ready' && !(opts && opts.autoReview === false)) app.ensureSemanticReview().then(() => render());
     if (!res.ok) { const el = document.getElementById(!ui.form.newValue ? 'newVal' : !ui.form.issuerTier ? 'tierSel' : 'newVal'); if (el) el.focus(); }
     return res;
   }
@@ -659,8 +687,8 @@
     ui.form.text = sc.requestText;
     const r = await understand(sc.requestText);
     if (!(r.status === 'ai_candidate' || r.status === 'deterministic_fallback')) { ui.demoStatus = { tone: 'error', text: 'Minh hoạ dừng: không hiểu được yêu cầu (' + vi(r.reason) + ').' }; return; }
-    analyzeFromForm();
-    const res = await app.commit();
+    analyzeFromForm({ autoReview: false });
+    const res = await app.commit({ expect: formInput() });
     const p = S.current && S.current.props[0];
     ui.demoStatus = { tone: res.ok ? 'ok' : 'error', text: res.ok ? 'Đã tự sửa “7 ngày” → “5 ngày” sau khi prover xác nhận đủ điều kiện; ngày 17/07/2025 trong cùng dòng giữ nguyên. Mở “Sổ kiểm toán” để xem bản ghi và thử Hoàn tác.' : res.message };
     if (p) go('thay-doi'); else render();
@@ -672,7 +700,7 @@
     app.setPersona('tp-dt');
     ui.form.text = sc.requestText;
     await understand(sc.requestText);
-    analyzeFromForm();
+    analyzeFromForm({ autoReview: false });
     await app.discoverSemantics(G.PolicyChangeDemo.createAmbiguityFixtureAdapter(), 'fixture_mock');
     ui.demoStatus = { tone: 'info', text: 'Động cơ tiền định vẫn nói AUTO_PATCH, nhưng bằng chứng ngữ nghĩa (mẫu, không phải mô hình thật) là “có thể liên quan” → vị trí bị giữ lại, không ban hành được cho tới khi người duyệt.' };
     go('thay-doi');
@@ -684,7 +712,8 @@
     ui.form.text = text;
     const r = await understand(text);
     const unchanged = JSON.stringify([S.docs, S.ledger]) === before;
-    ui.demoStatus = { tone: r.status === 'refusal' && unchanged ? 'ok' : 'error', text: r.status === 'refusal' && unchanged ? 'Đã từ chối trước khi phân tích: ' + vi(r.reason) + ' Kho tài liệu và sổ kiểm toán không thay đổi.' : 'Kết quả bất thường; không thực hiện thêm thao tác nào.' };
+    const good = r.status === 'refusal' && unchanged && !S.current;
+    ui.demoStatus = { tone: good ? 'ok' : 'error', text: good ? 'Đã từ chối trước khi phân tích: ' + vi(r.reason) + ' Kho tài liệu và sổ kiểm toán không thay đổi; không còn kết quả phân tích nào để ban hành.' : 'Kết quả bất thường; không thực hiện thêm thao tác nào.' };
     go('thay-doi');
   }
 
@@ -720,14 +749,14 @@
     },
     'undo-decision': el => app.undoDecision(el.dataset.p),
     'review': el => app.reviewSemantic(el.dataset.p, el.dataset.approve === '1'),
-    'commit': () => withBusy('commit', () => app.commit({ ratify: ui.ratify })),
+    'commit': () => withBusy('commit', () => app.commit({ ratify: ui.ratify, expect: formInput() })),
     'undo': el => { if (confirm('Hoàn tác bản ghi #' + el.dataset.seq + '? Dòng sẽ được khôi phục và một bản ghi hoàn tác được thêm vào sổ.')) withBusy('undo', () => app.undo(Number(el.dataset.seq))); },
     'filter-loc': el => { setQuery('loc', el.dataset.value); render(); },
     'queue-tab': el => { setQuery('tab', el.dataset.value); render(); },
     'reload': () => withBusy('reload', () => app.reload()),
     'exit-sandbox': () => { app.exitSandbox(); ui.understanding = null; ui.demoStatus = null; },
     'go-online': () => withBusy('go-online', () => app.switchSource('remote', 'demo')),
-    'go-offline': () => withBusy('go-offline', () => app.switchSource('local')),
+    'go-offline': () => withBusy('go-offline', async () => { const res = await app.switchSource('local'); writeWorkspace('local'); return res; }),
     'open-pilot': () => withBusy('open-pilot', () => app.switchSource('remote', 'hcmut-pilot')),
     'open-demo': () => withBusy('open-demo', () => app.switchSource('remote', 'demo')),
     'open-login': () => { const d = $('#loginDlg'); d.showModal(); $('#loginEmail').focus(); },
@@ -782,6 +811,8 @@
       if (!el.dataset || !el.dataset.bind) return;
       bindValue(el.dataset.bind, el.type === 'checkbox' ? el.checked : el.value);
       if (['ledgerQuery', 'docQuery'].includes(el.dataset.bind)) render();
+      // Gõ vào câu yêu cầu / giá trị mới: khoá nút Ban hành ngay (không vẽ lại toàn trang để khỏi mất con trỏ).
+      if (String(el.dataset.bind).startsWith('form.')) refreshFormGuard();
     });
     document.addEventListener('change', ev => {
       const el = ev.target;
@@ -830,10 +861,15 @@
       if (S.current && S.current.props.some(p => p.decided && !p.applied && !p.logged) && S.source !== 'sandbox') { ev.preventDefault(); ev.returnValue = ''; }
     });
     app.subscribe(() => render());
+    // Chỉ ghi nhớ workspace dùng chung đã mở được; "ngoại tuyến" chỉ được nhớ khi người dùng tự chọn (go-offline),
+    // không nhớ khi máy chủ tạm mất mạng lúc khởi động.
+    app.subscribe(() => { if (!S.busy && S.source === 'remote') writeWorkspace(S.workspace.id); });
     setInterval(() => { if (document.visibilityState === 'visible') app.poll(); }, Math.max(5, Number(cfg.pollSeconds) || 20) * 1000);
   }
 
   wire();
   render();
-  app.init({ prefer: params.get('offline') === '1' ? 'local' : 'remote' });
+  const remembered = readWorkspace();
+  app.init({ prefer: params.get('offline') === '1' || (remembered === 'local' && !params.get('workspace')) ? 'local' : 'remote',
+    workspace: params.get('workspace') || (remembered && remembered !== 'local' ? remembered : undefined) });
 })();

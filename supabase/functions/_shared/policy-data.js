@@ -136,8 +136,9 @@
     change:{ ruleId:"R-PK-01", newValue:"5 ngày", issuerTier:2 }, at:{ docId:"QD-01", lineIndex:1 },
     expect:{ outcome:"ESCALATE", category:"U3" } },
   { id:"TC-04", desc:"Câu lệnh tham chiếu giá trị không có trong sổ đăng ký → từ chối xử lý",
-    freeText:"Đổi hạn nộp hồ sơ từ 42 ngày xuống 30 ngày.",
-    expect:{ refuse:true } }
+    // Các trường khác đều hợp lệ (có cấp ban hành, có cặp giá trị) để lý do từ chối chắc chắn là giá trị ngoài sổ.
+    freeText:"Đổi hạn nộp đơn phúc khảo từ 42 ngày xuống 30 ngày, do Trưởng phòng Đào tạo ban hành.",
+    expect:{ refuse:true, reason:"Không có quy định nào trong sổ đăng ký đang mang giá trị" } }
 ];
 
   const SUITE_ESCALATION = [
