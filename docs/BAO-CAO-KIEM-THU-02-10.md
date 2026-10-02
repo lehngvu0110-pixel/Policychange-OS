@@ -142,7 +142,8 @@ nay nhắc thêm đại lượng mà quy định đo, khi dòng không có cụm
 - Đổi ở `_shared/` gồm `policy-engine`, `policy-data`, `policy-workflow`, `semantic-discovery` và `openai-mapping`. Đã
   đồng bộ bằng `npm run sync:edge`, kiểm bằng `deno check`.
 - Không có thay đổi CSDL hay migration.
-- Phiên bản Edge Function đang chạy ghi ở mục cuối "Triển khai".
+- Đã triển khai lên máy chủ ngày 03/10/2026: `policy-api` v10, `ai-extract` v10, `ai-discover` v10, cả ba `verify_jwt`
+  bật. Đã gọi thử: `policy-api` (whoami) và `ai-extract` (probe, mô hình `gemini-3.5-flash-lite`) đều trả 200.
 
 ## Còn mở (không thuộc phạm vi sửa mã)
 
