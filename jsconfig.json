@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "commonjs",
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": [
+    "js/sha256.js", "js/policy-engine.js", "js/policy-data.js", "js/policy-ledger.js", "js/policy-workflow.js",
+    "js/policy-authz.js", "js/policy-server.js", "js/policy-store.js", "js/openai-mapping.js", "js/remote-ai-adapter.js",
+    "js/remote-store.js", "js/policy-learning.js", "js/policy-evaluation.js", "js/app-controller.js", "js/app/graph.js"
+  ]
+}

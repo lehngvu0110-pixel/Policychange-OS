@@ -1,0 +1,41 @@
+id,rule_id,new_value,issuer_tier,doc_tier,line,expected,phenomenon
+B01,R-PK-01,10 ngày,3,1,Hỏi: Em muốn xin chấm lại bài thi thì phải nộp đơn trong bao lâu? Đáp: Trong vòng 07 ngày kể từ ngày công bố điểm.,AUTO,synonym:cham lai; zero-padded 07; FAQ
+B02,R-TC-01,15 triệu,3,2,Chứng từ chi có giá trị từ 10 triệu đồng trở lên phải được kế toán trưởng và chủ tài khoản cùng ký.,U2,collision:R-TC-02 (two-signature line while changing advance limit)
+B03,R-XN-01,2 ngày,2,1,Giấy chứng nhận tốt nghiệp tạm thời được cấp sau 3 ngày làm việc kể từ ngày sinh viên nộp đủ hồ sơ.,U1,other-certificate:graduation
+B04,R-DK-01,30 tín chỉ,3,3,"Khoản 2. Trong học kỳ chính, mỗi sinh viên được đăng ký học tối đa 24 tín chỉ.",AUTO,plain restatement; regulation article; same tier
+B05,R-KN-01,10 ngày,3,1,Nhà trường sẽ phản hồi kiến nghị của bạn trong vòng một tuần kể từ ngày nhận đơn.,U1,word-number:mot tuan
+B06,R-TC-02,20 triệu,3,1,[ ] Chứng từ chi từ 10 triệu đồng trở lên phải có đủ hai chữ ký kiểm soát (kế toán trưởng và chủ tài khoản).,AUTO,checklist; plain restatement
+B07,R-PK-01,10 ngày,3,1,Sinh viên có thể tra cứu kết quả phúc khảo sau 17 ngày kể từ ngày hết hạn nhận đơn.,NONE,substring-trap:17 ngay
+B08,R-XN-01,2 ngày,1,2,Bước 2: Chuyên viên Phòng Công tác Sinh viên hoàn thiện và trả giấy xác nhận sinh viên trong thời hạn 3 ngày làm việc.,U3,tier-lock:doc2>issuer1
+B09,R-DK-01,30 tín chỉ,3,2,Sinh viên chỉ được xét học bổng khuyến khích học tập nếu đăng ký và hoàn thành ít nhất 24 tín chỉ trong năm học.,U1,minimum-not-maximum; per-year
+B10,R-PK-01,5 ngày,3,1,Bot: Bạn có thể submit đơn xem lại bài thi online trong 7 ngày kể từ khi có điểm nhé!,AUTO,synonym:xem lai bai; english-mixed chatbot
+B11,R-TC-01,20 triệu,3,1,"Khoản ứng trước tối đa 10tr thì chỉ cần Trưởng khoa ký duyệt, không phải chuyển lên Phòng KHTC ạ.",AUTO,abbrev:10tr; synonym:ung truoc
+B12,R-KN-01,5 ngày,3,1,Bạn có 7 ngày kể từ khi điểm được công bố để gửi đơn đề nghị chấm lại bài thi.,U2,collision:R-PK-01 (re-marking line while changing complaint deadline)
+B13,R-XN-01,2 ngày,2,2,Sinh viên nhận giấy chứng nhận đang học tại Phòng CTSV sau 03 ngày làm việc kể từ khi đăng ký trực tuyến.,AUTO,synonym:giay chung nhan dang hoc; zero-padded 03; notice
+B14,R-TC-02,15 triệu,3,1,Luu y: khoan chi tu 10 trieu tro len phai co 2 chu ky kiem soat.,U1,no-diacritics
+B15,R-PK-01,5 ngày,2,3,"Điều 21. Trong thời hạn 07 ngày kể từ ngày công bố kết quả, người học có quyền đề nghị phúc khảo bài thi kết thúc học phần.",U3,tier-lock:doc3>issuer2
+B16,R-DK-01,28 tín chỉ,3,1,Hỏi: Một học kỳ chính em ghi danh được nhiều nhất bao nhiêu TC? Đáp: Không quá 24 tín chỉ.,AUTO,synonym:ghi danh; abbrev TC in question; FAQ
+B17,R-TC-01,15 triệu,3,2,Số dư tạm ứng chưa hoàn ứng của mỗi viên chức tại mọi thời điểm không được vượt quá 10 triệu đồng.,U1,other-quantity:outstanding-balance
+B18,R-KN-01,10 ngày,3,2,"Bước 3: Đơn vị tiếp nhận có trách nhiệm trả lời bằng văn bản các kiến nghị, khiếu nại của người học trong thời hạn 07 ngày.",AUTO,synonym:kien nghi; procedure step; zero-padded
+B19,R-XN-01,2 ngày,2,1,"Khi nhận được tin nhắn báo đã có giấy xác nhận, sinh viên phải đến nhận trong 3 ngày, quá hạn hồ sơ sẽ bị huỷ.",U1,other-quantity:pickup-window
+B20,R-PK-01,10 ngày,3,2,"Mọi đơn khiếu nại của sinh viên, kể cả khiếu nại liên quan đến kết quả thi, được đơn vị trả lời trong vòng 7 ngày.",U2,collision:R-KN-01 (exam-related complaint)
+B21,R-DK-01,28 tín chỉ,3,1,Khối kiến thức giáo dục đại cương của ngành Kỹ thuật Điện gồm 24 tín chỉ bắt buộc.,U1,other-quantity:curriculum-block
+B22,R-TC-02,15 triệu,3,1,"Dạ, khoản chi từ 10.000.000đ trở lên sẽ cần hai người ký duyệt chi thì mới được thanh toán ạ.",AUTO,synonym:hai nguoi ky; format 10.000.000d; chatbot
+B23,R-KN-01,10 ngày,1,2,Mẫu KN-02 – Phiếu tiếp nhận: đơn vị sẽ trả lời đơn khiếu nại của người học trong vòng 7 ngày kể từ ngày tiếp nhận.,U3,tier-lock:doc2>issuer1; form
+B24,R-PK-01,10 ngày,3,1,[ ] Nhắc sinh viên: hạn nộp đơn phúc tra bài thi là 7 ngày sau khi điểm được công bố trên hệ thống.,AUTO,synonym:phuc tra; checklist
+B25,R-TC-02,20 triệu,3,2,Khoản chi từ 110 triệu đồng trở lên phải có thêm ý kiến thẩm định của Phòng Kế hoạch – Tài chính.,NONE,substring-trap:110 trieu
+B26,R-XN-01,2 ngày,2,2,Thời gian xử lý dự kiến: 3 ngày.,U1,standalone-number
+B27,R-TC-01,15 triệu,2,3,Điều 14. Thủ trưởng đơn vị được quyết định tạm ứng với mức không quá 10 triệu đồng cho mỗi lần đề nghị.,U3,tier-lock:doc3>issuer2
+B28,R-KN-01,5 ngày,3,1,"Kính gửi anh/chị, đơn vị sẽ phản hồi phản ánh, khiếu nại của anh/chị chậm nhất 7 ngày kể từ ngày nhận được đơn.",AUTO,synonym:phan anh; email template
+B29,R-DK-01,30 tín chỉ,3,1,"Mỗi học kỳ chính, sinh viên được ghi danh không quá hai mươi bốn tín chỉ.",U1,word-number:hai muoi bon
+B30,R-PK-01,10 ngày,3,1,"Lưu ý: sinh viên nộp đơn phúc khảo trong 7 ngày, còn đơn khiếu nại sẽ được khoa trả lời cũng trong 7 ngày.",U2,collision:R-KN-01; both rules in one line
+B31,R-XN-01,2 ngày,2,1,"Giấy xác nhận SV thường có sau 3 ngày làm việc bạn nhé, nhớ mang thẻ sinh viên khi đến nhận.",AUTO,abbrev:SV; chatbot
+B32,R-TC-01,20 triệu,3,1,Trưởng khoa được ký duyệt các khoản ứng trước kinh phí không quá mười triệu đồng.,U1,word-number:muoi trieu
+B33,R-DK-01,28 tín chỉ,2,3,Điều 9. Khối lượng học tập tối đa mà sinh viên được đăng ký trong mỗi học kỳ chính là 24 tín chỉ.,U3,tier-lock:doc3>issuer2
+B34,R-PK-01,10 ngày,3,1,Kết quả chấm phúc khảo sẽ được công bố trên cổng thông tin đào tạo chậm nhất 7 ngày sau khi hết hạn nhận đơn.,U1,other-quantity:publication-delay
+B35,R-TC-02,20 triệu,3,1,Trưởng phòng được duyệt cấp trước kinh phí công tác cho cán bộ với mức tối đa 10 triệu đồng mỗi lần.,U2,collision:R-TC-01; synonym:cap truoc kinh phi
+B36,R-DK-01,30 tín chỉ,3,1,[ ] Kiểm tra tổng số tín chỉ đăng ký môn của SV không vượt 24 tín chỉ/học kỳ chính.,AUTO,synonym:dang ky mon; checklist; slash unit
+B37,R-KN-01,5 ngày,3,1,"[PTTPC] Don khieu nai cua ban da duoc tiep nhan, don vi se tra loi trong 7 ngay.",U1,no-diacritics; SMS
+B38,R-TC-01,15 triệu,3,2,Trưởng đơn vị được duyệt đề nghị tạm ứng có giá trị đến 10.000.000 đồng; vượt mức này trình Hiệu trưởng.,AUTO,format:10.000.000 dong; procedure
+B39,R-DK-01,30 tín chỉ,3,1,"Để được công nhận tốt nghiệp, sinh viên phải tích luỹ đủ 124 tín chỉ theo chương trình đào tạo.",NONE,substring-trap:124 tin chi
+B40,R-TC-02,20 triệu,3,1,Chi phí tiếp khách của mỗi đơn vị không được vượt quá 10 triệu đồng/tháng.,U1,other-quantity:monthly-cap

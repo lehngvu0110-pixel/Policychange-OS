@@ -1,171 +1,160 @@
 # PolicyChange OS
 
-**Đường dẫn trực tuyến:** https://lehngvu0110-pixel.github.io/Policychange-OS/
 **Trọng tài kiểm soát tài liệu khi quy định thay đổi.**
+MLAI Hackathon 2026 · Bảng 1 OrganizationAI · **Đề A — The Escalation Referee**
 
-MLAI Hackathon 2026 · Bảng 1 OrganizationAI · **Đề A — Bộ điều phối chuyển tiếp (The Escalation Referee)**
+Bản chạy trực tuyến: https://lehngvu0110-pixel.github.io/Policychange-OS/
 
 ---
 
 ## Vấn đề
 
-Đổi một quy định thì không chỉ sửa một văn bản. Giá trị cũ nằm rải rác trong quy trình tác nghiệp, biểu
-mẫu, checklist quầy một cửa, trang hỏi đáp và mẫu thư tự động. Thực tế: văn bản gốc được sửa, các tài
-liệu vệ tinh thì không. Sinh viên đọc hướng dẫn cũ, chuyên viên làm theo checklist cũ, hệ thống gửi thư
-trích dẫn con số đã hết hiệu lực.
-
-Rà soát thủ công thì chậm và sót. Tự động thay thế toàn bộ bằng find-and-replace thì nguy hiểm — cùng
-một con số ở hai chỗ có thể là hai quy định khác nhau.
+Đổi một quy định không chỉ là sửa một văn bản. Giá trị cũ còn nằm trong quy trình tác nghiệp, biểu mẫu,
+checklist quầy một cửa, trang hỏi đáp và mẫu thư tự động. Văn bản gốc thường được sửa, còn các tài liệu
+vệ tinh thì không. Rà soát tay thì chậm và sót; find-and-replace thì nguy hiểm, vì cùng một con số ở hai chỗ
+có thể thuộc hai quy định khác nhau.
 
 ## Giải pháp
 
-Quy trình thường quy được chọn: **kiểm soát tài liệu khi thay đổi quy định** (xem
-`docs/QT-KSTL-01_Quy-trinh-kiem-soat-tai-lieu.md`).
+Hệ thống nhận một thay đổi quy định, quét toàn bộ kho, và với mỗi vị trí bị ảnh hưởng thì **tự sửa** nếu
+chắc chắn, hoặc **dừng lại và hỏi đúng một câu, cho đúng người**:
 
-Hệ thống nhận một thay đổi quy định, quét toàn bộ kho tài liệu, và với mỗi vị trí bị ảnh hưởng thì hoặc
-tự sửa, hoặc dừng lại và hỏi đúng một câu cho đúng người:
+| | Khi nào | Ai quyết (được phân quyền thật) |
+|---|---|---|
+| **U1** · chưa rõ dữ kiện | Con số không có neo vào quy định nào; hoặc đúng chủ đề nhưng không rõ con số đo cái gì; hoặc giá trị viết khác dạng (“một tuần”, “hai mươi bốn”, gõ không dấu) | Người phụ trách đơn vị sở hữu tài liệu |
+| **U2** · ngoài phạm vi | Dòng đang nói về một quy định **khác** cùng giá trị | Trưởng đơn vị sở hữu quy định bị đụng |
+| **U3** · vượt thẩm quyền | Tài liệu do cấp cao hơn cấp ra thay đổi ban hành | Người đủ cấp của đơn vị ban hành tài liệu |
 
-| | Nhóm dừng | Khi nào | Ai quyết |
-|---|---|---|---|
-| **U1** | Chưa xác định được dữ kiện | Con số không có cụm từ nào neo nó vào một quy định đã đăng ký | Chuyên viên phụ trách tài liệu |
-| **U2** | Ngoài phạm vi quy định | Dòng đang nói về một quy định **khác** cũng mang giá trị đó — sửa là đụng nhầm | Đơn vị chủ quản quy định bị đụng |
-| **U3** | Vượt thẩm quyền | Tài liệu do cấp cao hơn ban hành — khóa quyền sửa | Người ban hành tài liệu đó |
+Quy trình mà phần mềm thi hành được viết thành văn bản quy định **QT-KSTL-01 v2.0** (`docs/QT-KSTL-01_Quy-trinh-kiem-soat-tai-lieu.md`);
+`npm run verify` kiểm từng điều của nó. Động cơ tiền định là nơi duy nhất quyết định tự sửa hay chuyển người, và chỉ tự
+sửa khi dòng có **cả neo chủ đề lẫn neo đại lượng**. Một bộ **prover** độc lập kiểm 14 điều kiện trước mỗi bản vá tự động. **AI (OpenAI)** chỉ làm hai việc: hiểu câu yêu cầu tiếng Việt và **tự động** rà soát ngữ nghĩa
+mọi vị trí động cơ định tự sửa trước khi ban hành; AI chỉ được trả **trích dẫn nguyên văn** và chỉ có thể làm kết quả **thận trọng
+hơn**, không bao giờ biến một ca chuyển tiếp thành tự sửa. Mọi thay đổi ghi vào **sổ kiểm toán SHA-256** chỉ
+ghi thêm và hoàn tác được.
 
-Mọi trường hợp còn lại được **xử lý tự động, không hỏi người**. Đó là phần lớn khối lượng.
+## Đã sửa theo phản hồi doanh nghiệp (Sprint 1)
+
+| Phản hồi | Đã làm | Bằng chứng |
+|---|---|---|
+| **Rào cản bắt buộc:** phân loại chỉ dùng regex, trượt cách diễn đạt mới | Tự sửa chỉ khi có neo chủ đề **và** neo đại lượng; nhận ra số viết bằng chữ / quy đổi tuần / không dấu nhưng luôn hỏi người; mô hình thật (OpenAI, schema ràng buộc) tự rà mọi dòng tự sửa, prover tất định vẫn là lớp kiểm | Tập **mù** 40 ca: tự sửa sai **3 → 0**, bỏ sót **8/23 → 0/23** |
+| Bộ dữ liệu thử ≥ 15 ca, diễn đạt cố tình đa dạng | Tập mù 40 ca do tác tử **không xem mã** viết, đóng băng bằng SHA-256 trước khi sửa động cơ; giữ tập 48 ca làm tập phát triển | `bench/blind.csv`, `bench/BLIND-PROVENANCE.md` |
+| Đo tỷ lệ báo lên sai | Báo cáo bỏ sót, **tự sửa sai**, **báo lên thừa**, ma trận nhầm lẫn, ca bẫy | `npm run eval:blind`; màn hình Đánh giá |
+| Policy doc *Partial* | QT-KSTL-01 v2.0: mỗi điều có mã, bảng truy vết điều → mã → kiểm thử | Phụ lục A của QT-KSTL-01 |
+| Verify run *Partial* · Method *Gap* | `npm run verify`: 14 điều, ĐẠT/TRƯỢT, chạy trong CI; tài liệu phương pháp có khoảng tin cậy và mối đe doạ | `docs/PHUONG-PHAP-KIEM-CHUNG.md` |
+| Đi tìm con số chi phí một lần công bố sai | Bằng chứng có nguồn (Air Canada 2024, NĐ 04/2021, ĐH Khoa học Huế 2024) + mô hình chi phí + bảng hỏi số thật | `docs/GIA-TRI-KINH-DOANH.md` |
+
+Đối chiếu đầy đủ từng mục: `docs/PHAN-HOI-DOANH-NGHIEP-SPRINT-1.md`.
+
+## Sprint 2 có gì mới
+
+| Nhận xét của BTC ở Sprint 1 | Đã làm |
+|---|---|
+| Không có backend, tải lại trang là mất dữ liệu | **Supabase** (Postgres + RLS + Edge Functions): nhiều người dùng chung một kho; mọi thao tác ghi đi qua máy chủ, chạy lại động cơ + prover và ghi trong **một giao dịch** có khoá. Mất mạng thì tự lùi về **IndexedDB** trên máy. |
+| Chưa nối LLM thật | `ai-extract` và `ai-discover` gọi **OpenAI Structured Outputs** qua máy chủ (khoá không bao giờ tới trình duyệt), có hạn mức gọi trong ngày (toàn hệ thống và theo từng máy khách). |
+| Chưa phân quyền | Cấp (1–3) × đơn vị phụ trách: *chuyên viên chỉ duyệt văn bản thuộc phạm vi của mình*. Giao diện khoá nút kèm lý do; máy chủ chặn thật. |
+| Nhiều người dùng thật sự cùng làm | **Hàng đợi duyệt dùng chung**: người ban hành áp phần chắc chắn ngay, các vị trí U1/U2/U3 thành *hồ sơ* `CR-n` lưu trên máy chủ; mỗi người có thẩm quyền mở máy của mình và quyết phần của mình — áp dụng và ghi sổ ngay, ghi đúng tên người quyết. Hoàn tác đòi cấp ≥ cấp ban hành của thay đổi. |
+| TypeScript + Vite | Giữ JavaScript thuần để vẫn mở được bằng `file://`, nhưng kiểm kiểu bằng **JSDoc + `tsc --noEmit`** trong CI. Lý do: `docs/PHAN-HOI-BTC-SPRINT-1.md`. |
+| Chưa có E2E, chưa có kiểm thử tải | **Playwright** (luồng chính, phân quyền, 390 px sáng/tối) và `bench/load.cjs`. |
+| Yêu cầu nâng cao của Đề A | **Học từ phản hồi** (đề xuất cụm từ neo mới từ các câu trả lời U1, người duyệt rồi mới áp dụng) và **báo cáo độ chính xác** trên tập độc lập 48 ca (tỉ lệ bỏ sót, chuyển tiếp thừa, ma trận nhầm lẫn). |
+| Giao diện | Làm lại thành ứng dụng 7 màn hình: Tổng quan · Thay đổi quy định · Hàng đợi duyệt · Sổ kiểm toán · Kho tài liệu · Sổ đăng ký & học · Đánh giá; đồ thị tác động SVG; chế độ tối; dùng tốt trên điện thoại. |
 
 ## Chạy thử
 
-### Trực tuyến
+**Trực tuyến:** mở đường dẫn ở trên → bấm **Xem minh hoạ 3 phút**, hoặc vào **Thay đổi quy định**.
+Thanh trên cùng có ô **Vai trò** để đổi người đang thao tác (chuyên viên, trưởng phòng, Hiệu trưởng) và thấy
+phân quyền thay đổi theo.
 
-Mở đường dẫn trực tuyến → bấm **▶ Chạy thay đổi mẫu**. Không cần tài khoản, không cần cài đặt.
-
-### Tại máy (runbook đầy đủ, từ kho mã nguồn sạch)
+**Tại máy:**
 
 ```bash
 git clone https://github.com/lehngvu0110-pixel/Policychange-OS.git
 cd Policychange-OS
-python3 -m http.server 8080      # hoặc: npx serve .
-# mở http://localhost:8080
+npm run serve                      # http://localhost:8080 (không cần npm install)
+# chạy hoàn toàn ngoại tuyến, không gọi máy chủ: http://localhost:8080/index.html?offline=1
 ```
 
-Không có bước build, không có phụ thuộc cho ứng dụng, không cần khóa API hay biến môi trường.
-Ứng dụng tĩnh gồm `index.html` và các tệp trong `js/`; cần giữ nguyên cấu trúc thư mục.
-Nên dùng HTTP server để kiểm tra giống môi trường triển khai.
+Mở thẳng `index.html` bằng trình duyệt cũng chạy được.
 
-### Triển khai
+**Kiểm thử:**
 
 ```bash
-# GitHub Pages: sau khi thay đổi đã có trên nhánh main
-# Settings → Pages → Source: Deploy from a branch → main / (root)
-
-# hoặc Vercel / Netlify: kéo thả thư mục, không cấu hình gì thêm
+npm install                       # chỉ cần cho Playwright và TypeScript
+npm run verify                    # kiểm từng điều của QT-KSTL-01 v2.0 — bảng ĐẠT/TRƯỢT (không cần npm install)
+npm test                          # 219 unit test: động cơ, sổ, phân quyền, máy chủ, học, đánh giá, bộ điều khiển
+npm run eval:blind                # tập mù 40 ca (đóng băng, do tác tử độc lập viết)
+npm run bench                     # benchmark 26 fixture (naive / LLM-only / PolicyChange OS)
+npm run eval                      # tập phát triển bench/holdout.csv
+npm run load                      # kiểm thử tải cục bộ
+npm run typecheck                 # tsc trên các module có // @ts-check
+npx playwright install chromium && npm run e2e
 ```
 
-## Lộ trình kiểm thử cho giám khảo (dưới 90 giây)
+## Kết quả đo được
 
-1. **▶ Chạy thay đổi mẫu** — hạn nộp đơn phúc khảo `7 ngày → 5 ngày`, ban hành ở cấp Trưởng phòng.
-   Hệ thống quét 12 tài liệu, tự sửa 6 vị trí, dừng lại ở 3 vị trí và nêu rõ lý do từng chỗ.
-2. **Mục 3** — ba câu hỏi chuyển tiếp, mỗi câu đúng hai nút. Bấm chọn.
-3. **Mục 4** — **Ban hành**, xem sổ nhật ký SHA-256. Bấm **Hoàn tác** một bản ghi khi dòng hiện tại vẫn khớp nội dung đã ban hành.
-4. **Mục 5** — **▶ Verify** chạy 9 ca kiểm thử, in bảng pass/fail kèm dấu thời gian.
-5. Nhập dữ liệu mới: chọn quy định khác, gõ câu lệnh tiếng Việt tự do, hoặc dán một tài liệu mới vào kho.
+- **Verify của đề bài:** 9/9 ca (màn hình Đánh giá).
+- **Benchmark 26 fixture tổng hợp:** PolicyChange OS tự sửa sai **0/13**; naive 16/25; LLM-only (mock) 13/18.
+- **`npm run verify`:** 14/14 điều của QT-KSTL-01 v2.0 đạt.
+- **Tập mù 40 ca** (tác tử độc lập viết, không xem mã; đóng băng trước khi sửa), *chỉ động cơ tiền định*:
+  **tự sửa sai 0/5**, **bỏ sót 0/23** (KTC 95 %: 0–14,3 %), báo lên thừa 9/17 (52,9 %), đúng 29/40.
+  Trước đợt sửa: sửa sai 3, bỏ sót 8/23. Báo lên thừa còn cao vì từ đồng nghĩa chưa có trong sổ (“phúc tra”,
+  “ứng trước”, “ghi danh”…) — máy hỏi thêm thay vì đoán; vòng học neo và lớp AI nhắm vào đây.
+- **Tập phát triển 48 ca** (nhóm gắn nhãn, đã dùng để thiết kế): sửa sai 5 → 2, bỏ sót 22,2 % → 7,4 %. Hai ca còn
+  sai (H40, H47) được giữ lại làm bằng chứng giới hạn của lớp tiền định — cần lớp AI.
+- **Lớp AI (đo thật, Gemini 3.5 Flash-Lite miễn phí):** trên 24 dòng động cơ muốn tự sửa, AI giữ lại đúng 2 ca lớp tiền
+  định bỏ sót (H40, H47) và không giữ oan dòng đúng nào → tập phát triển còn **0 sửa sai, 0 bỏ sót**. `npm run eval:ai`.
+- **Tải:** 2.400 tài liệu / 9.200 dòng phân tích trong ~30 ms; máy chủ lập kế hoạch ghi với sổ 10.000 bản ghi
+  trong ~0,3 s (kiểm lại toàn chuỗi SHA-256 mỗi lần ghi). Số đo trên máy phát triển, chạy `npm run load` để tái lập.
 
-Chi tiết từng ca: `TESTCASES.md`.
+Toàn bộ dữ liệu là **dữ liệu tổng hợp** do nhóm tự soạn; các con số trên không phải tỉ lệ lỗi trên văn bản thật.
 
-## Kiến trúc
+## Kiến trúc tóm tắt
 
 ```
-Thay đổi quy định ──┐
-(form hoặc câu      │
- tiếng Việt tự do)  ▼
-              Bộ phân tích câu lệnh (tiền định, regex + sổ đăng ký)
-                    │  ├─ không khớp quy định nào ──► TỪ CHỐI XỬ LÝ
-                    ▼
-              Bộ quét vị trí (chuẩn hoá giá trị: 10 triệu = 10.000.000 = 10tr)
-                    ▼
-              Bộ phân loại tiền định   U2 → U3 → U1 → tự động
-                    │
-        ┌───────────┴───────────┐
-        ▼                       ▼
-   Tự sinh bản vá        Sinh câu hỏi đơn lượt + 2 nút
-        │                       │ (người quyết)
-        └───────────┬───────────┘
-                    ▼
-              Ban hành + Sổ kiểm toán SHA-256 nối chuỗi + Hoàn tác
+Trình duyệt (HTML/JS thuần, chạy cả file://)
+  js/app/ui.js ─► js/app-controller.js ─► động cơ · prover · workflow · phân quyền (module dùng chung)
+        │  đọc (RLS, chỉ đọc)                     │ ghi: ý định (quy định, giá trị, cấp, quyết định A/B)
+        ▼                                         ▼
+  Supabase PostgREST              Edge Function policy-api ─ chạy lại CÙNG các module ─► SQL apply_change
+                                  Edge Function ai-extract / ai-discover ─► OpenAI (khoá ở máy chủ)
+  Mất mạng ─► IndexedDB trên máy (chế độ Ngoại tuyến)
 ```
 
-**Thành phần thực tế (đã chạy được):** phân tích tiền định, semantic evidence validation, graph, deterministic prover,
-commit, audit và undo chạy trong trình duyệt. Provider adapter đã có nhưng **chưa cấu hình provider sống**;
-phân tích câu lệnh dùng deterministic fallback. Ca semantic review trong guided demo dùng fixture mock được gắn nhãn,
-đi qua validator thật.
-
-**Thành phần giả lập:** kho 12 tài liệu và sổ 6 quy định là **dữ liệu tổng hợp do nhóm tự soạn**, mô phỏng
-hệ thống văn bản của một trường đại học. Không dùng văn bản thật của bất kỳ đơn vị nào.
-
-**Chưa có:** kết nối model provider thật; kết nối kho tài liệu thật (Google Drive / SharePoint); xử lý tài liệu dạng ảnh quét.
-
-## Vì sao động cơ là tiền định chứ không phải mô hình ngôn ngữ
-
-Ba lý do, theo thứ tự quan trọng:
-
-1. **Quyết định phải giải thích được.** Nhật ký kiểm toán phải trả lời được "vì sao hệ thống dừng ở dòng này" bằng một quy tắc tra ngược được, không phải bằng điểm số độ tin cậy.
-2. **Không được suy đoán trên dữ liệu mơ hồ.** Mô hình ngôn ngữ có xu hướng đoán khi thiếu thông tin. Ở đây đoán sai nghĩa là sửa nhầm một quy định đang có hiệu lực.
-3. **Chạy được ở mọi lúc.** Không khóa API, không quota, không phụ thuộc mạng — điều kiện để giám khảo bấm vào là chạy.
-
-Đã có adapter cho bước hiểu câu lệnh và kiểm tra bằng chứng ngữ nghĩa, nhưng chưa kết nối model sống.
-Khi provider không khả dụng, bước hiểu câu lệnh dùng parser tiền định; model không được quyền phân loại hay ban hành.
-
-## MLAI Demo
-
-Mở ứng dụng qua GitHub Pages hoặc `python3 -m http.server 8080`, rồi vào phần **MLAI guided demo** ở đầu trang.
-Provider chưa được cấu hình: bước hiểu yêu cầu sẽ ghi rõ **deterministic fallback**; ca mơ hồ ghi rõ **fixture/mock**.
-
-1. Bấm **Run safe/date demo**. Hệ thống phân tích yêu cầu `R-PK-01 · 7 ngày → 5 ngày`, hiển thị policy, phạm vi một registry entry, request basis, graph và proof thật, rồi ban hành qua commit handler hiện có.
-2. Quan sát `DEMO-7D`: hạn đổi thành 5 ngày, ngày `17/07/2025` được giữ nguyên. Mở audit entry để xem before/after và proof reference; bấm **Hoàn tác** ngay trong ledger để khôi phục dòng và thêm reversal event.
-3. Bấm **Try global-scope refusal**. Yêu cầu đổi mọi deadline bị từ chối trước analysis; nội dung và ledger không đổi.
-4. Bấm **Load ambiguity fixture · mock**. Graph và evidence đến từ fixture `semantic-ambiguous` qua semantic validator thật. Xem `REVIEW · semantic hold`, sau đó chọn **Duyệt đề xuất này** hoặc **Giữ nguyên dòng**; quyết định engine `AUTO_PATCH` vẫn hiển thị riêng.
-5. Xem benchmark snapshot, rồi tái lập đầy đủ bằng `node bench/run.cjs`.
-
-To reproduce interactively, use an HTTP server rather than `file://`; this also avoids browser restrictions on local-file access. The browser Verify harness is a separate check from the Node regression suites. Benchmark figures are measurements on the included synthetic fixtures only, not real-world error rates.
+Chi tiết: `docs/ARCHITECTURE.md`. Cài backend, khoá OpenAI và cấp tài khoản thí điểm: `docs/SETUP-BACKEND.md`.
 
 ## Giới hạn đã biết
 
-1. Chỉ xử lý thay đổi dạng **thay giá trị**. Thêm mới hoặc bãi bỏ điều khoản nằm ngoài phạm vi.
-2. Chất lượng phân loại phụ thuộc độ đầy đủ của cụm từ neo. Khai báo thiếu làm tăng số hồ sơ U1 — hệ thống dừng nhiều hơn cần thiết, chứ không sửa sai. Đây là hướng lệch có chủ đích.
-3. Chỉ phát hiện mâu thuẫn đi qua con số. Mâu thuẫn diễn đạt thuần ngữ nghĩa chưa phát hiện được.
-4. Chưa đọc được tài liệu dạng ảnh quét hoặc PDF không có lớp văn bản.
-5. Kho tài liệu hiện nằm trong bộ nhớ trình duyệt; tải lại trang là về trạng thái gốc. Bản tích hợp thật cần kho có phiên bản.
-6. Sổ SHA-256 được kiểm tra lại trong phiên hiện tại và Hoàn tác chỉ thêm sự kiện mới. Sổ chưa có lưu trữ bền vững, chữ ký số hay mốc băm độc lập nên chưa thể dùng làm bằng chứng kiểm toán chống người có quyền sửa toàn bộ dữ liệu.
-7. Số dùng định dạng Việt Nam: dấu chấm tách hàng nghìn, dấu phẩy cho phần thập phân. Ví dụ `10,5 triệu` và `10.500.000 đồng` hợp lệ; `10.5 triệu` bị từ chối.
+1. Chỉ xử lý thay đổi dạng **thay giá trị**; thêm mới hoặc bãi bỏ điều khoản nằm ngoài phạm vi.
+2. Chất lượng phân loại phụ thuộc độ đầy đủ của neo chủ đề và neo đại lượng. Thiếu neo làm tăng U1 (hỏi nhiều hơn
+   cần) — hướng lệch có chủ đích; cơ chế học neo thu hẹp dần khoảng này.
+3. Dòng có đủ neo nhưng con số đo việc khác (“giấy xác nhận vay vốn được cấp trong 3 ngày”) vẫn có thể bị tự sửa
+   nếu tắt AI; lớp AI ngữ nghĩa (tự chạy khi có khoá) đã bắt được các ca này trong lần đo thật.
+4. Chưa đọc tài liệu ảnh quét hay PDF không có lớp văn bản; chưa nối Google Drive / SharePoint.
+5. Workspace **trình diễn** cho phép ai có đường dẫn cũng thao tác với vai trò giả lập và khôi phục dữ liệu mẫu —
+   có chủ đích cho buổi chấm. Workspace **thí điểm** bắt buộc đăng nhập và được cấp quyền.
+6. Sổ kiểm toán chống sửa lén qua ứng dụng, nhưng chưa có chữ ký số hay mốc băm độc lập bên ngoài CSDL.
+7. Số dùng định dạng Việt Nam: `10,5 triệu` và `10.500.000 đồng` hợp lệ; `10.5 triệu` bị từ chối.
 
 ## Cấu trúc kho mã nguồn
 
 ```
-index.html      giao diện và động cơ chính; tải thêm các module trong js/
-js/             AI adapter, semantic validator, graph, prover, demo và HTML escaping
-README.md       tài liệu này — gồm runbook
-TESTCASES.md    bảng trường hợp kiểm thử + kịch bản cho giám khảo
-BUILD_LOG.md    nhật ký phát triển
-tests/          bộ test Node.js
-bench/          benchmark offline với dữ liệu tổng hợp
-docs/QT-KSTL-01_Quy-trinh-kiem-soat-tai-lieu.md
-                tài liệu quy định của quy trình được chọn (yêu cầu bắt buộc của Đề A)
+index.html, css/app.css      vỏ ứng dụng
+js/app/ui.js, js/app/graph.js giao diện (chỉ vẽ và nối sự kiện)
+js/app-controller.js          trạng thái + thao tác nghiệp vụ (không đụng DOM, có unit test)
+js/policy-*.js, js/sha256.js  lõi dùng chung trình duyệt / Node / Deno: động cơ, sổ, workflow, phân quyền, máy chủ,
+                              học từ phản hồi, đánh giá, lưu trữ cục bộ
+js/remote-store.js, js/remote-ai-adapter.js   máy khách REST Supabase và adapter AI
+js/semantic-discovery.js, js/policy-prover.js, js/policy-ai.js, js/policy-impact-graph.js   (từ Sprint 1)
+supabase/migrations/          schema, RLS, hàm SQL giao dịch, hạn mức AI
+supabase/functions/           policy-api, ai-extract, ai-discover (+ _shared: bản sao module, `npm run sync:edge`)
+tests/                        unit test Node; tests/e2e: Playwright
+bench/                        benchmark 26 fixture, tập phát triển holdout.csv, tập mù blind.csv, mô phỏng học, kiểm thử tải
+scripts/verify.cjs            kiểm chứng theo từng điều của QT-KSTL-01
+docs/                         kiến trúc, cài backend, phản hồi BTC, kịch bản demo, quy trình QT-KSTL-01
 ```
 
-## Phase 5 benchmark (synthetic, offline)
+## Benchmark 26 fixture (tổng hợp, ngoại tuyến)
 
-The benchmark in `bench/` compares three deliberately different systems on the same authored fixtures:
-
-- `naive`: replaces every matching numeric token without policy or document checks.
-- `llmOnly`: follows a fixture-specified mock model response; it has no registry or deterministic prover.
-- `policyChangeOS`: loads the current browser implementation from `index.html`, runs the deterministic request fallback, analysis, semantic evidence validation where supplied, prover, and existing commit handler. It does not connect to a live model.
-
-Run it from the repository root with `node bench/run.cjs`. Add `--json` for machine-readable output. Run the benchmark contract tests with `node tests/benchmark.test.cjs`.
-
-Run all Node regression suites with `node --test tests/*.test.cjs`. In environments that block child-process spawning, run each `tests/*.test.cjs` file separately with `node`. The in-browser Verify button is a separate check of the browser UI.
-
-All 26 cases are synthetic. `bench/fixtures.json` contains the explicit input and manually authored ground truth for each case, including expected mutations and engine classifications. These fixtures are demonstrations of behavior, not a statistically representative sample and not evidence of real-world performance. The LLM-only responses are mocks, not model outputs.
-
-Metrics are computed from fixture ground truth. Correct decision rate compares outcome, review category, human-review flag, and refusal flag. Correct mutation rate requires the exact expected mutation set. False auto-patch rate is the number of cases with at least one automatic mutation that includes an unapproved mutation, divided by all cases with at least one automatic mutation; it is `n/a` if that denominator is zero. Unsafe mutation count counts unapproved mutation tuples. Correct refusal rate is measured only over fixtures whose ground truth requires refusal; correct escalation rate only over fixtures requiring human review. Missed safe automation rate is the fraction of fixtures with expected safe mutations where at least one expected mutation was missed. PolicyChange-OS also reports engine classification accuracy against the explicitly authored per-line engine decisions.
-
-The harness does not report inferential statistics or claim generalization. It does not measure provider latency (there is no live provider), and it does not benchmark undo. It adapts the actual browser code through a Node VM harness; browser rendering and interactive Verify are outside this benchmark. The retained date fixture is now a regression check: structured numeric components are excluded from candidate matching and independently rejected by the prover's replacement recheck, while a genuine deadline on the same line remains patchable.
+`bench/run.cjs` so sánh ba hệ trên cùng fixture có ground truth viết tay: `naive` (thay mọi con số khớp),
+`llmOnly` (làm theo phản hồi mock của mô hình, không có sổ đăng ký hay prover) và `policyChangeOS` (dùng đúng các
+module của sản phẩm). Tỉ lệ tự sửa sai = số ca có ít nhất một bản vá tự động không được phép / số ca có bản vá
+tự động. Đây là minh hoạ hành vi trên dữ liệu tổng hợp, không phải mẫu đại diện và không suy ra tỉ lệ lỗi thực tế.
