@@ -50,7 +50,9 @@
       connection: /** @type {'online'|'offline'|'unconfigured'} */ (deps.remote && deps.remote.configured ? 'offline' : 'unconfigured'),
       notice: /** @type {null|{ tone:string, text:string }} */ (null),
       ai: { status: deps.aiAdapter ? 'checking' : 'off', reason: deps.aiAdapter ? 'Đang kiểm tra máy chủ AI…' : 'Chưa cấu hình máy chủ AI.', model: /** @type {string|null} */ (null) },
-      saved: /** @type {any} */ (null)
+      saved: /** @type {any} */ (null),
+      /** Workspace muốn mở lúc khởi động nhưng không đọc được (đang hiện workspace khác thay thế). */
+      fallbackFrom: /** @type {string|null} */ (null)
     };
 
     function emit() { listeners.forEach(fn => { try { fn(S); } catch (_) { /* một view lỗi không làm hỏng các view khác */ } }); }
@@ -134,8 +136,9 @@
         // Workspace đã chọn lần trước; nếu chưa có mà còn phiên đăng nhập thì mở workspace thí điểm.
         const wanted = options.workspace || (deps.remote.session ? PILOT_WORKSPACE : S.workspace.id);
         let res = await loadRemote(wanted);
-        if (!res.ok && res.reason !== 'network' && wanted !== 'demo') {
+        if (!res.ok && res.reason === 'forbidden' && wanted !== 'demo') {
           res = await loadRemote('demo');
+          if (res.ok) S.fallbackFrom = wanted;
           if (res.ok) notify('info', 'Không mở được workspace “' + wanted + '” (cần đăng nhập đúng tài khoản); đang hiện workspace Trình diễn.');
         }
         loaded = res.ok;
@@ -156,6 +159,7 @@
 
     /** @param {'remote'|'local'} source @param {string} [workspaceId] */
     async function switchSource(source, workspaceId) {
+      S.fallbackFrom = null;
       if (S.source === 'sandbox') exitSandbox({ refresh: false });
       S.busy = true; emit();
       if (source === 'remote') {
@@ -290,18 +294,21 @@
       analysis.semanticStatus = 'pending'; emit();
       const res = await Semantic.discoverSemantics({ requestText: analysis.requestText, change: analysis.change, props: analysis.props,
         docs: S.docs, registry: S.registry, matchesOldValue: Engine.matchesOldValue, adapter: useAdapter });
-      if (S.current !== analysis) return { ok: false, message: 'Phân tích đã thay đổi.' };
       if (analysis.semanticSeq !== seq) return { ok: false, stale: true, message: 'Đã có lượt rà soát mới hơn; bỏ kết quả của lượt này.' };
       const settled = res.status === 'complete' || res.status === 'no_candidates';
-      // Lượt rà không thành không bao giờ xoá cờ giữ lại / bằng chứng của lượt rà hợp lệ trước đó.
+      // Lượt rà không thành không bao giờ xoá cờ giữ lại / bằng chứng của lượt rà hợp lệ trước đó; lượt hợp lệ chỉ
+      // thêm cờ giữ lại, không gỡ cờ hay quyết định của người (Semantic.mergeSemanticReview).
+      // Ghi vào `analysis` cả khi nó không còn là phân tích hiện tại (ví dụ đang xem minh hoạ), để khi được khôi phục
+      // nó không kẹt ở trạng thái "đang rà".
       if (settled) {
-        analysis.props = res.props;
+        analysis.props = Semantic.mergeSemanticReview(analysis.props, res.props);
         analysis.semanticSettled = true;
         analysis.semanticSource = sourceLabel || (S.ai.status === 'ready' ? 'openai' : 'none');
         analysis.semanticResult = { status: res.status, valid: res.status === 'complete' ? res.valid : [], rejected: res.rejected };
       }
       analysis.semanticStatus = res.status;
       analysis.semanticLastAttempt = { status: res.status, previousStatus, at: now() };
+      if (S.current !== analysis) return { ok: false, message: 'Phân tích đã thay đổi.' };
       const holds = analysis.props.filter((/** @type {any} */ p) => p.semanticHold).length;
       const kept = analysis.semanticSettled ? 'giữ nguyên kết quả rà soát trước (' + holds + ' vị trí đang giữ lại).' : 'giữ nguyên kết quả của động cơ tiền định.';
       const messages = {
@@ -396,7 +403,7 @@
       // Trong lúc chờ AI, người dùng có thể đổi vai trò, phân tích lại hoặc bấm Ban hành lần nữa: không ban hành
       // một phân tích khác với cái vừa được kiểm quyền và rà soát.
       if (S.current !== analysis || S.persona !== persona) return result(false, 'Phân tích hoặc vai trò vừa thay đổi trong lúc AI rà soát; hãy kiểm tra lại rồi bấm Ban hành.');
-      if (review && review.pending) return result(false, review.message);
+      if (review && (review.pending || review.stale) || analysis.semanticStatus === 'pending') return result(false, (review && review.message) || 'AI đang rà soát; đợi xong rồi bấm Ban hành.');
       if (S.source === 'remote') return commitRemote(options);
       const fresh = S.current.props.filter((/** @type {any} */ p) => p.decided && !p.fed);
       const approvedSemantic = S.current.props.filter((/** @type {any} */ p) => p.semanticHoldApproved && !p.fed);

@@ -385,3 +385,72 @@ test('F05: khởi động mở lại workspace đã chọn; workspace không đ�
   assert.equal(c.state.workspace.id, 'demo');
   assert.match(c.state.notice.text, /Trình diễn/);
 });
+
+test('rà lại lần hai (hợp lệ) không gỡ cờ giữ lại hay quyết định "Giữ nguyên" của người', async () => {
+  for (const second of ['supports', 'empty']) {
+    const adapter = scriptedAdapter(['hold', 'supports']);
+    if (second === 'empty') adapter.discover = (orig => async payload => (adapter.calls.length ? (adapter.calls.push(payload), { available: true, output: { schemaVersion: 1, candidates: [] } }) : orig(payload)))(adapter.discover);
+    const app = await offlineWithAI(adapter);
+    app.analyze(CHANGE);
+    await app.discoverSemantics();
+    const held = app.state.current.props.filter(p => p.semanticHold);
+    assert.ok(held.length > 1);
+    app.setPersona('tp-dt');
+    const kept = held.find(p => p.docId === 'QT-02');
+    assert.equal((await app.reviewSemantic(kept.id, false)).ok, true);
+    const again = await app.discoverSemantics();
+    assert.equal(again.ok, true, second);
+    const now = app.state.current.props.find(p => p.id === kept.id);
+    assert.equal(now.semanticHoldReviewed, true, second + ': quyết định của người còn nguyên');
+    assert.equal(now.semanticHoldApproved, false);
+    assert.equal(app.state.current.props.filter(p => p.semanticHold).length, held.length, second + ': không dòng nào được gỡ cờ');
+    const res = await app.commit();
+    assert.equal(res.applied || 0, 0, second + ': không sửa dòng nào khi chưa có người duyệt');
+    assert.equal(app.state.ledger.filter(e => e.docId === kept.docId && e.lineIndex === kept.lineIndex && String(e.action).startsWith('PATCH')).length, 0);
+  }
+});
+
+test('quyết định của người bấm trong lúc AI đang rà không bị kết quả rà ghi đè', async () => {
+  let release;
+  const gate = new Promise(r => { release = r; });
+  const app = await offlineWithAI(scriptedAdapter([gate]));
+  app.analyze(CHANGE);
+  const pending = app.discoverSemantics();
+  const u1 = app.state.current.props.find(p => p.category === 'U1');
+  app.setPersona('cv-dt');
+  assert.equal(app.decide(u1.id, 'b').ok, true);
+  release();
+  await pending;
+  assert.equal(app.state.current.props.find(p => p.id === u1.id).decided, true);
+});
+
+test('phân tích có lượt rà đang chạy khi vào minh hoạ: thoát ra không kẹt ở "đang rà"', async () => {
+  let release;
+  const gate = new Promise(r => { release = r; });
+  const app = await offlineWithAI(scriptedAdapter([gate]));
+  app.analyze(CHANGE);
+  const pending = app.discoverSemantics();
+  app.enterSandbox({ label: 'Minh hoạ', docs: [{ id: 'DEMO', title: 't', owner: 'Phòng Đào tạo', tier: 2, version: '1.0', lines: ['Nộp đơn phúc khảo trong 7 ngày.'] }] });
+  release();
+  await pending;
+  app.exitSandbox();
+  assert.equal(app.state.current.semanticStatus, 'complete');
+  assert.ok(app.state.current.props.some(p => p.semanticHold), 'kết quả rà vẫn được ghi vào phân tích đã lưu');
+  app.setPersona('tp-dt');
+  const res = await app.commit();
+  assert.equal(res.ok, true, res.message);
+});
+
+test('F05: lỗi máy chủ tạm thời không đổi workspace; chỉ lùi về Trình diễn khi không có quyền và không ghi nhớ lựa chọn lùi', async () => {
+  const flaky = remoteWith({});
+  flaky.loadWorkspace = async id => (flaky.loads.push(id), { ok: false, reason: 'error', message: 'Máy chủ trả lỗi 503.' });
+  const a = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend() }), remote: flaky }));
+  await a.init({ workspace: 'hcmut-pilot' });
+  assert.deepEqual(flaky.loads, ['hcmut-pilot'], 'lỗi 5xx không tự chuyển sang workspace khác');
+  const expired = remoteWith({}, { forbidden: ['hcmut-pilot'] });
+  const b = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend() }), remote: expired }));
+  await b.init({ workspace: 'hcmut-pilot' });
+  assert.equal(b.state.fallbackFrom, 'hcmut-pilot');
+  await b.switchSource('remote', 'demo');
+  assert.equal(b.state.fallbackFrom, null, 'chọn tay thì được ghi nhớ bình thường');
+});

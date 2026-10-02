@@ -166,6 +166,28 @@
     return engineProp;
   }
 
+  /**
+   * Gộp kết quả một lượt rà hợp lệ vào phân tích ĐANG có. Trong cùng một phân tích, AI chỉ được thêm cờ giữ lại:
+   * - dòng người đã rà (semanticHoldReviewed) giữ nguyên quyết định của người, kể cả khi lượt sau nói "supports";
+   * - dòng đang bị giữ vẫn bị giữ (cùng bằng chứng cũ) dù lượt sau không còn nghi ngờ hay không trả lời dòng đó;
+   * - mọi trạng thái khác của đề xuất (quyết định U1/U2/U3 người vừa bấm trong lúc chờ AI) lấy từ bản hiện tại.
+   * @param {any[]} current đề xuất hiện tại @param {any[]} reviewed đề xuất do lượt rà vừa trả
+   */
+  function mergeSemanticReview(current, reviewed) {
+    const byId = new Map((Array.isArray(reviewed) ? reviewed : []).map(prop => [prop.id, prop]));
+    return (Array.isArray(current) ? current : []).map(prop => {
+      const next = byId.get(prop.id);
+      if (!next || prop.semanticHoldReviewed === true) return prop;
+      if (prop.semanticHold === true && next.semanticHold !== true) return prop;
+      const merged = { ...prop, semanticHold: next.semanticHold === true };
+      if (next.semanticEvidence) {
+        merged.semanticEvidence = next.semanticEvidence;
+        merged.semanticRelation = next.semanticRelation;
+      }
+      return merged;
+    });
+  }
+
   function createUnavailableAdapter() {
     return Object.freeze({
       async discover() { return { available: false, reason: 'Semantic AI provider is not configured.' }; }
@@ -235,7 +257,7 @@
 
   return Object.freeze({
     SCHEMA_VERSION, DEFAULT_MAX_CANDIDATES, DEFAULT_MAX_LINE_LENGTH,
-    buildCandidateSet, validateCandidates, applyEvidenceToProps,
+    buildCandidateSet, validateCandidates, applyEvidenceToProps, mergeSemanticReview,
     createUnavailableAdapter, discoverSemantics, isPatchAllowed
   });
 });

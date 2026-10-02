@@ -181,3 +181,24 @@ test('F06: “từ 7 xuống 5 ngày” được hiểu, kèm lưu ý đơn vị
   await expect(page.locator('.notice.ok')).toContainText('câu chỉ ghi đơn vị một lần');
   await expect(page.locator('#newVal')).toHaveValue('5 ngày');
 });
+
+test('ghé minh hoạ giữa chừng rồi thoát: phân tích, quyết định và biểu mẫu trở lại nguyên vẹn, vẫn ban hành được', async ({ page }) => {
+  await open(page);
+  await analyze(page);
+  await persona(page, 'cv-dt');
+  await page.locator('#prop-P6').getByRole('button', { name: /^B · Không/ }).click();
+  for (const demo of ['demo-review', 'demo-refuse']) {
+    await page.goto(APP + '#/tong-quan');
+    await page.locator('[data-action="' + demo + '"]').click();
+    await expect(page.locator('.notice.sandbox')).toBeVisible();
+    await page.getByRole('button', { name: 'Thoát minh hoạ' }).first().click();
+    await expect(page.locator('#connPill')).toContainText('Ngoại tuyến');
+  }
+  await page.goto(APP + '#/thay-doi');
+  await expect(page.locator('#reqText')).toHaveValue(REQUEST);
+  await expect(page.locator('#prop-P6')).toContainText('Không — giữ nguyên');
+  await expect(page.locator('[data-form-guard]')).toBeHidden();
+  await persona(page, 'tp-dt');
+  await page.getByRole('button', { name: 'Ban hành' }).click();
+  await expect(page.locator('.toast').last()).toContainText('Đã ban hành 6 thay đổi');
+});

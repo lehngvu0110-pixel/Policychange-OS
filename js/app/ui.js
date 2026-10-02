@@ -113,6 +113,14 @@
     if (!S.current) return [];
     return S.current.props.filter(p => !p.inCase && !p.applied && !p.logged && ((p.outcome === 'ESCALATE' && !p.decided) || (p.semanticHold && !p.semanticHoldReviewed)));
   }
+  function hasUnissuedHumanWork() {
+    return !!S.current && S.current.props.some(p => !p.applied && !p.logged && (p.decided || p.semanticHoldReviewed));
+  }
+  /** Minh hoạ ghi đè biểu mẫu; lưu lại để khi thoát minh hoạ biểu mẫu khớp lại với phân tích được khôi phục. */
+  function enterDemo(scenario) {
+    if (S.source !== 'sandbox') ui.savedForm = { form: { ...ui.form }, understanding: ui.understanding, ratify: ui.ratify };
+    app.enterSandbox(scenario);
+  }
   function liveWorkspace() { return S.source === 'remote' && S.workspace.mode === 'live'; }
   function formInput() { return { ruleId: ui.form.ruleId, newValue: ui.form.newValue, issuerTier: ui.form.issuerTier, requestText: ui.form.text }; }
   function mine(list) { return list.filter(p => app.decisionRight(p).ok); }
@@ -660,9 +668,10 @@
     const r = await app.resolveRequest(text);
     ui.understanding = r;
     if (r.status === 'ai_candidate' || r.status === 'deterministic_fallback') syncFormFromChange(r.change);
-    else {
+    else if (!hasUnissuedHumanWork()) {
       // Câu mới bị từ chối / cần làm rõ: không để lại phân tích và giá trị của câu trước, kẻo người dùng tưởng
-      // nút Ban hành áp cho câu vừa nhập (báo cáo kiểm thử F02).
+      // nút Ban hành áp cho câu vừa nhập (báo cáo kiểm thử F02). Nếu phân tích cũ đang có quyết định của người chưa
+      // ban hành thì giữ lại (không âm thầm xoá việc của người); nút Ban hành vẫn bị khoá vì biểu mẫu đã khác.
       ui.form.newValue = ''; ui.form.issuerTier = '';
       app.clearAnalysis();
     }
@@ -682,7 +691,7 @@
 
   async function demoSafe() {
     const sc = G.PolicyChangeDemo.getSafeDateScenario();
-    app.enterSandbox({ label: 'Tự sửa an toàn, không đụng ngày tháng', docs: [sc.document] });
+    enterDemo({ label: 'Tự sửa an toàn, không đụng ngày tháng', docs: [sc.document] });
     app.setPersona('tp-dt');
     ui.form.text = sc.requestText;
     const r = await understand(sc.requestText);
@@ -690,13 +699,14 @@
     analyzeFromForm({ autoReview: false });
     const res = await app.commit({ expect: formInput() });
     const p = S.current && S.current.props[0];
-    ui.demoStatus = { tone: res.ok ? 'ok' : 'error', text: res.ok ? 'Đã tự sửa “7 ngày” → “5 ngày” sau khi prover xác nhận đủ điều kiện; ngày 17/07/2025 trong cùng dòng giữ nguyên. Mở “Sổ kiểm toán” để xem bản ghi và thử Hoàn tác.' : res.message };
+    const patched = res.ok && (res.applied || 0) > 0;
+    ui.demoStatus = { tone: patched ? 'ok' : res.ok ? 'info' : 'error', text: !patched && res.ok ? 'Mô hình AI giữ lại dòng này cho người duyệt nên chưa tự sửa; xem lý do ở thẻ vị trí.' : res.ok ? 'Đã tự sửa “7 ngày” → “5 ngày” sau khi prover xác nhận đủ điều kiện; ngày 17/07/2025 trong cùng dòng giữ nguyên. Mở “Sổ kiểm toán” để xem bản ghi và thử Hoàn tác.' : res.message };
     if (p) go('thay-doi'); else render();
   }
 
   async function demoReview() {
     const sc = G.PolicyChangeDemo.getAmbiguityScenario();
-    app.enterSandbox({ label: 'AI giữ lại cho người duyệt (dữ liệu AI mẫu)', docs: [{ ...sc.document, title: 'Hướng dẫn phúc khảo (mơ hồ)', owner: 'Phòng Đào tạo', version: '1.0' }] });
+    enterDemo({ label: 'AI giữ lại cho người duyệt (dữ liệu AI mẫu)', docs: [{ ...sc.document, title: 'Hướng dẫn phúc khảo (mơ hồ)', owner: 'Phòng Đào tạo', version: '1.0' }] });
     app.setPersona('tp-dt');
     ui.form.text = sc.requestText;
     await understand(sc.requestText);
@@ -708,6 +718,8 @@
 
   async function demoRefuse() {
     const text = 'Đổi tất cả các thời hạn 7 ngày thành 5 ngày.';
+    // Chạy trên bản sao tạm như các minh hoạ khác: không đụng phân tích đang dở của người dùng.
+    enterDemo({ label: 'Từ chối yêu cầu phạm vi toàn cục', docs: Data.SEED_DOCUMENTS });
     const before = JSON.stringify([S.docs, S.ledger]);
     ui.form.text = text;
     const r = await understand(text);
@@ -754,7 +766,7 @@
     'filter-loc': el => { setQuery('loc', el.dataset.value); render(); },
     'queue-tab': el => { setQuery('tab', el.dataset.value); render(); },
     'reload': () => withBusy('reload', () => app.reload()),
-    'exit-sandbox': () => { app.exitSandbox(); ui.understanding = null; ui.demoStatus = null; },
+    'exit-sandbox': () => { app.exitSandbox(); ui.demoStatus = null; },
     'go-online': () => withBusy('go-online', () => app.switchSource('remote', 'demo')),
     'go-offline': () => withBusy('go-offline', async () => { const res = await app.switchSource('local'); writeWorkspace('local'); return res; }),
     'open-pilot': () => withBusy('open-pilot', () => app.switchSource('remote', 'hcmut-pilot')),
@@ -860,10 +872,17 @@
     window.addEventListener('beforeunload', ev => {
       if (S.current && S.current.props.some(p => p.decided && !p.applied && !p.logged) && S.source !== 'sandbox') { ev.preventDefault(); ev.returnValue = ''; }
     });
-    app.subscribe(() => render());
     // Chỉ ghi nhớ workspace dùng chung đã mở được; "ngoại tuyến" chỉ được nhớ khi người dùng tự chọn (go-offline),
     // không nhớ khi máy chủ tạm mất mạng lúc khởi động.
-    app.subscribe(() => { if (!S.busy && S.source === 'remote') writeWorkspace(S.workspace.id); });
+    app.subscribe(() => { if (!S.busy && S.source === 'remote' && !S.fallbackFrom) writeWorkspace(S.workspace.id); });
+    // Thoát minh hoạ bằng bất kỳ đường nào (nút Thoát, đăng nhập, đổi nguồn): trả biểu mẫu về như trước minh hoạ.
+    app.subscribe(() => {
+      if (ui.savedForm && S.source !== 'sandbox') {
+        Object.assign(ui.form, ui.savedForm.form); ui.understanding = ui.savedForm.understanding; ui.ratify = ui.savedForm.ratify;
+        ui.savedForm = null; ui.demoStatus = null;
+      }
+    });
+    app.subscribe(() => render());
     setInterval(() => { if (document.visibilityState === 'visible') app.poll(); }, Math.max(5, Number(cfg.pollSeconds) || 20) * 1000);
   }
 
