@@ -144,7 +144,7 @@ Tập này được lập **sau khi** động cơ hiện tại đã đóng băng
 | Bỏ sót | **0** / 21 (KTC 95 %: 0–15,5 %) | **0** / 21 |
 | Bỏ qua lặng lẽ (dòng mang giá trị cũ mà máy không thấy) | **1** (C15 "24TC") | **0** |
 | Báo lên thừa | 3 / 15 (20,0 %) | 4 / 15 (26,7 %) |
-| Đúng hoàn toàn | 30 / 36 (83,3 %) | 29 / 36 (80,6 %) |
+| Đúng hoàn toàn | 30 / 36 (83,3 %) | 30 / 36 (83,3 %) |
 | Đúng loại U1/U2/U3 | 90,5 % | 90,5 % |
 
 **Lỗi đáng kể duy nhất là C15**, câu Zalo "SV đk tối đa 24TC". Máy không nhận ra "24TC" là 24 tín chỉ, nên khi quy định
