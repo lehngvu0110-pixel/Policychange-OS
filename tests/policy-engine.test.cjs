@@ -196,3 +196,16 @@ test('F06: parseFreeText mượn đơn vị của giá trị mới chỉ khi kh�
   assert.equal(E.shareUnit('10.000.000', '12 triệu'), '10.000.000', 'không ghép “triệu” vào số đã đủ hàng nghìn');
   assert.equal(E.shareUnit('7 ngày', '5 ngày'), '7 ngày');
 });
+
+test('đơn vị viết tắt “24TC” được nhận ra và luôn hỏi người (tập mù số 2, ca C15)', () => {
+  const E = require('../js/policy-engine.js');
+  const D = require('../js/policy-data.js');
+  const reg = E.cloneRegistry(D.SEED_REGISTRY);
+  const rule = reg.find(r => r.id === 'R-DK-01');
+  const docs = [{ id: 'X', title: 't', owner: 'Phòng Đào tạo', tier: 1, version: '1.0',
+    lines: ['Kỳ này SV đk tối đa 24TC thôi em.', 'Tối đa 24 tc/học kỳ.', 'Mã học phần CO24TC.', 'Tổng tích luỹ 124TC.'] }];
+  const { props } = E.analyze({ rule, oldValue: rule.value, newValue: '30 tín chỉ', issuerTier: 3 }, docs, reg);
+  assert.deepEqual(props.map(p => [p.lineIndex, p.outcome, p.category]), [[0, 'ESCALATE', 'U1'], [1, 'ESCALATE', 'U1']]);
+  assert.equal(props[0].newLine, 'Kỳ này SV đk tối đa 30TC thôi em.');
+  assert.match(props[0].reason, /đơn vị viết tắt/);
+});

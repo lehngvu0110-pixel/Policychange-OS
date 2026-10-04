@@ -128,3 +128,22 @@ test('F08: so khớp và mã băm tập mù không phụ thuộc kiểu xuống 
   const holdout = readLf('holdout.csv');
   assert.equal(require('../js/holdout-data.js').replace(/\r\n/g, '\n'), holdout.replace(/\n/g, '\r\n').replace(/\r\n/g, '\n'));
 });
+
+test('js/blind2-data.js đồng bộ với bench/blind2.csv; tập mù số 2 đúng mã băm đã đóng băng', () => {
+  const crypto = require('node:crypto');
+  const text = readLf('blind2.csv');
+  assert.equal(require('../js/blind2-data.js').replace(/\r\n/g, '\n'), text, 'chạy npm run build:holdout');
+  const sha = crypto.createHash('sha256').update(Buffer.from(text, 'utf8')).digest('hex');
+  const provenance = fs.readFileSync(path.join(__dirname, '..', 'bench', 'BLIND2-PROVENANCE.md'), 'utf8');
+  assert.ok(provenance.includes(sha), 'tập mù số 2 đã bị sửa sau khi đóng băng');
+  const { cases, errors } = Evaluation.parseCsv(text);
+  assert.deepEqual(errors, []);
+  assert.equal(cases.length, 36);
+});
+
+test('tập mù số 2: không tự sửa sai, không bỏ sót', () => {
+  const report = Evaluation.evaluate(Evaluation.parseCsv(readLf('blind2.csv')).cases, { registry: Data.SEED_REGISTRY });
+  assert.equal(report.wrongEdits, 0);
+  assert.equal(report.misses, 0);
+  assert.equal(report.rows.filter(r => r.actual === 'NONE' && r.expected !== 'NONE').length, 0, 'không ca nào bị bỏ qua lặng lẽ');
+});

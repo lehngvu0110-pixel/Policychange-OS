@@ -19,7 +19,7 @@
    * @typedef {{ id:string, name:string, value:string, tier:number, source:string, owner:string, aliases:string[], measures?:string[] }} Rule
    * @typedef {{ id:string, title:string, owner:string, tier:number, version:string, lines:string[] }} PolicyDocument
    * @typedef {{ rule:Rule, oldValue:string, newValue:string, issuerTier:number }} Change
-   * @typedef {{ index:number, text:string, form?:'words'|'weeks'|'no_diacritics' }} Hit
+   * @typedef {{ index:number, text:string, form?:'words'|'weeks'|'no_diacritics'|'abbrev' }} Hit
    * @typedef {{
    *   id:string, docId:string, docTitle:string, docOwner:string, docTier:number,
    *   lineIndex:number, line:string, newLine:string, hits:Hit[],
@@ -230,6 +230,14 @@
         if (m.index === eq.lastIndex) eq.lastIndex++;
       }
     }
+    // Đơn vị viết tắt ("24TC", "24 tc"): nhận ra để không bỏ sót (tập mù số 2, ca C15), nhưng luôn hỏi người.
+    const pv = parseValue(oldValue);
+    if (pv.num !== null && pv.unit === 'tín chỉ') {
+      const abbrev = new RegExp('(?<![\\p{L}\\p{N}.,])0*' + escRe(String(pv.num)) + '\\s*tc(?![\\p{L}\\p{N}])', 'giu');
+      while ((m = abbrev.exec(line)) !== null) {
+        if (!taken(m.index, m[0].length)) out.push({ index: m.index, text: m[0], form: 'abbrev' });
+      }
+    }
     // Dòng gõ không dấu (tin nhắn SMS, Zalo): so trên bản bỏ dấu của cả dòng và của biểu thức giá trị.
     // Chỗ nào đã khớp dạng chuẩn (có dấu) thì đã nằm trong exactHits và bị bỏ qua ở đây.
     const plainLine = stripDiacritics(line);
@@ -376,7 +384,7 @@
         } else if (variants.length) {
           // §5.3.b — giá trị viết khác dạng: nhận ra để không bỏ sót, nhưng không tự viết lại câu.
           const sample = variants[0];
-          const how = sample.form === 'weeks' ? 'quy đổi theo tuần' : sample.form === 'no_diacritics' ? 'gõ không dấu' : 'viết bằng chữ';
+          const how = sample.form === 'weeks' ? 'quy đổi theo tuần' : sample.form === 'no_diacritics' ? 'gõ không dấu' : sample.form === 'abbrev' ? 'đơn vị viết tắt' : 'viết bằng chữ';
           outcome = 'ESCALATE'; cat = 'U1';
           reason = 'Giá trị cũ xuất hiện dưới dạng ' + how + ' (“' + sample.text + '” = ' + change.oldValue + '). Hệ thống chỉ tự sửa khi giá trị được viết đúng dạng số đã đăng ký; dạng khác cần người xác nhận và đọc lại câu sau khi sửa.';
           plain = 'Con số ở đây được viết theo cách khác (“' + sample.text + '”). Máy nhận ra nhưng không tự viết lại câu, nên hỏi người phụ trách.';
@@ -406,6 +414,10 @@
         let newLine = line;
         for (const v of spans) {
           let rendered = renderValue(v.text, change.newValue);
+          if (v.form === 'abbrev') {
+            const n = parseValue(change.newValue).num;
+            rendered = n === null ? rendered : String(n).replace('.', ',') + v.text.replace(/^\d+/, '');
+          }
           if (v.form === 'no_diacritics') {
             rendered = stripDiacritics(rendered);
             const suffix = v.text.match(/\s(?:dong|vnd)$/i);

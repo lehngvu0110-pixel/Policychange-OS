@@ -1,0 +1,38 @@
+{
+  "note": "Kết quả gọi thật ai-discover (Gemini 3.5 Flash-Lite, gói miễn phí, qua Edge Function v10) ngày 04/10/2026 cho mọi ca mà động cơ tiền định muốn TỰ SỬA trong tập mù số 2 (8 ca). Gọi từ trang web đã triển khai bằng khoá anon. Chỉ lưu nhãn quan hệ và lời giải thích của mô hình. Phát lại: node bench/ai-replay.cjs",
+  "model": "gemini-3.5-flash-lite",
+  "relations": {
+    "blind2:C01": [
+      "supports",
+      "Dòng tài liệu đề cập trực tiếp đến thời hạn 7 ngày sinh viên phải nộp đơn phúc khảo, trùng khớp với giá trị cũ cần rà soát."
+    ],
+    "blind2:C09": [
+      "supports",
+      "Dòng này quy định thời hạn 07 ngày phản hồi đơn khiếu nại của người học, đúng với nội dung giá trị cũ cần tìm."
+    ],
+    "blind2:C11": [
+      "supports",
+      "Dòng tài liệu đề cập trực tiếp đến giới hạn khối lượng đăng ký tối đa là 24 tín chỉ mỗi học kỳ, khớp với giá trị cũ cần rà soát."
+    ],
+    "blind2:C13": [
+      "supports",
+      "Dòng này đề cập trực tiếp đến thời hạn 7 ngày sinh viên phải nộp đơn phúc khảo, trùng khớp với giá trị cũ cần kiểm soát."
+    ],
+    "blind2:C16": [
+      "supports",
+      "Dòng này chứa giá trị cũ là 7 ngày liên quan đến thời hạn phản hồi đơn khiếu nại của người học."
+    ],
+    "blind2:C26": [
+      "supports",
+      "Dòng tài liệu đề cập trực tiếp đến hạn mức tạm ứng 10 triệu đồng do Trưởng đơn vị duyệt, khớp với giá trị cũ cần rà soát."
+    ],
+    "blind2:C27": [
+      "supports",
+      "Dòng tài liệu đề cập trực tiếp đến ngưỡng giá trị cũ là 10.000.000 đồng yêu cầu hai chữ ký kiểm soát, trùng khớp với quy định đích cần kiểm tra."
+    ],
+    "blind2:C32": [
+      "supports",
+      "Dòng tài liệu đề cập đến thời gian trả kết quả giấy xác nhận sinh viên là 03 ngày, khớp với giá trị cũ cần kiểm soát."
+    ]
+  }
+}

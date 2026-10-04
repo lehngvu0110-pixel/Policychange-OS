@@ -633,7 +633,7 @@
           : '<div class="empty">Bấm “Chạy Verify”. Bộ kiểm thử độc lập với dữ liệu bạn đang thao tác.</div>') +
       '</div></section>' +
       '<section class="card"><div class="card-head"><h2>Tập kiểm thử độc lập</h2><div class="row">' +
-        btn('eval-blind', 'Chạy tập mù 40 ca', { cls: 'primary' }) + btn('eval-builtin', 'Tập phát triển 48 ca') + btn('eval-ai', 'Chạy kèm AI ngữ nghĩa', { disabled: S.ai.status !== 'ready', title: S.ai.status === 'ready' ? 'Gọi mô hình AI cho các ca động cơ muốn tự sửa' : 'AI đang tắt' }) +
+        btn('eval-blind', 'Chạy tập mù 40 ca', { cls: 'primary' }) + btn('eval-blind2', 'Tập mù số 2 · 36 ca') + btn('eval-builtin', 'Tập phát triển 48 ca') + btn('eval-ai', 'Chạy kèm AI ngữ nghĩa', { disabled: S.ai.status !== 'ready', title: S.ai.status === 'ready' ? 'Gọi mô hình AI cho các ca động cơ muốn tự sửa' : 'AI đang tắt' }) +
         '<label class="btn" for="evalFile">Tải CSV của bạn…</label><input id="evalFile" type="file" accept=".csv,text/csv" class="sr-only" data-action-change="eval-file">' +
       '</div></div><div class="card-body stack">' +
         '<p class="small muted">Định dạng CSV: <code>id,rule_id,new_value,issuer_tier,doc_tier,line,expected[,phenomenon]</code> với expected ∈ AUTO, U1, U2, U3, NONE (ca bẫy: dòng không mang giá trị cũ, không được đụng tới). Cả hai tập đều là dữ liệu tổng hợp; giám khảo có thể tải CSV của mình lên để chấm trực tiếp.</p>' +
@@ -801,6 +801,7 @@
       render();
     },
     'eval-blind': () => runEval(G.PolicyChangeBlindCsv, 'Tập mù 40 ca · động cơ tiền định', false),
+    'eval-blind2': () => runEval(G.PolicyChangeBlind2Csv, 'Tập mù số 2 · 36 ca · động cơ tiền định', false),
     'eval-builtin': () => runEval(G.PolicyChangeHoldoutCsv, 'Tập phát triển 48 ca · động cơ tiền định', false),
     'eval-ai': () => runEval(ui.evalCsv || G.PolicyChangeBlindCsv, (ui.evalCsv ? 'CSV của bạn' : 'Tập mù 40 ca') + ' · động cơ + AI ngữ nghĩa', true),
     'eval-download': () => download('bao-cao-danh-gia.csv', '﻿' + Evaluation.toCsv(ui.evalReport), 'text/csv;charset=utf-8'),

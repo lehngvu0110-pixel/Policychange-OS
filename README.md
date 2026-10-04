@@ -82,6 +82,7 @@ npm install                       # chỉ cần cho Playwright và TypeScript
 npm run verify                    # kiểm từng điều của QT-KSTL-01 v2.0 — bảng ĐẠT/TRƯỢT (không cần npm install)
 npm test                          # 219 unit test: động cơ, sổ, phân quyền, máy chủ, học, đánh giá, bộ điều khiển
 npm run eval:blind                # tập mù 40 ca (đóng băng, do tác tử độc lập viết)
+npm run eval:blind2               # tập mù số 2, 36 ca (đóng băng 04/10)
 npm run bench                     # benchmark 26 fixture (naive / LLM-only / PolicyChange OS)
 npm run eval                      # tập phát triển bench/holdout.csv
 npm run load                      # kiểm thử tải cục bộ
@@ -98,6 +99,9 @@ npx playwright install chromium && npm run e2e
   **tự sửa sai 0/5**, **bỏ sót 0/23** (KTC 95 %: 0–14,3 %), báo lên thừa 9/17 (52,9 %), đúng 29/40.
   Trước đợt sửa: sửa sai 3, bỏ sót 8/23. Báo lên thừa còn cao vì từ đồng nghĩa chưa có trong sổ (“phúc tra”,
   “ứng trước”, “ghi danh”…) — máy hỏi thêm thay vì đoán; vòng học neo và lớp AI nhắm vào đây.
+- **Tập mù số 2, 36 ca** (04/10; lập sau khi động cơ đã đóng băng; tác tử đóng vai 3 cán bộ viết, một tác tử khác kiểm
+  nhãn): **tự sửa sai 0/8**, **bỏ sót 0/21**, báo lên thừa 4/15 (26,7 %). Lần chạy đầu phát hiện một dòng máy không
+  thấy ("24TC"); đã sửa để luôn hỏi người. `npm run eval:blind2`.
 - **Tập phát triển 48 ca** (nhóm gắn nhãn, đã dùng để thiết kế): sửa sai 5 → 2, bỏ sót 22,2 % → 7,4 %. Hai ca còn
   sai (H40, H47) được giữ lại làm bằng chứng giới hạn của lớp tiền định — cần lớp AI.
 - **Lớp AI (đo thật, Gemini 3.5 Flash-Lite miễn phí):** trên 24 dòng động cơ muốn tự sửa, AI giữ lại đúng 2 ca lớp tiền

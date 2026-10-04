@@ -20,3 +20,18 @@
 - **Giới hạn:** người viết là AI mô phỏng văn phong cán bộ, **không phải cán bộ thật**. Tập này không thay cho việc thu
   câu do nhân sự thật viết (`docs/THU-NGHIEM-NGUOI-DUNG.md`).
 - **Quy tắc dùng:** không sửa nhãn, không thêm hay bớt ca sau khi đã xem kết quả. Cần ca mới thì lập tập mù số 3.
+
+## Kết quả lần chạy đầu (động cơ `10fd7c6`, ngay sau khi đóng băng)
+
+```
+blind2.csv: 36 ca (21 cần người, 12 tự sửa được, 3 bẫy không được đụng)
+Đúng hoàn toàn:            30/36 (83.3%)
+Sửa sai (tự sửa nhầm):     0/8 lần tự sửa · độ chính xác tự sửa 100.0%
+Bỏ sót (cần người, máy không hỏi): 0/21 (0.0%)
+Báo lên thừa:              3/15 (20.0%) · chiếm 12.5% số hồ sơ đẩy lên người
+Đúng loại U1/U2/U3:        90.5%
+  C03 AUTO → U1 · C15 AUTO → NONE (không nhận ra “24TC”) · C19 AUTO → U1 · C21 AUTO → U1 · C22 U2 → U1 · C36 U2 → U1
+```
+
+Sau đó động cơ được bổ sung nhận dạng đơn vị viết tắt "TC" (luôn hỏi người). C15 chuyển thành U1 (báo lên thừa);
+các số khác giữ nguyên. Chi tiết: `docs/PHUONG-PHAP-KIEM-CHUNG.md` §4.5.

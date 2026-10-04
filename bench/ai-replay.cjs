@@ -1,5 +1,5 @@
 'use strict';
-// Phát lại lần đo lớp AI thật (bench/ai-run-2026-10-01.json) qua ĐÚNG bộ kiểm tra bằng chứng và luồng giữ lại của sản phẩm
+// Phát lại các lần đo lớp AI thật (bench/ai-run-2026-10-01.json, bench/ai-run-2026-10-04.json) qua ĐÚNG bộ kiểm tra bằng chứng và luồng giữ lại của sản phẩm
 // (Evaluation.evaluateWithSemantics → SemanticDiscovery.validateCandidates/applyEvidenceToProps). Không gọi mạng.
 // Chạy: node bench/ai-replay.cjs
 const fs = require('node:fs');
@@ -8,10 +8,12 @@ const Evaluation = require('../js/policy-evaluation.js');
 const Data = require('../js/policy-data.js');
 const Semantic = require('../js/semantic-discovery.js');
 
-const run = JSON.parse(fs.readFileSync(path.join(__dirname, 'ai-run-2026-10-01.json'), 'utf8'));
+// Mỗi tệp là một lần đo thật; gộp nhãn quan hệ theo khoá "<tập>:<mã ca>".
+const runs = ['ai-run-2026-10-01.json', 'ai-run-2026-10-04.json'].map(f => JSON.parse(fs.readFileSync(path.join(__dirname, f), 'utf8')));
+const run = { model: runs[0].model, relations: Object.assign({}, ...runs.map(r => r.relations)) };
 const pct = x => (x * 100).toFixed(1) + '%';
 (async () => {
-  for (const set of ['blind', 'holdout']) {
+  for (const set of ['blind', 'holdout', 'blind2']) {
     const { cases } = Evaluation.parseCsv(fs.readFileSync(path.join(__dirname, set + '.csv'), 'utf8'));
     let missing = 0;
     const results = [];
