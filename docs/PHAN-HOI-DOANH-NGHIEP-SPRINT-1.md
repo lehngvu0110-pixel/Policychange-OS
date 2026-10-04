@@ -1,6 +1,6 @@
 # Đối chiếu phản hồi doanh nghiệp Sprint 1 (Track VNG)
 
-Nhóm AbleMind · PolicyChange OS · cập nhật 01/10/2026
+Nhóm AbleMind · PolicyChange OS · cập nhật 04/10/2026
 
 Bảng dưới đi qua từng mục trong phiếu phản hồi. Mỗi dòng ghi phản hồi, việc đã làm, cách kiểm chứng và phần **còn
 mở**. Mọi số liệu chạy lại được bằng `npm run verify`, `npm run eval:blind` và `npm test`.
@@ -49,6 +49,11 @@ Phiếu phản hồi đúng ở điểm: một từ đồng nghĩa chưa liệt 
   - **khi bật AI, cả hai tập đều 0 sửa sai, 0 bỏ sót**.
 
   Cỡ mẫu còn nhỏ (24 lần gọi), và nếu tắt AI thì H40, H47 vẫn bị sửa sai.
+- **Tập mù số 2 (04/10):** 36 ca, lập sau khi động cơ đã đóng băng. Người viết là tác tử đóng vai 3 cán bộ.
+  - Tự sửa sai 0/8, bỏ sót 0/21, báo lên thừa 4/15 (26,7 %).
+  - Lớp AI (8 lần gọi) không giữ oan dòng đúng nào.
+  - Phát hiện và đã sửa một ca máy không nhận ra con số cũ: "24TC" viết tắt.
+  - Chi tiết: `docs/PHUONG-PHAP-KIEM-CHUNG.md` §4.5. Người viết vẫn là AI, chưa phải cán bộ thật.
 
 Chi tiết: `docs/PHUONG-PHAP-KIEM-CHUNG.md`.
 
@@ -79,7 +84,7 @@ Chi tiết: `docs/PHUONG-PHAP-KIEM-CHUNG.md`.
 | Ba kiểu dừng riêng biệt | Đạt | Giữ nguyên. U1 nay rõ hơn với 3 nhánh con a/b/c | verify §5.1–5.4, §5.3.* |
 | Câu hỏi báo lên cụ thể | Đạt | Câu hỏi U2/U3 được bổ sung trích dẫn nguyên văn và giá trị cũ → mới | verify §6 |
 | Không bao giờ đoán bừa | Đạt | Thêm bằng chứng: 0 tự sửa sai trên tập mù | verify §10 |
-| Không báo lên thừa | Một phần | Đo công khai: 52,9 % trên tập mù. Có cơ chế học neo đúng loại còn thiếu. **Còn mở** | `docs/PHUONG-PHAP-KIEM-CHUNG.md` §4.1, §4.4 |
+| Không báo lên thừa | Một phần | Đo công khai: 52,9 % trên tập mù số 1, 26,7 % trên tập mù số 2. Có cơ chế học neo đúng loại còn thiếu. **Còn mở** | `docs/PHUONG-PHAP-KIEM-CHUNG.md` §4.1, §4.4, §4.5 |
 | Đường dẫn chạy trực tiếp | Đạt | Giữ nguyên | README |
 | Lệnh chạy kiểm chứng (Verify run) | Một phần | `npm run verify`: một lệnh, bảng ĐẠT/TRƯỢT theo từng điều, mã thoát ≠ 0 nếu trượt, chạy trong CI. Nút "Chạy Verify" trong ứng dụng vẫn còn | `scripts/verify.cjs` |
 | Kho mã nguồn sạch | Đạt | Giữ nguyên. CI chạy test, verify, tập mù, typecheck và E2E | `.github/workflows/ci.yml` |

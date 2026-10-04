@@ -15,6 +15,7 @@
     "load": "node bench/load.cjs",
     "verify": "node scripts/verify.cjs",
     "eval:blind": "node bench/blind.cjs",
+    "eval:blind2": "node bench/blind.cjs --csv=bench/blind2.csv",
     "eval:ai": "node bench/ai-replay.cjs"
   },
   "devDependencies": {

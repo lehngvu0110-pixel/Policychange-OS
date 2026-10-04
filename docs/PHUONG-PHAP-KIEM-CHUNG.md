@@ -130,6 +130,46 @@ Kết quả này phù hợp với thiết kế. Vòng học có ích khi cùng m
 cùng một đơn vị. Đó là trường hợp phổ biến trong tổ chức thật nhưng không có trong một tập cố tình đa dạng. Thử nghiệm
 3 nhân sự là nơi đo đúng hiệu ứng này.
 
+### 4.5. Tập mù số 2 (04/10/2026, 36 ca: 12 AUTO · 12 U1 · 5 U2 · 4 U3 · 3 bẫy)
+
+Tập này được lập **sau khi** động cơ hiện tại đã đóng băng, để xử lý mối đe doạ 4 ở Mục 5.
+- **Người viết:** một tác tử không xem mã, đóng vai 3 cán bộ có văn phong khác nhau (FAQ của Phòng Đào tạo; email và
+  Zalo của thư ký khoa; quy trình của Phòng KH-TC và Phòng CTSV).
+- **Kiểm nhãn:** một tác tử thứ hai cũng không xem mã, không bất đồng nhãn nào.
+- **Đóng băng:** mã băm `384c4578…` được ghi **trước** lần chạy đầu tiên (`bench/BLIND2-PROVENANCE.md`).
+
+| | Lần chạy đầu (động cơ 10fd7c6) | Sau khi nhận ra đơn vị viết tắt "TC" |
+|---|---|---|
+| Tự sửa sai | **0** / 8 (KTC 95 %: 0–32,4 %) | **0** / 8 |
+| Bỏ sót | **0** / 21 (KTC 95 %: 0–15,5 %) | **0** / 21 |
+| Bỏ qua lặng lẽ (dòng mang giá trị cũ mà máy không thấy) | **1** (C15 "24TC") | **0** |
+| Báo lên thừa | 3 / 15 (20,0 %) | 4 / 15 (26,7 %) |
+| Đúng hoàn toàn | 30 / 36 (83,3 %) | 29 / 36 (80,6 %) |
+| Đúng loại U1/U2/U3 | 90,5 % | 90,5 % |
+
+**Lỗi đáng kể duy nhất là C15**, câu Zalo "SV đk tối đa 24TC". Máy không nhận ra "24TC" là 24 tín chỉ, nên khi quy định
+đổi, dòng này sẽ **giữ nguyên con số cũ mà không ai được hỏi**. Đây không phải lỗi sửa sai, nhưng nó để lại văn bản lỗi
+thời. Động cơ nay nhận ra đơn vị viết tắt "TC/tc" (cả "24 TC") và luôn chuyển cho người (§5.3.b). Vì vậy C15 chuyển từ
+"bỏ qua" sang "báo lên thừa". Theo Nguyên tắc 5.5, đó là lỗi rẻ hơn.
+
+Bản sửa không dùng cụm từ nào lấy riêng từ tập mù: luật mới nhận mọi cách viết tắt tín chỉ, áp cho mọi quy định đơn vị
+tín chỉ. Kiểm thử ở `tests/policy-engine.test.cjs` còn kiểm hai trường hợp không được khớp: "CO24TC" (mã học phần) và
+"124TC".
+
+**Các ca còn sai, đều đã dừng hỏi người:**
+- C03: câu có ngoặc loại trừ "(không tính các học phần GDTC…)".
+- C19: "3 ngày làm việc là có", thiếu neo đại lượng.
+- C21: "ứng trước … từ 10tr trở xuống", từ đồng nghĩa chưa có trong sổ.
+- C22 và C36: U2 bị xếp thành U1. Ngưỡng hai chữ ký được viết là "2 chữ ký kiểm soát" và "chữ ký kiểm soát của Kế toán
+  trưởng…", chưa có trong neo của R-TC-02. Máy vẫn hỏi người, chỉ hỏi nhầm người.
+
+**Lớp AI đo thật** (Gemini 3.5 Flash-Lite, 8 lần gọi qua `ai-discover` v10, `bench/ai-run-2026-10-04.json`):
+- cả 8 dòng máy định tự sửa đều được AI xác nhận "supports";
+- **không giữ oan dòng đúng nào**;
+- không có dòng sai nào để giữ lại.
+
+Người viết vẫn là AI mô phỏng cán bộ, nên hạn chế ở mối đe doạ 2 vẫn còn nguyên.
+
 ## 5. Mối đe doạ đối với kết luận
 
 1. **Dữ liệu tổng hợp.** Cả hai tập đều do người hoặc máy soạn, không phải văn bản thật của trường.
@@ -138,14 +178,17 @@ cùng một đơn vị. Đó là trường hợp phổ biến trong tổ chức 
 3. **Cỡ mẫu nhỏ.** Xem khoảng tin cậy ở Mục 3. Mỗi sprint nên thêm một tập mù mới chứ không sửa tập cũ.
 4. **Người thiết kế đã thấy kết quả "trước" của tập mù.** Kết quả "trước" được in ra lúc đóng băng, nên nhóm đã thấy
    những ca bị sai. Biện pháp giảm thiểu là quy tắc ở Mục 2.4: không đưa cụm từ nào chỉ có trong tập mù vào neo.
-   Biện pháp triệt để là lập một tập mù mới (B41+) sau khi đóng băng động cơ hiện tại.
+   Biện pháp triệt để là lập một tập mù mới sau khi đóng băng động cơ hiện tại. **Đã làm ngày 04/10:** xem tập mù
+   số 2 ở Mục 4.5.
 
 ## 6. Chạy lại
 
 ```bash
-npm test               # 219 kiểm thử đơn vị
+npm test               # 240 kiểm thử đơn vị
 npm run verify         # 14 điều của QT-KSTL-01, bảng ĐẠT/TRƯỢT, mã thoát ≠ 0 nếu trượt
 npm run eval:blind     # tập mù 40 ca
+npm run eval:blind2    # tập mù số 2, 36 ca
+npm run eval:ai        # phát lại các lần đo lớp AI thật
 node bench/blind.cjs --csv=bench/holdout.csv   # tập phát triển với cùng bộ chỉ số
 node bench/learning-sim.cjs                    # mô phỏng vòng học
 npm run e2e            # Playwright
