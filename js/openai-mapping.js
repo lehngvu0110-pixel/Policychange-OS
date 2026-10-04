@@ -66,6 +66,7 @@
     '3. Mọi trường *Quote phải là chuỗi con được SAO CHÉP NGUYÊN VĂN từ <request> (giữ nguyên dấu, hoa thường). Không diễn giải, không bịa.',
     '   - policyQuote: cụm từ trong yêu cầu gọi tên quy định (khớp tên hoặc một cụm từ neo của đúng quy định đó).',
     '   - oldValueQuote / newValueQuote: đúng cụm chứa giá trị cũ / mới, ví dụ "7 ngày".',
+    '   - Nếu hai giá trị dùng chung một đơn vị viết một lần ("từ 7 xuống 5 ngày"): oldValueQuote là con số nguyên văn ("7"), oldValue vẫn là giá trị hiện hành đầy đủ ("7 ngày").',
     '   - issuerQuote: cụm nêu người/cấp ban hành, ví dụ "Trưởng phòng Đào tạo". Không có thì để null và issuerTier = null.',
     '4. issuerTier: 1 = chuyên viên/bộ phận/văn phòng, 2 = trưởng phòng/trưởng đơn vị, 3 = Hiệu trưởng/Hội đồng Trường. Chỉ điền khi yêu cầu nêu rõ.',
     '5. Yêu cầu đổi nhiều quy định, "mọi/tất cả" thời hạn, hoặc không có trong sổ → status = "refuse" kèm reason.',

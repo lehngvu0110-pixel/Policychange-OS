@@ -138,3 +138,67 @@ test('câu giám khảo tự nghĩ ra: sai đại lượng, quy đổi tuần, k
   await expect(judge.filter({ hasText: /quy đổi theo tuần/ })).toHaveCount(1);
   await expect(judge.filter({ hasText: /gõ không dấu/ })).toHaveCount(1);
 });
+
+// ---------- Hồi quy theo báo cáo kiểm thử 02/10/2026 ----------
+test('F02: câu mới bị từ chối thì không còn kết quả cũ và nút Ban hành', async ({ page }) => {
+  await open(page);
+  await analyze(page);
+  await expect(page.getByRole('button', { name: 'Ban hành' })).toBeEnabled();
+  await page.fill('#reqText', 'Đổi tất cả các thời hạn 7 ngày thành 5 ngày.');
+  await page.getByRole('button', { name: /Hiểu yêu cầu/ }).click();
+  await expect(page.locator('.notice.error')).toContainText('Từ chối xử lý');
+  await expect(page.getByRole('heading', { name: /Kết quả phân xử/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Ban hành' })).toHaveCount(0);
+  await expect(page.locator('#newVal')).toHaveValue('');
+});
+
+test('F02: sửa câu yêu cầu sau khi phân tích → khoá Ban hành tới khi phân tích lại', async ({ page }) => {
+  await open(page);
+  await analyze(page);
+  await persona(page, 'tp-dt');
+  await page.fill('#reqText', 'Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 3 ngày, do Trưởng phòng Đào tạo ban hành.');
+  await expect(page.getByRole('button', { name: 'Ban hành' })).toBeDisabled();
+  await expect(page.locator('[data-form-guard]')).toBeVisible();
+  await page.fill('#reqText', REQUEST);
+  await expect(page.getByRole('button', { name: 'Ban hành' })).toBeEnabled();
+  await expect(page.locator('[data-form-guard]')).toBeHidden();
+});
+
+test('F07: sau chính lần ban hành của mình không hiện cảnh báo “kho đã thay đổi”', async ({ page }) => {
+  await open(page);
+  await analyze(page);
+  await persona(page, 'tp-dt');
+  await page.getByRole('button', { name: 'Ban hành' }).click();
+  await expect(page.locator('.toast').last()).toContainText('Đã ban hành');
+  await expect(page.getByText('Kho hoặc sổ đăng ký đã thay đổi sau lần phân tích này')).toHaveCount(0);
+});
+
+test('F06: “từ 7 xuống 5 ngày” được hiểu, kèm lưu ý đơn vị dùng chung', async ({ page }) => {
+  await open(page, 'thay-doi');
+  await page.fill('#reqText', 'Rút thời hạn nộp đơn phúc khảo từ 7 xuống 5 ngày, do Trưởng phòng Đào tạo ban hành.');
+  await page.getByRole('button', { name: /Hiểu yêu cầu/ }).click();
+  await expect(page.locator('.notice.ok')).toContainText('R-PK-01');
+  await expect(page.locator('.notice.ok')).toContainText('câu chỉ ghi đơn vị một lần');
+  await expect(page.locator('#newVal')).toHaveValue('5 ngày');
+});
+
+test('ghé minh hoạ giữa chừng rồi thoát: phân tích, quyết định và biểu mẫu trở lại nguyên vẹn, vẫn ban hành được', async ({ page }) => {
+  await open(page);
+  await analyze(page);
+  await persona(page, 'cv-dt');
+  await page.locator('#prop-P6').getByRole('button', { name: /^B · Không/ }).click();
+  for (const demo of ['demo-review', 'demo-refuse']) {
+    await page.goto(APP + '#/tong-quan');
+    await page.locator('[data-action="' + demo + '"]').click();
+    await expect(page.locator('.notice.sandbox')).toBeVisible();
+    await page.getByRole('button', { name: 'Thoát minh hoạ' }).first().click();
+    await expect(page.locator('#connPill')).toContainText('Ngoại tuyến');
+  }
+  await page.goto(APP + '#/thay-doi');
+  await expect(page.locator('#reqText')).toHaveValue(REQUEST);
+  await expect(page.locator('#prop-P6')).toContainText('Không — giữ nguyên');
+  await expect(page.locator('[data-form-guard]')).toBeHidden();
+  await persona(page, 'tp-dt');
+  await page.getByRole('button', { name: 'Ban hành' }).click();
+  await expect(page.locator('.toast').last()).toContainText('Đã ban hành 6 thay đổi');
+});

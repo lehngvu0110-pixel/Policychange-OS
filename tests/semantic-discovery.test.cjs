@@ -301,7 +301,7 @@ test('malformed provider output is rejected without changing deterministic resul
   assert.deepEqual(result.props.map(item => item.outcome), props.map(item => item.outcome));
 });
 
-test('a later unavailable or rejected run clears stale semantic metadata and holds', async () => {
+test('F01: a later unavailable, failing or timed-out run keeps earlier holds and evidence', async () => {
   const initial = fixtureProps();
   const { candidateSet } = setup(initial);
   const target = candidateSet.candidates.find(value => value.documentId === 'DOC-A');
@@ -310,15 +310,22 @@ test('a later unavailable or rejected run clears stale semantic metadata and hol
   ]);
   assert.equal(withHold[0].semanticHold, true);
 
-  const result = await Discovery.discoverSemantics({
-    requestText: 'Rút hạn phúc khảo từ 7 ngày xuống 5 ngày.',
-    change, props: withHold, docs, registry, matchesOldValue,
-    adapter: Discovery.createUnavailableAdapter()
-  });
-  assert.equal(result.status, 'unavailable');
-  assert.equal(result.props[0].semanticHold, false);
-  assert.equal(result.props[0].semanticEvidence, undefined);
-  assert.equal(result.props[0].semanticHoldApproved, undefined);
+  const failing = [
+    ['unavailable', Discovery.createUnavailableAdapter(), {}],
+    ['provider_failure', { discover: async () => { throw new Error('network'); } }, {}],
+    ['timeout', { discover: () => new Promise(() => {}) }, { timeoutMs: 5 }],
+    ['rejected', { discover: async () => ({ available: true, output: { schemaVersion: 1, candidates: [{ bogus: true }] } }) }, {}]
+  ];
+  for (const [status, adapter, extra] of failing) {
+    const result = await Discovery.discoverSemantics({
+      requestText: 'Rút hạn phúc khảo từ 7 ngày xuống 5 ngày.',
+      change, props: withHold, docs, registry, matchesOldValue, adapter, ...extra
+    });
+    assert.equal(result.status, status);
+    assert.equal(result.props[0].semanticHold, true, status + ': cờ giữ lại không được mất');
+    assert.deepEqual(result.props[0].semanticEvidence, withHold[0].semanticEvidence, status + ': bằng chứng cũ được giữ');
+    assert.equal(Discovery.isPatchAllowed(result.props[0]), false, status + ': dòng bị giữ vẫn không được sửa');
+  }
 });
 
 test('conflicting AI relations hold AUTO_PATCH while preserving U1, U2, and U3 outcomes', () => {

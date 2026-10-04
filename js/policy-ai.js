@@ -79,6 +79,15 @@
     return false;
   }
 
+  // “từ 7 xuống 5 ngày”: giá trị cũ chỉ là con số, đơn vị viết một lần ở giá trị mới. Viết đầy đủ để so khớp;
+  // giống PolicyChangeEngine.shareUnit. Kết quả vẫn phải khớp đúng giá trị hiện hành của quy định mới được nhận.
+  function shareUnit(oldValue, newValue) {
+    const o = String(oldValue || '').trim();
+    const m = String(newValue || '').trim().match(/^(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?\s*(\D.*)$/u);
+    if (!/^\d+(?:,\d+)?$/.test(o) || !m || !m[1].trim()) return o;
+    return o + ' ' + m[1].trim();
+  }
+
   function evidenceError(evidence, requestText, normalizeValue, registry, rule, proposal) {
     if (!Array.isArray(evidence)) return 'Evidence must be an array.';
     const fields = new Map();
@@ -103,8 +112,9 @@
     if (matchingRules.length !== 1 || matchingRules[0].id !== rule.id) {
       return 'Policy evidence is missing or ambiguous.';
     }
-    if (normalizeValue(fields.get('oldValue')) !== normalizeValue(proposal.oldValue) ||
-        normalizeValue(proposal.oldValue) !== normalizeValueFromRule(rule, normalizeValue)) {
+    const proposedOld = shareUnit(proposal.oldValue, proposal.newValue);
+    if (normalizeValue(shareUnit(fields.get('oldValue'), fields.get('newValue'))) !== normalizeValue(proposedOld) ||
+        normalizeValue(proposedOld) !== normalizeValueFromRule(rule, normalizeValue)) {
       return 'Old-value evidence does not match the registered current value.';
     }
     if (!normalizeValue(fields.get('newValue')) ||
@@ -175,7 +185,7 @@
     let newKey;
     try {
       currentKey = normalizeValue(rule.value);
-      oldKey = normalizeValue(value.oldValue);
+      oldKey = normalizeValue(shareUnit(value.oldValue, value.newValue));
       newKey = normalizeValue(value.newValue);
     } catch (_) {
       return { ok: false, kind: 'rejected', reason: 'Value validation failed.' };
@@ -211,8 +221,14 @@
         newValue: value.newValue.trim(),
         issuerTier: value.issuerTier
       },
-      evidence: value.evidence.map(item => ({ ...item }))
+      evidence: value.evidence.map(item => ({ ...item })),
+      ...(sharedUnitUsed(value) ? { unitBorrowed: true } : {})
     };
+  }
+
+  function sharedUnitUsed(value) {
+    const quote = (value.evidence.find(item => item.field === 'oldValue') || {}).quote;
+    return shareUnit(value.oldValue, value.newValue) !== String(value.oldValue).trim() || /^\d+(?:,\d+)?$/.test(String(quote || '').trim());
   }
 
   function createUnavailableAdapter() {
@@ -258,6 +274,7 @@
       status: 'deterministic_fallback',
       aiStatus,
       aiReason,
+      ...(parsed.unitBorrowed ? { unitBorrowed: true } : {}),
       change: {
         ruleId: rule.id,
         oldValue: rule.value,
@@ -319,7 +336,7 @@
               reason: 'Select the authority tier before continuing.'
             };
           }
-          if (checked.ok) return { status: 'ai_candidate', aiStatus: 'candidate', change: checked.change, evidence: checked.evidence };
+          if (checked.ok) return { status: 'ai_candidate', aiStatus: 'candidate', change: checked.change, evidence: checked.evidence, ...(checked.unitBorrowed ? { unitBorrowed: true } : {}) };
           aiStatus = checked.kind === 'ambiguous' ? 'ambiguous' : 'rejected';
           aiReason = checked.reason;
         }

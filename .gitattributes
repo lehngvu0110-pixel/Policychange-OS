@@ -1,0 +1,19 @@
+# Giữ LF cho mọi tệp văn bản trên mọi hệ điều hành để dữ liệu nhúng js/*-data.js so khớp với bench/*.csv
+# (báo cáo kiểm thử F08).
+* text=auto eol=lf
+*.csv text eol=lf
+# Tập mù đóng băng giữ NGUYÊN từng byte (đã lưu với CRLF khi đóng băng; mã băm trong bench/BLIND-PROVENANCE.md).
+bench/blind.csv -text
+*.md text eol=lf
+*.js text eol=lf
+*.cjs text eol=lf
+*.mjs text eol=lf
+*.ts text eol=lf
+*.json text eol=lf
+*.sql text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.yml text eol=lf
+*.png binary
+*.jpg binary
+*.ico binary

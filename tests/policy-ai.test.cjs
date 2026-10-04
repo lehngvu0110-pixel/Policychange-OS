@@ -412,3 +412,30 @@ test('the unavailable adapter does not transmit the request or fabricate a candi
 
   assert.deepEqual(result, { available: false, reason: 'AI provider is not configured.' });
 });
+
+test('F06: “từ 7 xuống 5 ngày” — giá trị cũ dùng chung đơn vị với giá trị mới được chấp nhận và đánh dấu để người dùng kiểm tra', () => {
+  const text = 'Rút thời hạn phúc khảo từ 7 xuống 5 ngày, do Trưởng phòng ban hành.';
+  const evidence = [evidenceFor(text, 'policy', 'phúc khảo'), evidenceFor(text, 'oldValue', '7'), evidenceFor(text, 'newValue', '5 ngày'),
+    evidenceFor(text, 'issuerTier', 'Trưởng phòng')];
+  for (const oldValue of ['7 ngày', '7']) {
+    const result = PolicyAI.validateOutput(candidate({ oldValue, evidence }), { requestText: text, registry, normalizeValue });
+    assert.equal(result.ok, true, oldValue + ': ' + result.reason);
+    assert.equal(result.change.oldValue, '7 ngày', 'luôn trả giá trị hiện hành đầy đủ của sổ');
+    assert.equal(result.unitBorrowed, true);
+  }
+  const wrong = 'Rút thời hạn phúc khảo từ 70 xuống 5 ngày, do Trưởng phòng ban hành.';
+  const bad = PolicyAI.validateOutput(candidate({ evidence: [evidenceFor(wrong, 'policy', 'phúc khảo'), evidenceFor(wrong, 'oldValue', '70'),
+    evidenceFor(wrong, 'newValue', '5 ngày'), evidenceFor(wrong, 'issuerTier', 'Trưởng phòng')] }), { requestText: wrong, registry, normalizeValue });
+  assert.equal(bad.ok, false, 'con số cũ khác giá trị hiện hành vẫn bị từ chối');
+});
+
+test('F06: luồng đầy đủ với bộ phân tích tiền định thật hiểu “từ 7 xuống 5 ngày”', async () => {
+  const Engine = require('../js/policy-engine.js');
+  const Data = require('../js/policy-data.js');
+  const text = 'Rút thời hạn nộp đơn phúc khảo từ 7 xuống 5 ngày, do Trưởng phòng Đào tạo ban hành.';
+  const result = await PolicyAI.resolveRequest({ requestText: text, registry: Data.SEED_REGISTRY, adapter: PolicyAI.createUnavailableAdapter(),
+    parseDeterministically: t => Engine.parseFreeText(t, Data.SEED_REGISTRY), normalizeValue: Engine.policyValueKey });
+  assert.equal(result.status, 'deterministic_fallback', result.reason);
+  assert.deepEqual(result.change, { ruleId: 'R-PK-01', oldValue: '7 ngày', newValue: '5 ngày', issuerTier: 2 });
+  assert.equal(result.unitBorrowed, true);
+});

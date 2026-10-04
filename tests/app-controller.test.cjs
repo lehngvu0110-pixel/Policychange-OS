@@ -227,3 +227,253 @@ test('đổi vai trò trong lúc AI đang rà → không ban hành; bấm Ban h�
   assert.match(res.message, /vai trò vừa thay đổi/);
   assert.equal(app.state.ledger.length, 0);
 });
+
+// ---------- Hồi quy theo báo cáo kiểm thử 02/10/2026 ----------
+
+/** Adapter AI giả: mỗi lần gọi lấy một hành vi trong danh sách ('hold' | 'fail' | 'supports' | Promise). */
+function scriptedAdapter(script) {
+  const calls = [];
+  return { calls, status: async () => ({ available: true, model: 'test' }), extract: async () => ({ available: false }),
+    discover: async payload => {
+      const step = script[Math.min(calls.length, script.length - 1)];
+      calls.push(payload);
+      if (step === 'fail') throw new Error('network');
+      if (step && typeof step.then === 'function') await step;
+      const relation = step === 'supports' ? 'supports' : 'uncertain';
+      return { available: true, output: { schemaVersion: 1, candidates: payload.candidates.map(c => {
+        const q = '7 ngày'; const start = c.line.indexOf(q);
+        return { ruleId: c.ruleId, documentId: c.documentId, lineIndex: c.lineIndex, quote: q, start, end: start + q.length,
+          relation, explanation: 'test', evidence: [{ quote: q, start, end: start + q.length }] };
+      }) } };
+    } };
+}
+async function offlineWithAI(adapter) {
+  const app = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend(), workspace: 'local' }), aiAdapter: adapter }));
+  await app.init({ prefer: 'local' });
+  await new Promise(r => setTimeout(r, 0));
+  return app;
+}
+
+test('F01: rà soát lần hai thất bại KHÔNG xoá cờ giữ lại; Ban hành không sửa dòng bị giữ', async () => {
+  const adapter = scriptedAdapter(['hold', 'fail']);
+  const app = await offlineWithAI(adapter);
+  app.analyze(CHANGE);
+  const autos = app.state.current.props.filter(p => p.outcome === 'AUTO_PATCH').length;
+  const first = await app.discoverSemantics();
+  assert.equal(first.status, 'complete');
+  assert.equal(app.state.current.props.filter(p => p.semanticHold).length, autos, 'mọi dòng tự sửa bị giữ lại');
+  const second = await app.discoverSemantics();
+  assert.equal(second.status, 'provider_failure');
+  assert.equal(app.state.current.props.filter(p => p.semanticHold).length, autos, 'lần lỗi không được xoá cờ giữ lại');
+  assert.ok(app.state.current.props.filter(p => p.semanticHold).every(p => Array.isArray(p.semanticEvidence)), 'bằng chứng cũ còn nguyên');
+  assert.match(second.message, /giữ nguyên kết quả rà soát trước/);
+  app.setPersona('tp-dt');
+  const res = await app.commit();
+  assert.equal(adapter.calls.length, 2, 'đã có một lần rà hợp lệ thì Ban hành không gọi lại AI');
+  assert.equal(res.applied || 0, 0, 'không dòng nào bị giữ được tự sửa khi chưa có người duyệt');
+  assert.equal(app.state.ledger.filter(e => String(e.action).startsWith('PATCH')).length, 0);
+});
+
+test('F01: lỗi ở lần rà tự động trước Ban hành cũng không gỡ cờ giữ lại', async () => {
+  const adapter = scriptedAdapter(['hold', 'fail']);
+  const app = await offlineWithAI(adapter);
+  app.analyze(CHANGE);
+  await app.discoverSemantics();
+  app.state.current.semanticSettled = false; // mô phỏng phiên cũ: buộc Ban hành rà lại và lần đó lỗi
+  app.setPersona('tp-dt');
+  const res = await app.commit();
+  assert.equal(adapter.calls.length, 2);
+  assert.equal(res.applied || 0, 0);
+});
+
+test('F03: kết quả của lượt rà cũ về muộn bị bỏ, không ghi đè lượt mới hơn', async () => {
+  let release;
+  const slow = new Promise(r => { release = r; });
+  const real = scriptedAdapter([slow]);          // "AI thật": về muộn, nói supports (không giữ)
+  const app = await offlineWithAI(real);
+  app.analyze(CHANGE);
+  // supports cho lượt chậm: đổi kịch bản sau khi đã gọi
+  const late = app.discoverSemantics();
+  await new Promise(r => setTimeout(r, 0));
+  const fixture = scriptedAdapter(['hold']);     // dữ liệu mẫu của minh hoạ: giữ lại
+  const fresh = await app.discoverSemantics(fixture, 'fixture_mock');
+  assert.equal(fresh.status, 'complete');
+  const held = app.state.current.props.filter(p => p.semanticHold).length;
+  assert.ok(held > 0);
+  release();
+  const stale = await late;
+  assert.equal(stale.stale, true);
+  assert.equal(app.state.current.props.filter(p => p.semanticHold).length, held, 'lượt cũ không ghi đè');
+  assert.equal(app.state.current.semanticSource, 'fixture_mock');
+});
+
+test('F02: biểu mẫu khác với phân tích → không ban hành', async () => {
+  const app = await offline();
+  app.analyze({ ...CHANGE, requestText: 'Rút hạn phúc khảo từ 7 ngày xuống 5 ngày, Trưởng phòng Đào tạo ban hành.' });
+  app.setPersona('tp-dt');
+  assert.equal(app.matchesInput({ ...CHANGE, requestText: 'Rút hạn phúc khảo từ 7 ngày xuống 5 ngày,  Trưởng phòng Đào tạo ban hành. ' }), true, 'khoảng trắng thừa không tính');
+  const other = await app.commit({ expect: { ...CHANGE, requestText: 'Đổi tất cả các thời hạn 7 ngày thành 5 ngày.' } });
+  assert.equal(other.ok, false);
+  assert.match(other.message, /Biểu mẫu đã thay đổi/);
+  const value = await app.commit({ expect: { ...CHANGE, newValue: '4 ngày', requestText: 'Rút hạn phúc khảo từ 7 ngày xuống 5 ngày, Trưởng phòng Đào tạo ban hành.' } });
+  assert.equal(value.ok, false);
+  assert.equal(app.state.ledger.length, 0);
+  const same = await app.commit({ expect: { ...CHANGE, issuerTier: '2', requestText: 'Rút hạn phúc khảo từ 7 ngày xuống 5 ngày, Trưởng phòng Đào tạo ban hành.' } });
+  assert.equal(same.ok, true, same.message);
+});
+
+test('F07: sau chính lần Ban hành của mình, phân tích không bị coi là cũ', async () => {
+  const app = await offline();
+  app.analyze(CHANGE);
+  app.setPersona('tp-dt');
+  assert.equal((await app.commit()).ok, true);
+  assert.equal(app.state.current.revision, app.state.revision);
+  await app.addAnchor('R-PK-01', 'đơn xin phúc khảo', 'test');
+  assert.notEqual(app.state.current.revision, app.state.revision, 'thay đổi sổ đăng ký sau đó vẫn được cảnh báo');
+});
+
+function remoteWith(snapshotExtra, opts = {}) {
+  const Data = require('../js/policy-data.js');
+  const Engine = require('../js/policy-engine.js');
+  const loads = [];
+  return { loads, configured: true, session: opts.session || null, tail: async () => opts.tail || null,
+    loadWorkspace: async id => {
+      loads.push(id);
+      if (opts.forbidden && opts.forbidden.includes(id)) return { ok: false, reason: 'forbidden', message: 'Không có quyền đọc workspace này.' };
+      return { ok: true, workspace: { id, name: id, mode: id === 'demo' ? 'demo' : 'live' },
+        registry: Engine.cloneRegistry(Data.SEED_REGISTRY), docs: Engine.cloneDocs(Data.SEED_DOCUMENTS), ledger: [], feedback: [],
+        openChanges: [], decisions: [], ...snapshotExtra };
+    },
+    call: async body => body.action === 'whoami' ? { ok: true, status: 200, data: { member: { id: 'u', displayName: 'Hiệu trưởng', tier: 3, units: ['*'] } } } : { ok: true, status: 200, data: {} } };
+}
+
+test('F04: thoát minh hoạ khôi phục hàng đợi dùng chung (openChanges, decisions, người đăng nhập)', async () => {
+  const oc = { id: 'CR-1', ruleId: 'R-PK-01', oldValue: '7 ngày', newValue: '5 ngày', issuerTier: 2, requestText: '', createdBy: 'A', status: 'open', held: [] };
+  const decision = { changeId: 'CR-1', docId: 'QT-07', lineIndex: 1, act: 'a' };
+  const remote = remoteWith({ openChanges: [oc], decisions: [decision] }, { session: { email: 'x' } });
+  const app = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend() }), remote }));
+  await app.init();
+  assert.equal(app.state.workspace.id, 'hcmut-pilot');
+  const member = app.state.liveMember;
+  const before = app.caseItems().length;
+  assert.ok(before > 0);
+  app.enterSandbox({ label: 'Minh hoạ', docs: [{ id: 'DEMO', title: 't', owner: 'Phòng Đào tạo', tier: 2, version: '1.0', lines: ['Nộp đơn phúc khảo trong 7 ngày.'] }] });
+  assert.equal(app.state.openChanges.length, 0);
+  app.exitSandbox();
+  assert.equal(app.state.source, 'remote');
+  assert.equal(app.state.openChanges.length, 1);
+  assert.equal(app.state.decisions.length, 1);
+  assert.equal(app.state.liveMember, member);
+  assert.equal(app.caseItems().length, before);
+});
+
+test('F05: khởi động mở lại workspace đã chọn; workspace không đọc được thì lùi về Trình diễn, không về ngoại tuyến', async () => {
+  const remembered = remoteWith({});
+  const a = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend() }), remote: remembered }));
+  await a.init({ workspace: 'hcmut-pilot' });
+  assert.equal(a.state.workspace.id, 'hcmut-pilot');
+
+  const signedIn = remoteWith({}, { session: { email: 'x' } });
+  const b = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend() }), remote: signedIn }));
+  await b.init();
+  assert.deepEqual(signedIn.loads, ['hcmut-pilot'], 'còn phiên đăng nhập → mở thẳng workspace thí điểm');
+
+  const expired = remoteWith({}, { forbidden: ['hcmut-pilot'] });
+  const c = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend() }), remote: expired }));
+  await c.init({ workspace: 'hcmut-pilot' });
+  assert.equal(c.state.source, 'remote');
+  assert.equal(c.state.workspace.id, 'demo');
+  assert.match(c.state.notice.text, /Trình diễn/);
+});
+
+test('rà lại lần hai (hợp lệ) không gỡ cờ giữ lại hay quyết định "Giữ nguyên" của người', async () => {
+  for (const second of ['supports', 'empty']) {
+    const adapter = scriptedAdapter(['hold', 'supports']);
+    if (second === 'empty') adapter.discover = (orig => async payload => (adapter.calls.length ? (adapter.calls.push(payload), { available: true, output: { schemaVersion: 1, candidates: [] } }) : orig(payload)))(adapter.discover);
+    const app = await offlineWithAI(adapter);
+    app.analyze(CHANGE);
+    await app.discoverSemantics();
+    const held = app.state.current.props.filter(p => p.semanticHold);
+    assert.ok(held.length > 1);
+    app.setPersona('tp-dt');
+    const kept = held.find(p => p.docId === 'QT-02');
+    assert.equal((await app.reviewSemantic(kept.id, false)).ok, true);
+    const again = await app.discoverSemantics();
+    assert.equal(again.ok, true, second);
+    const now = app.state.current.props.find(p => p.id === kept.id);
+    assert.equal(now.semanticHoldReviewed, true, second + ': quyết định của người còn nguyên');
+    assert.equal(now.semanticHoldApproved, false);
+    assert.equal(app.state.current.props.filter(p => p.semanticHold).length, held.length, second + ': không dòng nào được gỡ cờ');
+    const res = await app.commit();
+    assert.equal(res.applied || 0, 0, second + ': không sửa dòng nào khi chưa có người duyệt');
+    assert.equal(app.state.ledger.filter(e => e.docId === kept.docId && e.lineIndex === kept.lineIndex && String(e.action).startsWith('PATCH')).length, 0);
+  }
+});
+
+test('quyết định của người bấm trong lúc AI đang rà không bị kết quả rà ghi đè', async () => {
+  let release;
+  const gate = new Promise(r => { release = r; });
+  const app = await offlineWithAI(scriptedAdapter([gate]));
+  app.analyze(CHANGE);
+  const pending = app.discoverSemantics();
+  const u1 = app.state.current.props.find(p => p.category === 'U1');
+  app.setPersona('cv-dt');
+  assert.equal(app.decide(u1.id, 'b').ok, true);
+  release();
+  await pending;
+  assert.equal(app.state.current.props.find(p => p.id === u1.id).decided, true);
+});
+
+test('phân tích có lượt rà đang chạy khi vào minh hoạ: thoát ra không kẹt ở "đang rà"', async () => {
+  let release;
+  const gate = new Promise(r => { release = r; });
+  const app = await offlineWithAI(scriptedAdapter([gate]));
+  app.analyze(CHANGE);
+  const pending = app.discoverSemantics();
+  app.enterSandbox({ label: 'Minh hoạ', docs: [{ id: 'DEMO', title: 't', owner: 'Phòng Đào tạo', tier: 2, version: '1.0', lines: ['Nộp đơn phúc khảo trong 7 ngày.'] }] });
+  release();
+  await pending;
+  app.exitSandbox();
+  assert.equal(app.state.current.semanticStatus, 'complete');
+  assert.ok(app.state.current.props.some(p => p.semanticHold), 'kết quả rà vẫn được ghi vào phân tích đã lưu');
+  app.setPersona('tp-dt');
+  const res = await app.commit();
+  assert.equal(res.ok, true, res.message);
+});
+
+test('F05: lỗi máy chủ tạm thời không đổi workspace; chỉ lùi về Trình diễn khi không có quyền và không ghi nhớ lựa chọn lùi', async () => {
+  const flaky = remoteWith({});
+  flaky.loadWorkspace = async id => (flaky.loads.push(id), { ok: false, reason: 'error', message: 'Máy chủ trả lỗi 503.' });
+  const a = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend() }), remote: flaky }));
+  await a.init({ workspace: 'hcmut-pilot' });
+  assert.deepEqual(flaky.loads, ['hcmut-pilot'], 'lỗi 5xx không tự chuyển sang workspace khác');
+  const expired = remoteWith({}, { forbidden: ['hcmut-pilot'] });
+  const b = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend() }), remote: expired }));
+  await b.init({ workspace: 'hcmut-pilot' });
+  assert.equal(b.state.fallbackFrom, 'hcmut-pilot');
+  await b.switchSource('remote', 'demo');
+  assert.equal(b.state.fallbackFrom, null, 'chọn tay thì được ghi nhớ bình thường');
+});
+
+test('rà lại lần hai không làm prover chặn dòng đã được người duyệt hay dòng tự sửa có bằng chứng cũ', async () => {
+  for (const [first, second, approve] of [['supports', 'empty', false], ['hold', 'empty', true], ['hold', 'supports', true]]) {
+    const adapter = scriptedAdapter([first, 'supports']);
+    if (second === 'empty') adapter.discover = (orig => async payload => (adapter.calls.length ? (adapter.calls.push(payload), { available: true, output: { schemaVersion: 1, candidates: [] } }) : orig(payload)))(adapter.discover);
+    const app = await offlineWithAI(adapter);
+    app.analyze(CHANGE);
+    await app.discoverSemantics();
+    app.setPersona('tp-dt');
+    if (approve) for (const p of app.state.current.props.filter(x => x.semanticHold)) {
+      app.setPersona(app.decisionRight(p).ok ? 'tp-dt' : 'ht');
+      await app.reviewSemantic(p.id, true);
+    }
+    const before = app.committableCount();
+    assert.ok(before > 0);
+    await app.discoverSemantics();
+    assert.equal(app.committableCount(), before, [first, second].join('→') + ': số dòng ban hành được không đổi');
+    app.setPersona('ht');
+    const res = await app.commit();
+    assert.equal(res.ok, true, res.message);
+    assert.ok(res.applied > 0, [first, second].join('→') + ': ' + res.message);
+  }
+});

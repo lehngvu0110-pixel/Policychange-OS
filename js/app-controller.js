@@ -17,6 +17,9 @@
 })(typeof globalThis === 'object' ? globalThis : this, function createAppControllerModule() {
   'use strict';
 
+  /** Workspace thí điểm mở sau khi đăng nhập. */
+  const PILOT_WORKSPACE = 'hcmut-pilot';
+
   /**
    * @param {{
    *   Engine:any, Data:any, Workflow:any, Ledger:any, Authz:any, Server:any, Semantic:any, AI:any, Learning:any,
@@ -47,7 +50,9 @@
       connection: /** @type {'online'|'offline'|'unconfigured'} */ (deps.remote && deps.remote.configured ? 'offline' : 'unconfigured'),
       notice: /** @type {null|{ tone:string, text:string }} */ (null),
       ai: { status: deps.aiAdapter ? 'checking' : 'off', reason: deps.aiAdapter ? 'Đang kiểm tra máy chủ AI…' : 'Chưa cấu hình máy chủ AI.', model: /** @type {string|null} */ (null) },
-      saved: /** @type {any} */ (null)
+      saved: /** @type {any} */ (null),
+      /** Workspace muốn mở lúc khởi động nhưng không đọc được (đang hiện workspace khác thay thế). */
+      fallbackFrom: /** @type {string|null} */ (null)
     };
 
     function emit() { listeners.forEach(fn => { try { fn(S); } catch (_) { /* một view lỗi không làm hỏng các view khác */ } }); }
@@ -128,7 +133,14 @@
       S.busy = true; emit();
       let loaded = false;
       if (options.prefer !== 'local' && deps.remote && deps.remote.configured) {
-        const res = await loadRemote(options.workspace || S.workspace.id);
+        // Workspace đã chọn lần trước; nếu chưa có mà còn phiên đăng nhập thì mở workspace thí điểm.
+        const wanted = options.workspace || (deps.remote.session ? PILOT_WORKSPACE : S.workspace.id);
+        let res = await loadRemote(wanted);
+        if (!res.ok && res.reason === 'forbidden' && wanted !== 'demo') {
+          res = await loadRemote('demo');
+          if (res.ok) S.fallbackFrom = wanted;
+          if (res.ok) notify('info', 'Không mở được workspace “' + wanted + '” (cần đăng nhập đúng tài khoản); đang hiện workspace Trình diễn.');
+        }
         loaded = res.ok;
         if (!res.ok) notify('warn', res.message + ' Đang dùng chế độ Ngoại tuyến (lưu trên máy).');
       }
@@ -147,7 +159,8 @@
 
     /** @param {'remote'|'local'} source @param {string} [workspaceId] */
     async function switchSource(source, workspaceId) {
-      if (S.source === 'sandbox') exitSandbox();
+      S.fallbackFrom = null;
+      if (S.source === 'sandbox') exitSandbox({ refresh: false });
       S.busy = true; emit();
       if (source === 'remote') {
         const res = await loadRemote(workspaceId);
@@ -189,7 +202,7 @@
     async function signIn(email, password) {
       const res = await deps.remote.signIn(email, password);
       if (!res.ok) return result(false, res.message);
-      return switchSource('remote', 'hcmut-pilot');
+      return switchSource('remote', PILOT_WORKSPACE);
     }
     async function signOut() {
       await deps.remote.signOut();
@@ -200,7 +213,9 @@
     // ---------- Minh hoạ ----------
     /** @param {{ docs:any[], registry?:any[], label:string }} scenario */
     function enterSandbox(scenario) {
-      if (S.source !== 'sandbox') S.saved = { source: S.source, workspace: S.workspace, registry: S.registry, docs: S.docs, ledger: S.ledger, feedback: S.feedback, current: S.current, persona: S.persona };
+      if (S.source !== 'sandbox') S.saved = { source: S.source, workspace: S.workspace, registry: S.registry, docs: S.docs, ledger: S.ledger, feedback: S.feedback,
+        openChanges: S.openChanges, decisions: S.decisions, liveMember: S.liveMember, stale: S.stale, current: S.current, persona: S.persona };
+      if (S.source !== 'sandbox' && S.saved) S.saved.revisionAtEnter = S.revision;
       S.source = 'sandbox';
       S.workspace = { id: 'sandbox', name: scenario.label, mode: 'demo' };
       S.registry = Engine.cloneRegistry(scenario.registry || Data.SEED_REGISTRY);
@@ -208,12 +223,19 @@
       S.ledger = []; S.feedback = []; S.openChanges = []; S.decisions = []; S.current = null; S.revision++;
       emit();
     }
-    function exitSandbox() {
+    /** @param {{ refresh?:boolean }} [options] */
+    function exitSandbox(options = {}) {
       if (S.source !== 'sandbox' || !S.saved) return;
-      Object.assign(S, { source: S.saved.source, workspace: S.saved.workspace, registry: S.saved.registry, docs: S.saved.docs,
-        ledger: S.saved.ledger, feedback: S.saved.feedback, current: S.saved.current, persona: S.saved.persona });
+      const saved = S.saved;
+      Object.assign(S, { source: saved.source, workspace: saved.workspace, registry: saved.registry, docs: saved.docs,
+        ledger: saved.ledger, feedback: saved.feedback, openChanges: saved.openChanges || [], decisions: saved.decisions || [],
+        liveMember: saved.liveMember || null, stale: saved.stale === true, current: saved.current, persona: saved.persona });
       S.saved = null; S.revision++;
+      // Phân tích đã lưu vẫn đúng với kho đã lưu: không cảnh báo "kho đã thay đổi" chỉ vì vừa ghé minh hoạ.
+      if (S.current && S.current.revision === saved.revisionAtEnter) S.current.revision = S.revision;
       emit();
+      // Trong lúc xem minh hoạ, người khác có thể đã ghi vào workspace dùng chung: nạp lại cho chắc.
+      if (options.refresh !== false && /** @type {string} */ (S.source) === 'remote') poll();
     }
 
     // ---------- Hiểu yêu cầu ----------
@@ -235,10 +257,24 @@
       Workflow.startAnalysis(S, built.change, input.requestText || '');
       S.current.revision = S.revision;
       S.current.semanticStatus = null;
+      S.current.input = inputKey(input);
       const n = S.current.props.length;
       return result(true, n ? 'Đã quét ' + S.docs.length + ' tài liệu, tìm thấy ' + n + ' vị trí mang giá trị “' + built.change.oldValue + '”.'
         : 'Không có vị trí nào mang giá trị “' + built.change.oldValue + '”; không có gì cần sửa.');
     }
+
+    /**
+     * Dấu vân tay của biểu mẫu đã tạo ra phân tích. Ban hành chỉ được phép khi biểu mẫu hiện tại vẫn khớp, để không
+     * ai ban hành một phân tích cũ trong khi màn hình đang hiện câu yêu cầu khác (báo cáo kiểm thử F02).
+     * @param {{ ruleId?:string, newValue?:string, issuerTier?:number|string, requestText?:string }} input
+     */
+    function inputKey(input) {
+      const v = String((input && input.newValue) || '').trim();
+      return JSON.stringify([String((input && input.ruleId) || ''), Engine.policyValueKey(v) || v, Number(input && input.issuerTier) || 0,
+        String((input && input.requestText) || '').trim().replace(/\s+/g, ' ')]);
+    }
+    /** @param {any} input */
+    function matchesInput(input) { return !!S.current && S.current.input === inputKey(input); }
 
     function canIssueCurrent() {
       if (!S.current) return { ok: false, reason: 'Chưa có phân tích.' };
@@ -250,24 +286,47 @@
       if (!S.current) return result(false, 'Chưa có phân tích.');
       const analysis = S.current;
       const useAdapter = adapter || (S.ai.status === 'ready' ? deps.aiAdapter : Semantic.createUnavailableAdapter());
+      // Mã lượt rà: chỉ kết quả của lượt bắt đầu SAU CÙNG được ghi vào phân tích. Lượt cũ về muộn (ví dụ AI thật
+      // về sau dữ liệu mẫu của minh hoạ) bị bỏ, không ghi đè.
+      const seq = (analysis.semanticSeq || 0) + 1;
+      analysis.semanticSeq = seq;
+      const previousStatus = analysis.semanticStatus;
       analysis.semanticStatus = 'pending'; emit();
       const res = await Semantic.discoverSemantics({ requestText: analysis.requestText, change: analysis.change, props: analysis.props,
         docs: S.docs, registry: S.registry, matchesOldValue: Engine.matchesOldValue, adapter: useAdapter });
-      if (S.current !== analysis) return { ok: false, message: 'Phân tích đã thay đổi.' };
-      analysis.props = res.props;
+      if (analysis.semanticSeq !== seq) return { ok: false, stale: true, message: 'Đã có lượt rà soát mới hơn; bỏ kết quả của lượt này.' };
+      const settled = res.status === 'complete' || res.status === 'no_candidates';
+      // Lượt rà không thành không bao giờ xoá cờ giữ lại / bằng chứng của lượt rà hợp lệ trước đó; lượt hợp lệ chỉ
+      // thêm cờ giữ lại, không gỡ cờ hay quyết định của người (Semantic.mergeSemanticReview).
+      // Ghi vào `analysis` cả khi nó không còn là phân tích hiện tại (ví dụ đang xem minh hoạ), để khi được khôi phục
+      // nó không kẹt ở trạng thái "đang rà".
+      if (settled) {
+        analysis.props = Semantic.mergeSemanticReview(analysis.props, res.props);
+        analysis.semanticSettled = true;
+        analysis.semanticSource = sourceLabel || (S.ai.status === 'ready' ? 'openai' : 'none');
+        // Bằng chứng được giữ lại từ lượt trước vẫn phải có trong danh sách đã kiểm chứng để prover chấp nhận:
+        // cộng dồn (bỏ trùng) thay vì thay mới.
+        const previousValid = analysis.semanticResult && Array.isArray(analysis.semanticResult.valid) ? analysis.semanticResult.valid : [];
+        const seen = new Set();
+        const valid = previousValid.concat(res.status === 'complete' ? res.valid : []).filter((/** @type {any} */ item) => {
+          const key = JSON.stringify(item); if (seen.has(key)) return false; seen.add(key); return true;
+        });
+        analysis.semanticResult = { status: res.status, valid, rejected: res.rejected };
+      }
       analysis.semanticStatus = res.status;
-      analysis.semanticSource = sourceLabel || (S.ai.status === 'ready' ? 'openai' : 'none');
-      analysis.semanticResult = { status: res.status, valid: res.status === 'complete' ? res.valid : [], rejected: res.rejected };
+      analysis.semanticLastAttempt = { status: res.status, previousStatus, at: now() };
+      if (S.current !== analysis) return { ok: false, message: 'Phân tích đã thay đổi.' };
       const holds = analysis.props.filter((/** @type {any} */ p) => p.semanticHold).length;
+      const kept = analysis.semanticSettled ? 'giữ nguyên kết quả rà soát trước (' + holds + ' vị trí đang giữ lại).' : 'giữ nguyên kết quả của động cơ tiền định.';
       const messages = {
         complete: 'AI đã rà ' + res.candidateSet.candidates.length + ' vị trí; ' + res.valid.length + ' bằng chứng hợp lệ; ' + holds + ' vị trí được giữ lại cho người duyệt.',
-        unavailable: 'AI ngữ nghĩa không khả dụng; giữ nguyên kết quả của động cơ tiền định.',
-        timeout: 'AI hết thời gian chờ; giữ nguyên kết quả của động cơ tiền định.',
-        provider_failure: 'AI gặp lỗi; giữ nguyên kết quả của động cơ tiền định.',
-        rejected: 'Bằng chứng AI không qua được bộ kiểm tra; giữ nguyên kết quả của động cơ tiền định.',
+        unavailable: 'AI ngữ nghĩa không khả dụng; ' + kept,
+        timeout: 'AI hết thời gian chờ; ' + kept,
+        provider_failure: 'AI gặp lỗi; ' + kept,
+        rejected: 'Bằng chứng AI không qua được bộ kiểm tra; ' + kept,
         no_candidates: 'Không có vị trí nào để AI rà soát.'
       };
-      return result(res.status === 'complete' || res.status === 'no_candidates', /** @type {any} */ (messages)[res.status] || 'Đã kiểm tra.', { status: res.status, holds });
+      return result(settled, /** @type {any} */ (messages)[res.status] || 'Đã kiểm tra.', { status: res.status, holds });
     }
 
     /**
@@ -279,8 +338,8 @@
       const analysis = S.current;
       if (!analysis || S.ai.status !== 'ready' || !deps.aiAdapter) return { ok: true, skipped: true, message: 'AI đang tắt; dùng kết quả tiền định.' };
       if (analysis.semanticStatus === 'pending') return { ok: false, pending: true, message: 'AI đang rà soát; đợi xong rồi bấm Ban hành.' };
-      // Chỉ bỏ qua khi lần rà trước đã xong thật; lần trước lỗi / hết giờ thì thử lại.
-      if (analysis.semanticStatus === 'complete' || analysis.semanticStatus === 'no_candidates') return { ok: true, skipped: true, message: 'Đã rà soát.' };
+      // Chỉ bỏ qua khi đã có một lần rà hợp lệ; chưa có (lần trước lỗi / hết giờ) thì thử lại.
+      if (analysis.semanticSettled) return { ok: true, skipped: true, message: 'Đã rà soát.' };
       if (!analysis.props.some((/** @type {any} */ p) => p.outcome === 'AUTO_PATCH' && !p.applied)) return { ok: true, skipped: true, message: 'Không có dòng tự sửa để rà.' };
       return discoverSemantics(deps.aiAdapter, 'openai');
     }
@@ -340,9 +399,10 @@
       return { ruleId: S.current.change.rule.id, category, docId: p.docId, lineIndex: p.lineIndex, line: p.line, answer, actor: actor(), ts: now() };
     }
 
-    /** @param {{ ratify?:boolean }} [options] */
+    /** @param {{ ratify?:boolean, expect?:{ ruleId:string, newValue:string, issuerTier:number|string, requestText?:string } }} [options] */
     async function commit(options = {}) {
       if (!S.current) return result(false, 'Chưa có phân tích.');
+      if (options.expect && !matchesInput(options.expect)) return result(false, 'Biểu mẫu đã thay đổi sau lần phân tích này; bấm “Phân tích tác động” lại trước khi ban hành.');
       const issue = canIssueCurrent();
       if (!issue.ok) return result(false, issue.reason || 'Không đủ thẩm quyền ban hành.');
       const analysis = S.current, persona = S.persona;
@@ -350,7 +410,7 @@
       // Trong lúc chờ AI, người dùng có thể đổi vai trò, phân tích lại hoặc bấm Ban hành lần nữa: không ban hành
       // một phân tích khác với cái vừa được kiểm quyền và rà soát.
       if (S.current !== analysis || S.persona !== persona) return result(false, 'Phân tích hoặc vai trò vừa thay đổi trong lúc AI rà soát; hãy kiểm tra lại rồi bấm Ban hành.');
-      if (review && review.pending) return result(false, review.message);
+      if (review && (review.pending || review.stale) || analysis.semanticStatus === 'pending') return result(false, (review && review.message) || 'AI đang rà soát; đợi xong rồi bấm Ban hành.');
       if (S.source === 'remote') return commitRemote(options);
       const fresh = S.current.props.filter((/** @type {any} */ p) => p.decided && !p.fed);
       const approvedSemantic = S.current.props.filter((/** @type {any} */ p) => p.semanticHoldApproved && !p.fed);
@@ -365,6 +425,8 @@
         message += ' ' + ratified.message;
       }
       S.revision++;
+      // Thay đổi vừa rồi là của chính phân tích này: không báo "kho đã thay đổi sau lần phân tích".
+      if (!options.ratify) S.current.revision = S.revision;
       await persist();
       return result(true, message, { applied: committed.applied });
     }
@@ -400,7 +462,10 @@
       }
       // Vị trí còn chờ đã được chuyển vào hồ sơ dùng chung; bỏ quyết định cục bộ đang dở để khỏi gửi lại.
       if (res.data.openChange) cur.props.forEach((/** @type {any} */ p) => { if (!p.applied && !p.logged && (p.outcome === 'ESCALATE' || p.semanticHold)) p.inCase = res.data.openChange.id; });
+      const expectedLength = S.ledger.length + (res.data.records || []).length;
       await reload();
+      // Chỉ coi là "của mình" khi sổ trên máy chủ dài thêm đúng số bản ghi vừa ghi; có người khác ghi xen vào thì vẫn cảnh báo.
+      if (S.current === cur && !options.ratify && S.ledger.length === expectedLength) cur.revision = S.revision;
       return result(true, res.data.message || 'Đã ban hành.', { applied: res.data.applied });
     }
 
@@ -542,12 +607,12 @@
       state: S,
       subscribe(/** @type {(state:any) => void} */ fn) { listeners.add(fn); return () => listeners.delete(fn); },
       emit, member, actor, setPersona, init, switchSource, reload, poll, signIn, signOut, checkAI,
-      enterSandbox, exitSandbox, resolveRequest, analyze, canIssueCurrent, discoverSemantics, decisionRight,
+      enterSandbox, exitSandbox, resolveRequest, analyze, matchesInput, canIssueCurrent, discoverSemantics, decisionRight,
       decide, undoDecision, reviewSemantic, ensureSemanticReview, committableCount, commit, undo, canUndo, suggestions, addAnchor,
       caseItems, caseRight, decideCase,
       addDocument, resetWorkspace, clearAnalysis, dismissNotice
     };
   }
 
-  return Object.freeze({ createController });
+  return Object.freeze({ createController, PILOT_WORKSPACE });
 });

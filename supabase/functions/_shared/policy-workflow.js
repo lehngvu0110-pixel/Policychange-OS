@@ -291,7 +291,9 @@
     const ms = () => Math.round((clock() - t0) * 100) / 100;
     if (tc.freeText) {
       const r = Engine.parseFreeText(tc.freeText, env.registry);
-      const ok = tc.expect.refuse ? !r.ok : r.ok;
+      // Ca từ chối phải từ chối ĐÚNG lý do mô tả, không phải vì một trường khác bị thiếu.
+      const reasonOk = !tc.expect.reason || (!r.ok && String(/** @type {any} */ (r).msg || '').includes(tc.expect.reason));
+      const ok = (tc.expect.refuse ? !r.ok : r.ok) && reasonOk;
       return { id: tc.id, desc: tc.desc, expected: 'REFUSE', actual: r.ok ? 'Đã tạo đề xuất' : 'REFUSE', category: '—',
         ms: ms(), ok, detail: r.ok ? '' : 'Lý do từ chối: ' + /** @type {any} */ (r).msg };
     }

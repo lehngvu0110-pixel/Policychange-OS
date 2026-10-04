@@ -132,3 +132,13 @@ test('nạp tài liệu: chuẩn hoá NFC để văn bản dạng NFD vẫn kh�
   Workflow.startAnalysis(state, Workflow.buildChange(state.registry, 'R-PK-01', '5 ngày', 2).change);
   assert.equal(state.current.props[0].outcome, 'AUTO_PATCH');
 });
+
+test('F07: ca Verify TC-04 từ chối đúng vì giá trị ngoài sổ, không vì thiếu cấp ban hành', () => {
+  const env = { registry: Engine.cloneRegistry(Data.SEED_REGISTRY), seedDocuments: Data.SEED_DOCUMENTS };
+  const tc = Data.SUITE_REQUIRED.find(t => t.id === 'TC-04');
+  const row = Workflow.runVerifyCase(tc, env);
+  assert.equal(row.ok, true, row.detail);
+  assert.match(row.detail, /Không có quy định nào trong sổ đăng ký đang mang giá trị “42 ngày”/);
+  const wrongReason = Workflow.runVerifyCase({ ...tc, freeText: 'Đổi hạn nộp hồ sơ từ 42 ngày xuống 30 ngày.' }, env);
+  assert.equal(wrongReason.ok, false, 'từ chối vì thiếu cấp ban hành không được tính là đạt');
+});
