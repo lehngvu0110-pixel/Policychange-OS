@@ -29,7 +29,8 @@ hợp; không nhập văn bản thật có thông tin cá nhân.
 
 ## Phiếu ghi nhận (mỗi người)
 
-- Thời gian hoàn thành từng nhiệm vụ; số lần hỏi người quan sát.
+- Thời gian hoàn thành từng nhiệm vụ; số lần hỏi người quan sát. Thời gian trả lời từng câu hỏi chuyển tiếp được
+  ứng dụng tự đo: cuối buổi, mở **Hàng đợi duyệt → Tải CSV** (tệp `thoi-gian-quyet-dinh.csv`) trên máy của từng người.
 - Thang 1–5: *Tôi hiểu vì sao hệ thống dừng lại hỏi tôi* · *Tôi tin các chỗ hệ thống tự sửa là đúng* ·
   *Tôi sẵn sàng dùng công cụ này khi quy định đổi*.
 - Một điều làm bạn khó chịu nhất; một điều bạn muốn có thêm.

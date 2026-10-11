@@ -62,6 +62,18 @@ chỉ cần đúng bậc độ lớn.
 
 Khi có số thật, thay vào Mục 2 và ghi nguồn là "phỏng vấn [phòng], [ngày]".
 
+**Thời gian người duyệt trả lời một câu hỏi được ứng dụng tự đo** (từ 11/10/2026):
+- Mốc bắt đầu là lúc câu hỏi có nút trả lời hiện trên màn hình. Mốc kết thúc là lúc bấm A hoặc B.
+- Màn hình **Hàng đợi duyệt** hiện trung vị và mức 90 %. Lần nào quá 10 phút bị loại khỏi trung vị (có thể người dùng
+  đã rời máy), nhưng vẫn giữ trong số liệu thô.
+- Bấm **Tải CSV** để lấy số liệu thô. Số đo trong chế độ minh hoạ không được tính.
+- Dùng trung vị này thay cho giả định "thời gian xử lý một vị trí cần người" ở Mục 2.
+
+**Gộp câu hỏi trùng** cũng giảm thẳng số câu người phải trả lời:
+- Cùng một mệnh đề chép ở nhiều nơi (website, chatbot, mẫu email) chỉ hỏi một lần.
+- Chi phí cho người duyệt vì vậy tính theo **số câu hỏi**, không theo số vị trí. Màn hình Thay đổi quy định ghi rõ cả
+  hai con số.
+
 ## Nguồn
 
 - CBS News, "Air Canada chatbot costs airline discount it wrongly offered customer", 02/2024 — https://www.cbsnews.com/news/aircanada-chatbot-discount-customer/

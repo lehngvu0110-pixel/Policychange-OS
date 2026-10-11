@@ -202,3 +202,51 @@ test('ghé minh hoạ giữa chừng rồi thoát: phân tích, quyết định 
   await page.getByRole('button', { name: 'Ban hành' }).click();
   await expect(page.locator('.toast').last()).toContainText('Đã ban hành 6 thay đổi');
 });
+
+test('Minh hoạ 4: một câu ở ba nơi → một câu hỏi, trả lời một lần, đo thời gian quyết định', async ({ page }) => {
+  await open(page);
+  await page.locator('[data-action="demo-group"]').click();
+  await expect(page.locator('.notice.sandbox')).toBeVisible();
+  await expect(page).toHaveURL(/#\/hang-doi/);
+  const card = page.locator('article.prop').filter({ hasText: 'Câu này xuất hiện ở 3 vị trí' });
+  await expect(card).toHaveCount(1);
+  await expect(page.locator('article.prop.U1')).toHaveCount(1);
+  await card.getByRole('button', { name: /^B · Không/ }).click();
+  await page.getByRole('button', { name: /Đã quyết/ }).click();
+  await expect(page.locator('article.prop')).toHaveCount(3);
+  await expect(page.locator('article.prop').first()).toContainText('quyết chung 3 vị trí');
+  await page.getByRole('button', { name: 'Thoát minh hoạ' }).first().click();
+  await expect(page.locator('#connPill')).toContainText('Ngoại tuyến');
+});
+
+test('đo thời gian quyết định hiện trên Hàng đợi và tải được CSV', async ({ page }) => {
+  await open(page);
+  await analyze(page);
+  await persona(page, 'cv-dt');
+  await page.locator('#prop-P6').getByRole('button', { name: /^B · Không/ }).click();
+  await page.goto(APP + '#/hang-doi');
+  await expect(page.locator('.notice.info')).toContainText('Thời gian trả lời câu hỏi');
+  await expect(page.locator('.notice.info')).toContainText('1 câu trả lời cho 1 vị trí');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Tải CSV' }).click();
+  expect((await download).suggestedFilename()).toBe('thoi-gian-quyet-dinh.csv');
+});
+
+test('nạp tài liệu từ tệp .docx: điền sẵn biểu mẫu, nạp vào kho rồi phân tích được', async ({ page }) => {
+  await open(page, 'kho-tai-lieu');
+  await persona(page, 'tp-dt');
+  await page.setInputFiles('#ndFile', new URL('./mau-phuc-khao.docx', import.meta.url).pathname);
+  await expect(page.getByText(/Đã đọc 4 dòng từ “mau-phuc-khao.docx”/)).toBeVisible();
+  await expect(page.locator('#ndTitle')).toHaveValue('mau-phuc-khao');
+  await expect(page.locator('#ndBody')).toHaveValue(/Tạm ứng \| 10 triệu đồng/);
+  await page.getByRole('button', { name: 'Nạp vào kho' }).click();
+  await expect(page.getByText(/Đã thêm .* vào kho./).first()).toBeVisible();
+  await analyze(page);
+  await expect(page.locator('article.prop').filter({ hasText: 'mau-phuc-khao' })).toHaveCount(1);
+});
+
+test('tệp không hỗ trợ bị từ chối với thông báo rõ ràng', async ({ page }) => {
+  await open(page, 'kho-tai-lieu');
+  await page.setInputFiles('#ndFile', { name: 'quy-dinh.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') });
+  await expect(page.locator('.toast').last()).toContainText('Chỉ nhận tệp .docx, .txt hoặc .md');
+});
