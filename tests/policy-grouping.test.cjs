@@ -25,11 +25,17 @@ test('không gộp khi khác loại hồ sơ, khác đơn vị phụ trách hay 
   assert.equal(props.find(p => p.docId === 'C').category, 'U3');
 });
 
-test('gộp theo mệnh đề chứa con số, không theo cả dòng; dòng tự sửa không bao giờ gộp', () => {
-  const props = analyze([doc('A', ['Thông báo của PĐT. ' + SAME + ' Liên hệ PĐT nếu cần.']), doc('B', [SAME]),
+test('so cả dòng: cùng mệnh đề đầu nhưng phần sau khác (sẽ bị sửa theo) thì KHÔNG gộp; dòng tự sửa không gộp', () => {
+  const props = analyze([doc('A', [SAME]), doc('B', [SAME + ' Bài thi gốc được lưu tại khoa trong 7 ngày.']),
     doc('C', ['Sinh viên nộp đơn phúc khảo trong 7 ngày.'])]);
   assert.equal(Grouping.groupKey(props.find(p => p.docId === 'C'), 'R-PK-01'), null);
-  assert.equal(Grouping.questionCount(props, 'R-PK-01').questions, 1);
+  assert.equal(Grouping.questionCount(props, 'R-PK-01').questions, 2);
+});
+
+test('khoá gộp chứa người có thẩm quyền: cùng dòng nhưng khác người quyết thì không gộp', () => {
+  const [a, b] = analyze([doc('A', [SAME]), doc('B', [SAME])]);
+  assert.equal(Grouping.groupKey(a, 'R-PK-01', { tier: 1, unit: 'X' }), Grouping.groupKey(b, 'R-PK-01', { tier: 1, unit: 'X' }));
+  assert.notEqual(Grouping.groupKey(a, 'R-PK-01', { tier: 1, unit: 'X' }), Grouping.groupKey(b, 'R-PK-01', { tier: 2, unit: 'Y' }));
 });
 
 test('seed: không có câu trùng nên số câu hỏi bằng số vị trí (không gộp oan)', () => {

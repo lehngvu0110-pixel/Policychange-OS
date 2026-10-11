@@ -534,3 +534,47 @@ test('đo thời gian quyết định: trung vị, bỏ lần quá 10 phút, b�
   app.clearTimings();
   assert.equal(app.timingStats().n, 0);
 });
+
+test('gộp: dòng có phần sau khác (sẽ bị sửa theo) không gộp; id trùng không làm nhóm "quyết dở"', async () => {
+  const Grouping = require('../js/policy-grouping.js');
+  const app = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend(), workspace: 'local' }), Grouping }));
+  await app.init({ prefer: 'local' });
+  const line = 'Kết quả phúc khảo được gửi về email sinh viên sau 7 ngày.';
+  app.enterSandbox({ label: 'G', docs: [
+    { id: 'A', title: 'A', owner: 'Phòng Đào tạo', tier: 1, version: '1.0', lines: [line] },
+    { id: 'B', title: 'B', owner: 'Phòng Đào tạo', tier: 1, version: '1.0', lines: [line + ' Bài thi gốc được lưu tại khoa trong 7 ngày.'] }] });
+  app.analyze(CHANGE);
+  const [a, b] = app.state.current.props;
+  assert.notEqual(app.groupKeyOf(a), app.groupKeyOf(b));
+  app.setPersona('cv-dt');
+  assert.equal(app.decideGroup([a.id, b.id], 'a').ok, false);
+  assert.equal(app.decideGroup([a.id, a.id], 'a').ok, true, 'id lặp được bỏ trùng');
+  assert.equal(a.groupSize, 1);
+  assert.ok(!b.decided);
+});
+
+test('trực tuyến: quyết chung hồ sơ dùng chung theo danh tính, vị trí đi kèm không ghi thêm phản hồi', async () => {
+  const Grouping = require('../js/policy-grouping.js');
+  const Data = require('../js/policy-data.js');
+  const Engine = require('../js/policy-engine.js');
+  const line = 'Kết quả phúc khảo được gửi về email sinh viên sau 7 ngày.';
+  const docs = ['A', 'B'].map(id => ({ id, title: id, owner: 'Phòng Đào tạo', tier: 1, version: '1.0', lines: [line] }));
+  const calls = [];
+  const remote = { configured: true, tail: async () => null,
+    loadWorkspace: async () => ({ ok: true, workspace: { id: 'demo', name: 'Demo', mode: 'demo' }, registry: Engine.cloneRegistry(Data.SEED_REGISTRY), docs: Engine.cloneDocs(docs),
+      ledger: [], feedback: [], decisions: [],
+      openChanges: [{ id: 'CR-1', ruleId: 'R-PK-01', oldValue: '7 ngày', newValue: '5 ngày', issuerTier: 2, requestText: '', createdBy: 'A', status: 'open', held: [] }] }),
+    call: async body => { calls.push(body); return { ok: true, status: 200, data: { message: 'ok' } }; } };
+  const app = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend() }), remote, Grouping }));
+  await app.init();
+  const items = app.caseItems();
+  assert.equal(items.length, 2);
+  assert.equal(app.caseGroupKeyOf(items[0]), app.caseGroupKeyOf(items[1]));
+  const refs = items.map(i => ({ changeId: i.oc.id, docId: i.p.docId, lineIndex: i.p.lineIndex, line: i.p.line }));
+  app.setPersona('cv-dt');
+  const stale = await app.decideCaseGroup([...refs, { ...refs[0], docId: 'KHONG-CO' }], 'b');
+  assert.equal(stale.ok, false, 'một hồ sơ không còn → không quyết gì');
+  assert.equal(calls.length, 0);
+  assert.equal((await app.decideCaseGroup(refs, 'b')).ok, true);
+  assert.deepEqual(calls.map(c => [c.docId, c.groupFollower]), [['A', false], ['B', true]]);
+});

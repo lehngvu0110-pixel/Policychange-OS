@@ -211,6 +211,12 @@ test('Minh hoạ 4: một câu ở ba nơi → một câu hỏi, trả lời m�
   const card = page.locator('article.prop').filter({ hasText: 'Câu này xuất hiện ở 3 vị trí' });
   await expect(card).toHaveCount(1);
   await expect(page.locator('article.prop.U1')).toHaveCount(1);
+  // Trên màn hình kết quả, hai vị trí đi kèm chỉ dẫn về câu hỏi chung; bấm chỉ dẫn không rời màn hình.
+  await page.goto(APP + '#/thay-doi');
+  await expect(page.getByText('3 vị trí cần người được gộp còn 1 câu hỏi')).toBeVisible();
+  await page.locator('[data-action="scroll-prop"]').first().click();
+  await expect(page).toHaveURL(/#\/thay-doi/);
+  await page.goto(APP + '#/hang-doi');
   await card.getByRole('button', { name: /^B · Không/ }).click();
   await page.getByRole('button', { name: /Đã quyết/ }).click();
   await expect(page.locator('article.prop')).toHaveCount(3);

@@ -186,3 +186,19 @@ test('thêm neo đại lượng: gói RPC mang cả measures, bản ghi ghi rõ 
   assert.ok(Data2.withSeedMeasures([{ id: 'R-PK-01', aliases: ['phúc khảo'] }])[0].measures.includes('nộp'));
   assert.deepEqual(Data2.withSeedMeasures([{ id: 'R-PK-01', aliases: ['a'], measures: [] }])[0].measures, [], 'mảng rỗng khai rõ được giữ');
 });
+
+test('vị trí đi kèm câu trả lời gộp (groupFollower) vẫn được áp dụng nhưng không ghi thêm phản hồi học', () => {
+  const Server = require('../js/policy-server.js');
+  const Engine = require('../js/policy-engine.js');
+  const Data = require('../js/policy-data.js');
+  const Ledger = require('../js/policy-ledger.js');
+  const line = 'Kết quả phúc khảo được gửi về email sinh viên sau 7 ngày.';
+  const docs = ['A', 'B'].map(id => ({ id, title: id, owner: 'Phòng Đào tạo', tier: 1, version: '1.0', lines: [line] }));
+  const ctx = { workspace: { id: 'demo', mode: 'demo', ledger_seq: 0, ledger_tail: Ledger.GENESIS }, member: Server.demoMember('tp-dt'),
+    registry: Engine.cloneRegistry(Data.SEED_REGISTRY), docs, ledger: [], openChanges: [], decisions: [], now: () => '2026-10-11T00:00:00.000Z' };
+  const res = Server.planCommit(ctx, { change: { ruleId: 'R-PK-01', newValue: '5 ngày', issuerTier: 2 },
+    decisions: [{ docId: 'A', lineIndex: 0, line, act: 'b', persona: 'cv-dt' }, { docId: 'B', lineIndex: 0, line, act: 'b', persona: 'cv-dt', groupFollower: true }] });
+  assert.equal(res.ok, true, res.body && res.body.message);
+  assert.equal(res.rpc.p_records.length, 2);
+  assert.deepEqual(res.rpc.p_feedback.map(f => f.docId), ['A']);
+});

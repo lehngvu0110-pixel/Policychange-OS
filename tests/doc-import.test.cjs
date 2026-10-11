@@ -70,3 +70,34 @@ test('từ chối định dạng lạ, tệp quá lớn và .docx hỏng với t
   await assert.rejects(DocImport.readDocument('a.docx', new TextEncoder().encode('không phải zip')), /không phải .docx/);
   await assert.rejects(DocImport.readDocument('a.docx', zip([['word/other.xml', '<x/>']])), /word\/document.xml/);
 });
+
+test('đánh dấu xoá rỗng <w:del/> không nuốt chữ; bảng lồng, hộp văn bản và phần di chuyển không làm lặp hay mất dòng', () => {
+  const xml = '<w:body>' +
+    '<w:p><w:pPr><w:rPr><w:del w:id="1" w:author="A"/></w:rPr></w:pPr><w:r><w:t>Dòng một 7 ngày.</w:t></w:r></w:p>' +
+    '<w:p><w:r><w:t>Dòng hai.</w:t></w:r></w:p>' +
+    '<w:p><w:del w:id="2"><w:r><w:delText>đã xoá</w:delText></w:r></w:del><w:r><w:t>Dòng ba.</w:t></w:r></w:p>' +
+    '<w:p><w:moveFrom><w:r><w:t>bị chuyển đi</w:t></w:r></w:moveFrom></w:p>' +
+    '<w:p><w:r><mc:AlternateContent><mc:Choice><w:t>Hộp chữ</w:t></mc:Choice><mc:Fallback><w:t>Hộp chữ</w:t></mc:Fallback></mc:AlternateContent></w:r></w:p>' +
+    '<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Ngoài</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Trong</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:tc>' +
+    '<w:tc><w:p><w:r><w:t>10 triệu</w:t></w:r></w:p></w:tc></w:tr></w:tbl>' +
+    '<w:p><w:r><w:t>Dòng cuối.</w:t></w:r></w:p></w:body>';
+  const lines = DocImport.documentXmlToLines(xml).map(l => l.trim()).filter(Boolean);
+  assert.deepEqual(lines, ['Dòng một 7 ngày.', 'Dòng hai.', 'Dòng ba.', 'Hộp chữ', 'Ngoài Trong | 10 triệu', 'Dòng cuối.']);
+});
+
+test('XML hỏng (nhiều thẻ không đóng) vẫn đọc nhanh, không treo', () => {
+  const xml = '<w:p>' + '<w:t>x'.repeat(50000) + '</w:p>';
+  const t0 = Date.now();
+  DocImport.documentXmlToLines(xml);
+  assert.ok(Date.now() - t0 < 1000, 'đọc tuyến tính');
+});
+
+test('.docx đặt mật khẩu bị từ chối rõ ràng; quá nhiều dòng thì báo cắt bớt', async () => {
+  const bytes = zip([['word/document.xml', '<w:p><w:r><w:t>a</w:t></w:r></w:p>']]);
+  const cd = Buffer.from(bytes).indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+  bytes[cd + 8] |= 1;
+  await assert.rejects(DocImport.readDocument('a.docx', bytes), /mật khẩu/);
+  const many = await DocImport.readDocument('a.txt', new TextEncoder().encode(Array.from({ length: DocImport.MAX_LINES + 5 }, (_, i) => 'Dòng ' + i).join('\n')));
+  assert.equal(many.lines.length, DocImport.MAX_LINES);
+  assert.equal(many.truncated, true);
+});

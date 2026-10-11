@@ -125,6 +125,7 @@
   /** Minh hoạ ghi đè biểu mẫu; lưu lại để khi thoát minh hoạ biểu mẫu khớp lại với phân tích được khôi phục. */
   function enterDemo(scenario) {
     if (S.source !== 'sandbox') ui.savedForm = { form: { ...ui.form }, understanding: ui.understanding, ratify: ui.ratify };
+    ui.shownAt = {};
     app.enterSandbox(scenario);
   }
   /** Biểu mẫu khớp phân tích VÀ câu yêu cầu gần nhất không bị từ chối / cần làm rõ. */
@@ -138,11 +139,9 @@
   /** Mọi việc đang chờ: của phân tích đang mở trên máy này + hồ sơ dùng chung trên máy chủ. */
   function queueEntries() {
     const Grouping = G.PolicyChangeGrouping;
-    const ruleId = S.current ? S.current.change.rule.id : '';
-    const local = Grouping.groupItems(pending(), p => p.semanticHold ? null : Grouping.groupKey(p, ruleId))
+    const local = Grouping.groupItems(pending(), p => p.semanticHold ? null : app.groupKeyOf(p))
       .map(members => ({ kind: 'local', p: members[0], right: app.decisionRight(members[0]), members }));
-    const cases = Grouping.groupItems(app.caseItems().map((item, idx) => ({ item, idx })),
-      e => e.item.p.outcome === 'ESCALATE' ? e.item.oc.id + '\u0000' + Grouping.groupKey(e.item.p, e.item.oc.ruleId) : null)
+    const cases = Grouping.groupItems(app.caseItems().map((item, idx) => ({ item, idx })), e => app.caseGroupKeyOf(e.item))
       .map(members => ({ kind: 'case', p: members[0].item.p, item: members[0].item, idx: members[0].idx, right: app.caseRight(members[0].item), members }));
     return local.concat(cases);
   }
@@ -152,7 +151,11 @@
     for (const e of queueEntries()) if (e.kind === 'local' && e.members.length > 1) for (const m of e.members) map.set(m.id, e.members);
     return map;
   }
-  const questionKey = (p, o) => o && o.caseIdx !== undefined ? 'case:' + (o.caseId || '') + ':' + p.docId + ':' + p.lineIndex + ':' + p.line : 'local:' + p.id;
+  const questionKey = (p, o) => o && o.caseIdx !== undefined ? 'case:' + (o.caseId || '') + ':' + p.docId + ':' + p.lineIndex + ':' + p.line
+    : 'local:' + (S.current ? S.current.analysisId : 0) + ':' + p.id;
+  /** Số câu hỏi sau khi gộp, cho một danh sách đề xuất của phân tích hiện tại. */
+  const questionsOf = list => G.PolicyChangeGrouping.groupItems(list, p => p.semanticHold ? null : app.groupKeyOf(p)).length;
+  const caseRef = item => JSON.stringify({ changeId: item.oc.id, docId: item.p.docId, lineIndex: item.p.lineIndex, line: item.p.line });
   /** Lần đầu câu hỏi có nút trả lời hiện trên màn hình (để đo thời gian quyết định). */
   function markShown(key) { if (!ui.shownAt[key]) ui.shownAt[key] = Date.now(); }
   function timeDecision(key, category, positions, docId) {
@@ -309,7 +312,7 @@
       '<div class="grid g4">' +
         stat('', nf.format(S.docs.length), 'Tài liệu có kiểm soát', nf.format(lines) + ' dòng điều khoản') +
         stat('', nf.format(S.registry.length), 'Quy định trong sổ đăng ký', 'mỗi quy định có cụm từ neo riêng') +
-        stat(pend.length ? 'U3' : '', nf.format(pend.filter(e => e.right.ok).length) + ' / ' + nf.format(pend.length), 'Vị trí chờ bạn duyệt', 'trên tổng số vị trí đang chờ người quyết') +
+        stat(pend.length ? 'U3' : '', nf.format(pend.filter(e => e.right.ok).length) + ' / ' + nf.format(pend.length), 'Câu hỏi chờ bạn trả lời', 'trên tổng số câu hỏi đang chờ (câu trùng đã gộp)') +
         stat('', nf.format(S.ledger.length), 'Bản ghi kiểm toán', chainOk ? 'toàn vẹn, chỉ ghi thêm' : 'phát hiện chỉnh sửa trái phép') +
       '</div>' +
       '<section class="card"><div class="card-head"><h2>Luồng xử lý một thay đổi</h2><p>Động cơ tiền định là nơi duy nhất quyết định tự sửa hay chuyển người; AI chỉ đưa bằng chứng và chỉ có thể làm kết quả thận trọng hơn.</p></div>' +
@@ -406,7 +409,8 @@
     const shown = props.filter(p => filter === 'all' ? true : filter === 'auto' ? p.outcome === 'AUTO_PATCH' && !p.semanticHold : !(p.outcome === 'AUTO_PATCH' && !p.semanticHold));
     const sem = cur.semanticStatus;
     const groups = localGroups();
-    const qc = G.PolicyChangeGrouping.questionCount(props.filter(p => !p.decided && !p.applied && !p.logged && !p.inCase), cur.change.rule.id);
+    const openEsc = props.filter(p => p.outcome === 'ESCALATE' && !p.decided && !p.applied && !p.logged && !p.inCase);
+    const qc = { positions: openEsc.length, questions: questionsOf(openEsc) };
     return '<div class="page-head"><div><div class="eyebrow">Bước 2</div><h2>Kết quả phân xử · ' + esc(cur.change.rule.id) + ' ' + esc(cur.change.oldValue) + ' → ' + esc(cur.change.newValue) + '</h2>' +
       '<p>' + esc('Quét ' + S.docs.length + ' tài liệu trong ' + (cur.elapsedMs || 0) + ' ms.' + (qc.questions < qc.positions ? ' ' + qc.positions + ' vị trí cần người được gộp còn ' + qc.questions + ' câu hỏi (cùng một câu ở nhiều nơi).' : '')) + '</p></div>' +
       '<div class="row">' + btn('semantic', S.ai.status === 'ready' ? 'Rà soát ngữ nghĩa bằng AI' : 'Rà soát ngữ nghĩa (AI đang tắt)', { icon: 'spark', disabled: sem === 'pending' }) + '</div></div>' +
@@ -461,15 +465,15 @@
     } else if (withActions && !p.applied && !p.logged) {
       const right = o.right || app.decisionRight(p);
       if (p.outcome === 'ESCALATE' && !p.decided && o.follower) {
-        action = '<div class="small muted">Cùng một câu hỏi với <a href="#prop-' + esc(o.follower.id) + '">' + esc(o.follower.docId + ' dòng ' + (o.follower.lineIndex + 1)) + '</a> — trả lời ở đó một lần là áp cho cả vị trí này.</div>';
+        action = '<div class="small muted">Cùng một câu hỏi với ' + btn('scroll-prop', o.follower.docId + ' dòng ' + (o.follower.lineIndex + 1), { cls: 'sm ghost', data: { target: 'prop-' + o.follower.id } }) + ' — trả lời ở đó một lần là áp cho cả vị trí này.</div>';
       } else if (p.outcome === 'ESCALATE' && !p.decided) {
         const q = Engine.escalationQuestion(p, change, S.registry);
         const members = o.members && o.members.length > 1 ? o.members : null;
         const key = questionKey(p, o);
         const timing = { key, cat: p.category, n: members ? members.length : 1, doc: p.docId };
         const choice = (act, label) => caseItem
-          ? (members ? btn('decide-case-group', label, { data: { idxs: members.map(m => m.idx).join(','), act, ...tdata(timing) }, busyKey: 'case-' + o.caseIdx })
-            : btn('decide-case', label, { data: { idx: o.caseIdx, act, ...tdata(timing) }, busyKey: 'case-' + o.caseIdx }))
+          ? (members ? btn('decide-case-group', label, { data: { refs: '[' + members.map(m => caseRef(m.item)).join(',') + ']', idx: o.caseIdx, act, ...tdata(timing) }, busyKey: 'case-' + o.caseIdx })
+            : btn('decide-case', label, { data: { ref: caseRef(o.caseItem), idx: o.caseIdx, act, ...tdata(timing) }, busyKey: 'case-' + o.caseIdx }))
           : (members ? btn('decide-group', label, { data: { ids: members.map(m => m.id).join(','), act, ...tdata(timing) } })
             : btn('decide', label, { data: { p: p.id, act, ...tdata(timing) } }));
         if (right.ok) markShown(key);
@@ -512,8 +516,8 @@
     const nothing = n === 0 && rejections === 0 && !(shared && open);
     const formMatches = formStillMatches();
     const cases = shared ? app.caseItems().length : 0;
-    const qOpen = G.PolicyChangeGrouping.questionCount(pending().filter(p => !p.semanticHold), cur.change.rule.id);
-    const asked = qOpen.questions < qOpen.positions ? ' (gộp còn ' + (qOpen.questions + (open - qOpen.positions)) + ' câu hỏi)' : '';
+    const qAsked = questionsOf(pending());
+    const asked = qAsked < open ? ' (gộp còn ' + qAsked + ' câu hỏi)' : '';
     const waiting = open ? open + ' vị trí của phân tích này' + asked + ' còn chờ người quyết — ' + (shared ? 'khi ban hành, các vị trí này được chuyển thành hồ sơ dùng chung để đúng người quyết trên máy của họ.' : 'có thể ban hành phần đã sẵn sàng trước.')
       : 'Phân tích này không còn vị trí chờ.';
     return '<div class="notice warn" role="status" data-form-guard' + (formMatches ? ' hidden' : '') + '><div class="grow small">Biểu mẫu ở trên đã khác với phân tích đang hiện (' + esc(cur.change.rule.id + ' ' + cur.change.oldValue + ' → ' + cur.change.newValue + ', cấp ' + cur.change.issuerTier) + '). Bấm “Phân tích tác động” lại trước khi ban hành.</div>' + btn('analyze', 'Phân tích lại', { cls: 'sm' }) + '</div>' +
@@ -553,7 +557,7 @@
     const mineList = all.filter(e => e.right.ok);
     const m = member();
     const card = e => e.kind === 'case'
-      ? propCard(e.p, true, { change: e.item.change, caseIdx: e.idx, caseId: e.item.oc.id, right: e.right, caseLabel: e.item.oc.id, members: e.members.length > 1 ? e.members : null,
+      ? propCard(e.p, true, { change: e.item.change, caseIdx: e.idx, caseId: e.item.oc.id, caseItem: e.item, right: e.right, caseLabel: e.item.oc.id, members: e.members.length > 1 ? e.members : null,
           caseMeta: 'Hồ sơ ' + e.item.oc.id + ' · ' + e.item.oc.ruleId + ' ' + e.item.oc.oldValue + ' → ' + e.item.oc.newValue +
             ' · cấp ban hành ' + e.item.oc.issuerTier + ' · khởi tạo bởi ' + e.item.oc.createdBy })
       : propCard(e.p, true, { right: e.right, members: e.members.length > 1 ? e.members : null });
@@ -741,6 +745,7 @@
 
   /** @param {{ autoReview?:boolean }} [opts] */
   function analyzeFromForm(opts) {
+    ui.shownAt = {};
     const res = app.analyze({ ruleId: ui.form.ruleId, newValue: ui.form.newValue, issuerTier: Number(ui.form.issuerTier), requestText: ui.form.text });
     ui.ratify = false;
     // Người dùng tự điền biểu mẫu rồi phân tích: lời từ chối của câu trước không còn áp cho phân tích mới.
@@ -792,7 +797,8 @@
     const r = await understand(ui.form.text);
     if (!(r.status === 'ai_candidate' || r.status === 'deterministic_fallback')) { ui.demoStatus = { tone: 'error', text: 'Minh hoạ dừng: không hiểu được yêu cầu.' }; return; }
     analyzeFromForm({ autoReview: false });
-    const qc = G.PolicyChangeGrouping.questionCount(S.current ? S.current.props : [], 'R-PK-01');
+    const escs = S.current ? S.current.props.filter(p => p.outcome === 'ESCALATE') : [];
+    const qc = { positions: escs.length, questions: questionsOf(escs) };
     ui.demoStatus = { tone: 'info', text: qc.positions + ' vị trí cần người quyết nhưng chỉ ' + qc.questions + ' câu hỏi: cùng một câu (thời gian GỬI KẾT QUẢ, không phải hạn nộp đơn) được chép ở 3 nơi. Vai trò đang là Chuyên viên Phòng Đào tạo — mở Hàng đợi duyệt và trả lời một lần.' };
     go('hang-doi');
   }
@@ -840,10 +846,10 @@
     'decide': el => { const r = app.decide(el.dataset.p, el.dataset.act); if (r.ok) timed(el); },
     'decide-group': el => { const r = app.decideGroup(el.dataset.ids.split(','), el.dataset.act); if (r.ok) timed(el); },
     'decide-case-group': el => {
-      const all = app.caseItems();
-      const items = el.dataset.idxs.split(',').map(i => all[Number(i)]).filter(Boolean);
-      withBusy('case-' + el.dataset.idxs.split(',')[0], async () => { const r = await app.decideCaseGroup(items, el.dataset.act); if (r.ok) timed(el); });
+      const refs = JSON.parse(el.dataset.refs);
+      withBusy('case-' + el.dataset.idx, async () => { const r = await app.decideCaseGroup(refs, el.dataset.act); if (r.ok) timed(el); });
     },
+    'scroll-prop': el => { const t = document.getElementById(el.dataset.target); if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'center' }); t.focus && t.focus({ preventScroll: true }); } },
     'export-timings': () => {
       const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
       download('thoi-gian-quyet-dinh.csv', '\uFEFF' + ['at,workspace,source,actor,category,docId,positions,ms']
@@ -851,7 +857,9 @@
     },
     'clear-timings': () => { if (confirm('Xoá toàn bộ số đo thời gian trên trình duyệt này?')) app.clearTimings(); },
     'decide-case': el => {
-      const item = app.caseItems()[Number(el.dataset.idx)];
+      // Tìm lại theo danh tính hồ sơ (danh sách có thể vừa đổi sau một lần nạp lại); nút duyệt AI cũ vẫn dùng chỉ số.
+      const item = el.dataset.ref ? app.findCase(JSON.parse(el.dataset.ref)) : app.caseItems()[Number(el.dataset.idx)];
+      if (!item && el.dataset.ref) { toast('Hồ sơ vừa thay đổi trên máy chủ; hãy xem lại rồi quyết.', 'error'); app.reload(); return; }
       if (item) withBusy('case-' + el.dataset.idx, async () => { const r = await app.decideCase(item, el.dataset.act); if (r.ok) timed(el); });
     },
     'undo-decision': el => app.undoDecision(el.dataset.p),
@@ -932,11 +940,12 @@
       }
       if (el.dataset && el.dataset.actionChange === 'doc-file' && el.files && el.files[0]) {
         const file = el.files[0];
+        if (file.size > G.PolicyChangeDocImport.MAX_BYTES) { toast('Tệp lớn hơn 5 MB.', 'error'); el.value = ''; return; }
         file.arrayBuffer().then(buf => G.PolicyChangeDocImport.readDocument(file.name, buf)).then(res => {
           if (!res.lines.length) { toast('Tệp không có dòng chữ nào.', 'error'); return; }
           ui.newDoc.title = ui.newDoc.title.trim() || res.title;
           ui.newDoc.body = res.lines.join('\n');
-          ui.docFileNote = 'Đã đọc ' + res.lines.length + ' dòng từ “' + file.name + '”. Kiểm tra nội dung, chọn đơn vị và cấp, rồi bấm “Nạp vào kho”.';
+          ui.docFileNote = 'Đã đọc ' + res.lines.length + ' dòng từ “' + file.name + '”' + (res.truncated ? ' (chỉ lấy ' + res.lines.length + ' dòng đầu)' : '') + '. Kiểm tra nội dung, chọn đơn vị và cấp, rồi bấm “Nạp vào kho”.';
           render();
         }).catch(err => toast(err && err.message ? err.message : 'Không đọc được tệp.', 'error'));
         el.value = '';
@@ -987,7 +996,7 @@
     app.subscribe(() => {
       if (ui.savedForm && S.source !== 'sandbox') {
         Object.assign(ui.form, ui.savedForm.form); ui.understanding = ui.savedForm.understanding; ui.ratify = ui.savedForm.ratify;
-        ui.savedForm = null; ui.demoStatus = null;
+        ui.savedForm = null; ui.demoStatus = null; ui.shownAt = {};
       }
     });
     app.subscribe(() => render());
