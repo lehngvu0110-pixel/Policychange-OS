@@ -23,11 +23,13 @@
   /**
    * @param {{
    *   Engine:any, Data:any, Workflow:any, Ledger:any, Authz:any, Server:any, Semantic:any, AI:any, Learning:any,
-   *   localStore:any, remote?:any, aiAdapter?:any, now?:() => string, workspace?:string
+   *   localStore:any, remote?:any, aiAdapter?:any, now?:() => string, workspace?:string, Grouping?:any,
+   *   timingStore?:{ load:() => any[]|null, save:(rows:any[]) => void }
    * }} deps
    */
   function createController(deps) {
     const { Engine, Data, Workflow, Ledger, Authz, Server, Semantic, AI, Learning } = deps;
+    const Grouping = deps.Grouping || { groupKey: () => null };
     const now = deps.now || (() => new Date().toISOString());
     /** @type {Set<(state:any) => void>} */
     const listeners = new Set();
@@ -52,9 +54,11 @@
       ai: { status: deps.aiAdapter ? 'checking' : 'off', reason: deps.aiAdapter ? 'Đang kiểm tra máy chủ AI…' : 'Chưa cấu hình máy chủ AI.', model: /** @type {string|null} */ (null) },
       saved: /** @type {any} */ (null),
       /** Workspace muốn mở lúc khởi động nhưng không đọc được (đang hiện workspace khác thay thế). */
-      fallbackFrom: /** @type {string|null} */ (null)
+      fallbackFrom: /** @type {string|null} */ (null),
+      timings: /** @type {any[]} */ ((deps.timingStore && deps.timingStore.load()) || [])
     };
 
+    let analysisSeq = 0;
     function emit() { listeners.forEach(fn => { try { fn(S); } catch (_) { /* một view lỗi không làm hỏng các view khác */ } }); }
     /** @param {string} tone @param {string} text */
     function notify(tone, text) { S.notice = { tone, text }; }
@@ -258,6 +262,7 @@
       S.current.revision = S.revision;
       S.current.semanticStatus = null;
       S.current.input = inputKey(input);
+      S.current.analysisId = ++analysisSeq;
       const n = S.current.props.length;
       return result(true, n ? 'Đã quét ' + S.docs.length + ' tài liệu, tìm thấy ' + n + ' vị trí mang giá trị “' + built.change.oldValue + '”.'
         : 'Không có vị trí nào mang giá trị “' + built.change.oldValue + '”; không có gì cần sửa.');
@@ -366,12 +371,53 @@
       return result(true, p.docId + ' dòng ' + (p.lineIndex + 1) + ': ' + p.decisionLabel + '. Bấm “Ban hành” để ghi vào sổ.');
     }
 
+    /**
+     * Quyết một lần cho cả nhóm câu hỏi trùng (policy-grouping.js). Kiểm quyền và khoá gộp từng vị trí trước; chỉ khi
+     * tất cả hợp lệ mới ghi quyết định, để không có nhóm "quyết dở".
+     * @param {string[]} propIds @param {'a'|'b'} act
+     */
+    function decideGroup(propIds, act) {
+      if (!S.current) return result(false, 'Chưa có phân tích.');
+      const ids = [...new Set(propIds || [])];
+      const props = ids.map(id => S.current.props.find((/** @type {any} */ x) => x.id === id));
+      if (!props.length || props.some(p => !p || p.outcome !== 'ESCALATE' || p.decided || p.applied || p.logged || p.inCase)) return result(false, 'Nhóm câu hỏi không còn hợp lệ; hãy tải lại màn hình.');
+      const key = groupKeyOf(props[0]);
+      if (!key || props.some(p => groupKeyOf(p) !== key)) return result(false, 'Các vị trí này không cùng một câu hỏi nên không quyết chung được.');
+      for (const p of props) {
+        const right = decisionRight(p);
+        if (!right.ok) return result(false, right.reason || 'Không đủ thẩm quyền.');
+      }
+      for (const p of props) {
+        const res = Workflow.decide(S, p.id, act);
+        if (!res.ok) return result(false, res.message);
+        p.act = act; p.decidedBy = actor(); p.deciderPersona = S.persona; p.groupSize = props.length; p.groupLeader = props[0].id;
+      }
+      return result(true, 'Đã quyết chung cho ' + props.length + ' vị trí cùng một câu: ' + props[0].decisionLabel + '. Bấm “Ban hành” để ghi vào sổ.');
+    }
+
+    /** Khoá gộp của một vị trí trong phân tích hiện tại (kèm người có thẩm quyền). UI và bộ điều khiển dùng chung. @param {any} p */
+    function groupKeyOf(p) {
+      if (!S.current || !p) return null;
+      return Grouping.groupKey(p, S.current.change.rule.id, Authz.requirementFor(p, S.current.change, S.registry));
+    }
+    /** @param {any} item hồ sơ dùng chung từ caseItems() */
+    function caseGroupKeyOf(item) {
+      if (!item || item.p.outcome !== 'ESCALATE') return null;
+      const key = Grouping.groupKey(item.p, item.oc.ruleId, Authz.requirementFor(item.p, item.change, S.registry));
+      return key === null ? null : item.oc.id + '\u0000' + key;
+    }
+    /** Tìm lại hồ sơ dùng chung theo danh tính (không theo vị trí trong danh sách, vì danh sách đổi sau mỗi lần nạp). @param {any} d */
+    function findCase(d) {
+      return caseItems().find(i => d && i.oc.id === d.changeId && i.p.docId === d.docId && i.p.lineIndex === Number(d.lineIndex) && i.p.line === d.line) || null;
+    }
+
     /** @param {string} propId */
     function undoDecision(propId) {
       const p = S.current && S.current.props.find((/** @type {any} */ x) => x.id === propId);
       if (!p || !p.decided || p.applied || p.logged) return result(false, 'Không thể đổi quyết định đã ban hành.');
-      p.decided = false; p.accepted = false; p.decisionLabel = null; delete p.act;
-      return result(true, 'Đã bỏ quyết định; hồ sơ trở lại hàng đợi.');
+      const group = p.groupLeader ? S.current.props.filter((/** @type {any} */ x) => x.groupLeader === p.groupLeader && !x.applied && !x.logged) : [p];
+      for (const x of group) { x.decided = false; x.accepted = false; x.decisionLabel = null; delete x.act; delete x.groupLeader; delete x.groupSize; }
+      return result(true, group.length > 1 ? 'Đã bỏ quyết định chung; ' + group.length + ' vị trí trở lại hàng đợi.' : 'Đã bỏ quyết định; hồ sơ trở lại hàng đợi.');
     }
 
     /** @param {string} propId @param {boolean} approve */
@@ -417,7 +463,8 @@
       const committed = Workflow.commit(S, { now, humanActor: (/** @type {any} */ p) => p.decidedBy || actor(),
         basisSuffix: Server.issueSuffix((member() || {}).displayName, S.current.change.issuerTier, null) });
       if (!committed.ok) return result(false, committed.message);
-      fresh.forEach((/** @type {any} */ p) => { p.fed = true; S.feedback.push(feedbackOf(p.category, p, p.accepted ? 'accept' : 'reject')); });
+      // Một quyết định gộp là MỘT câu trả lời của người: chỉ ghi một phản hồi cho vòng học neo, không nhân bản.
+      fresh.forEach((/** @type {any} */ p) => { p.fed = true; if (!p.groupLeader || p.groupLeader === p.id) S.feedback.push(feedbackOf(p.category, p, p.accepted ? 'accept' : 'reject')); });
       approvedSemantic.forEach((/** @type {any} */ p) => { p.fed = true; S.feedback.push(feedbackOf('SEMANTIC', p, 'accept')); });
       let message = committed.message;
       if (options.ratify) {
@@ -440,7 +487,8 @@
         change: { ruleId: cur.change.rule.id, newValue: cur.change.newValue, issuerTier: cur.change.issuerTier },
         requestText: cur.requestText || '',
         decisions: cur.props.filter((/** @type {any} */ p) => p.outcome === 'ESCALATE' && p.decided && !p.logged && !p.applied)
-          .map((/** @type {any} */ p) => ({ ...pick(p), act: p.act, persona: p.deciderPersona || S.persona })),
+          .map((/** @type {any} */ p) => ({ ...pick(p), act: p.act, persona: p.deciderPersona || S.persona,
+            ...(p.groupLeader && p.groupLeader !== p.id ? { groupFollower: true } : {}) })),
         holds: cur.props.filter((/** @type {any} */ p) => p.semanticHold && !p.semanticHoldReviewed).map(pick),
         semanticReviews: cur.props.filter((/** @type {any} */ p) => p.semanticHoldReviewed && !p.applied && !p.logged)
           .map((/** @type {any} */ p) => ({ ...pick(p), approve: p.semanticHoldApproved === true, persona: p.deciderPersona || S.persona })),
@@ -540,6 +588,57 @@
       return result(true, res.data.message);
     }
 
+    /** Quyết chung một nhóm hồ sơ dùng chung (cùng câu hỏi). Mỗi vị trí vẫn là một lệnh ghi riêng trên máy chủ. @param {any[]} items @param {string} act */
+    /** @param {any[]} refs danh tính các hồ sơ { changeId, docId, lineIndex, line } @param {string} act */
+    async function decideCaseGroup(refs, act) {
+      if (S.source !== 'remote') return result(false, 'Hồ sơ dùng chung chỉ có ở chế độ trực tuyến.');
+      const items = (refs || []).map(findCase);
+      if (!items.length || items.some(i => !i)) { await reload(); return result(false, 'Hồ sơ vừa thay đổi trên máy chủ; danh sách đã được nạp lại, hãy xem lại rồi quyết.'); }
+      const key = caseGroupKeyOf(items[0]);
+      if (!key || items.some(i => caseGroupKeyOf(i) !== key)) return result(false, 'Các vị trí này không cùng một câu hỏi nên không quyết chung được.');
+      for (const item of items) {
+        const right = caseRight(item);
+        if (!right.ok) return result(false, right.reason || 'Không đủ thẩm quyền.');
+      }
+      S.busy = true; emit();
+      let done = 0; let failure = null;
+      for (const [n, item] of items.entries()) {
+        const res = await deps.remote.call({ action: 'decide', workspace: S.workspace.id, persona: S.persona, changeId: item.oc.id,
+          docId: item.p.docId, lineIndex: item.p.lineIndex, line: item.p.line, act, groupFollower: n > 0 });
+        if (!res.ok) { failure = res.data.message || 'Máy chủ từ chối.'; break; }
+        done++;
+      }
+      S.busy = false;
+      await reload();
+      if (failure) return result(false, 'Đã quyết ' + done + '/' + items.length + ' vị trí; dừng lại vì: ' + failure);
+      return result(true, 'Đã quyết chung cho ' + done + ' vị trí cùng một câu.');
+    }
+
+    // ---------- Đo thời gian quyết định ----------
+    /**
+     * Một lần người quyết: thời gian từ lúc câu hỏi hiện ra tới lúc bấm. Lưu trên trình duyệt này (deps.timingStore),
+     * dùng cho buổi thử nghiệm và bảng chi phí ở docs/GIA-TRI-KINH-DOANH.md.
+     * @param {{ category:string, ms:number, positions?:number, docId?:string }} entry
+     */
+    function recordTiming(entry) {
+      if (!entry || !Number.isFinite(entry.ms) || entry.ms < 0) return;
+      S.timings.push({ category: entry.category, ms: Math.round(entry.ms), positions: entry.positions || 1, docId: entry.docId || '',
+        actor: actor(), workspace: S.workspace.id, source: S.source, at: now() });
+      if (S.timings.length > 2000) S.timings.splice(0, S.timings.length - 2000);
+      if (deps.timingStore) deps.timingStore.save(S.timings);
+      emit();
+    }
+    /** Lâu hơn ngưỡng này coi như người dùng đã rời máy: giữ trong số liệu thô nhưng không tính vào trung vị. */
+    const IDLE_MS = 10 * 60 * 1000;
+    function timingStats() {
+      const rows = S.timings.filter((/** @type {any} */ t) => t.source !== 'sandbox');
+      const kept = rows.filter((/** @type {any} */ t) => t.ms <= IDLE_MS).map((/** @type {any} */ t) => t.ms).sort((a, b) => a - b);
+      const q = (/** @type {number} */ f) => kept.length ? kept[Math.min(kept.length - 1, Math.floor(f * (kept.length - 1) + 0.5))] : null;
+      return { n: kept.length, excluded: rows.length - kept.length, medianMs: q(0.5), p90Ms: q(0.9),
+        positions: rows.filter((/** @type {any} */ t) => t.ms <= IDLE_MS).reduce((s, t) => s + (t.positions || 1), 0) };
+    }
+    function clearTimings() { S.timings = []; if (deps.timingStore) deps.timingStore.save(S.timings); emit(); }
+
     // ---------- Sổ đăng ký & học từ phản hồi ----------
     function suggestions() {
       return Learning.suggestAnchors(S.feedback, S.registry);
@@ -608,8 +707,8 @@
       subscribe(/** @type {(state:any) => void} */ fn) { listeners.add(fn); return () => listeners.delete(fn); },
       emit, member, actor, setPersona, init, switchSource, reload, poll, signIn, signOut, checkAI,
       enterSandbox, exitSandbox, resolveRequest, analyze, matchesInput, canIssueCurrent, discoverSemantics, decisionRight,
-      decide, undoDecision, reviewSemantic, ensureSemanticReview, committableCount, commit, undo, canUndo, suggestions, addAnchor,
-      caseItems, caseRight, decideCase,
+      decide, decideGroup, undoDecision, reviewSemantic, recordTiming, timingStats, clearTimings, ensureSemanticReview, committableCount, commit, undo, canUndo, suggestions, addAnchor,
+      caseItems, caseRight, decideCase, decideCaseGroup, groupKeyOf, caseGroupKeyOf, findCase,
       addDocument, resetWorkspace, clearAnalysis, dismissNotice
     };
   }

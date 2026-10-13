@@ -226,7 +226,9 @@
       if (decision.act !== 'a' && decision.act !== 'b') continue;
       Workflow.decide(state, p.id, decision.act);
       p.deciderLabel = actorLabel(decider); p.deciderUser = decider.userId || '';
-      decided.push({ p, category: p.category, act: decision.act, accepted: p.accepted });
+      // groupFollower: vị trí đi kèm một câu trả lời gộp (cùng câu hỏi). Vẫn áp dụng và ghi sổ, nhưng không ghi thêm
+      // phản hồi cho vòng học neo — một câu trả lời của người chỉ là một phản hồi. Cờ này chỉ có thể làm GIẢM phản hồi.
+      decided.push({ p, category: p.category, act: decision.act, accepted: p.accepted, noFeedback: decision.groupFollower === true });
     }
     if (staleItems.length) return fail(409, 'stale_analysis', 'Tài liệu đã thay đổi kể từ lúc bạn phân tích. Hãy phân tích lại.', staleItems);
     if (forbidden.length) return fail(403, 'forbidden_decision', 'Một số quyết định vượt thẩm quyền của người quyết.', forbidden);
@@ -274,7 +276,7 @@
         p_workspace: ctx.workspace.id, p_expected_seq: ctx.workspace.ledger_seq, p_expected_tail: ctx.workspace.ledger_tail,
         p_doc_updates: docUpdatesFrom(records, state.docs), p_policy_updates: policyUpdates, p_new_documents: [],
         p_records: records.map(r => toRpcRecord(r, ctx.member.userId)),
-        p_feedback: decided.map(d => ({ userId: d.p.deciderUser, actor: d.p.deciderLabel, ruleId: change.rule.id,
+        p_feedback: decided.filter(d => !d.noFeedback).map(d => ({ userId: d.p.deciderUser, actor: d.p.deciderLabel, ruleId: change.rule.id,
           category: d.category, docId: d.p.docId, lineIndex: d.p.lineIndex, line: d.p.line, answer: d.accepted ? 'accept' : 'reject' })),
         p_open_change: openChange,
         p_decisions: changeId ? decided.map(d => ({ changeId, docId: d.p.docId, lineIndex: d.p.lineIndex, line: d.p.line, act: d.act,
@@ -333,7 +335,7 @@
         p_workspace: ctx.workspace.id, p_expected_seq: ctx.workspace.ledger_seq, p_expected_tail: ctx.workspace.ledger_tail,
         p_doc_updates: docUpdatesFrom(records, state.docs), p_policy_updates: [], p_new_documents: [],
         p_records: records.map(r => toRpcRecord(r, ctx.member.userId)),
-        p_feedback: [{ userId: ctx.member.userId || '', actor: label, ruleId: oc.ruleId, category: semantic ? 'SEMANTIC' : p.category,
+        p_feedback: req.groupFollower === true ? [] : [{ userId: ctx.member.userId || '', actor: label, ruleId: oc.ruleId, category: semantic ? 'SEMANTIC' : p.category,
           docId: p.docId, lineIndex: p.lineIndex, line: p.line, answer: accepted ? 'accept' : 'reject' }],
         p_open_change: null,
         p_decisions: [{ changeId: oc.id, docId: p.docId, lineIndex: p.lineIndex, line: p.line, act: req.act, accepted,

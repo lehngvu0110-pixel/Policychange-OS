@@ -19,7 +19,13 @@
     localStore: G.PolicyChangeStore.createLocalStore({ workspace: 'local' }),
     remote: params.get('offline') === '1' ? null : remote,
     aiAdapter: params.get('offline') === '1' ? null : aiAdapter,
-    workspace: cfg.defaultWorkspace || 'demo'
+    workspace: cfg.defaultWorkspace || 'demo',
+    Grouping: G.PolicyChangeGrouping,
+    // Số đo thời gian quyết định chỉ lưu trên trình duyệt này (try/catch: chế độ riêng tư có thể chặn bộ nhớ).
+    timingStore: {
+      load() { try { return JSON.parse(localStorage.getItem('policychange-os:timings') || '[]'); } catch (_) { return []; } },
+      save(rows) { try { localStorage.setItem('policychange-os:timings', JSON.stringify(rows)); } catch (_) { /* bỏ qua */ } }
+    }
   });
   const S = app.state;
   G.PolicyChangeUI = { app };
@@ -32,7 +38,7 @@
   const ui = {
     route: 'tong-quan', query: new URLSearchParams(),
     form: { text: '', ruleId: 'R-PK-01', newValue: '', issuerTier: '' },
-    understanding: null, ratify: false, busy: null, lastNotice: null,
+    understanding: null, ratify: false, busy: null, lastNotice: null, shownAt: {},
     verify: null, evalReport: null, evalSource: null, evalCsv: null, demoStatus: null,
     ledgerQuery: '', docQuery: '', docTier: 'all', anchorDraft: {}, anchorField: {}, newDoc: { title: '', owner: '', tier: '2', body: '' }
   };
@@ -64,6 +70,7 @@
     moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
     menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
     lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6M12 17h.01"/>',
     spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>'
   };
   const icon = (name, size) => '<svg width="' + (size || 18) + '" height="' + (size || 18) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[name] + '</svg>';
@@ -96,8 +103,99 @@
       }
       return html + esc(p.line.slice(cursor));
     };
-    return '<div class="diff" aria-label="So sánh trước và sau"><div><span class="ln">−</span>' + fmt('old', x => x) + '</div>' +
-      '<div><span class="ln">+</span>' + fmt('new', x => Engine.renderValue(x, change.newValue)) + '</div></div>';
+    return '<div class="diff" aria-label="So sánh trước và sau"><div><span class="ln">Trước</span><span>' + fmt('old', x => x) + '</span></div>' +
+      '<div><span class="ln">Sau</span><span>' + fmt('new', x => Engine.renderValue(x, change.newValue)) + '</span></div></div>';
+  }
+
+  // ---------- Giải thích bằng lời thường ----------
+  /** Bốn nhánh phân xử, viết cho người không đọc mã: máy làm gì, khi nào, ai quyết. */
+  const KINDS = [
+    { k: 'auto', badge: '✓', title: 'Tự sửa', who: 'Máy tự làm, sau khi prover đạt đủ 14 điều kiện',
+      when: 'Dòng nói rõ đúng quy định này (có cụm từ chủ đề và cụm từ cho biết con số đo cái gì).',
+      ex: '“Nộp đơn phúc khảo trong 7 ngày” → “trong 5 ngày”.' },
+    { k: 'U1', badge: 'U1', title: 'Chưa rõ', who: 'Hỏi người phụ trách tài liệu',
+      when: 'Có con số cũ nhưng không chắc nó thuộc quy định này, hoặc viết khác dạng (“một tuần”, gõ không dấu, “24TC”).',
+      ex: '“Phòng thi lưu bài trong 7 ngày” — có phải hạn phúc khảo không?' },
+    { k: 'U2', badge: 'U2', title: 'Quy định khác', who: 'Hỏi trưởng đơn vị sở hữu quy định kia',
+      when: 'Dòng đang nói về một quy định khác, tình cờ có cùng giá trị.',
+      ex: '“Đơn vị phải trả lời trong 7 ngày” thuộc quy trình tiếp nhận, không phải phúc khảo.' },
+    { k: 'U3', badge: 'U3', title: 'Vượt cấp', who: 'Hỏi người đủ cấp của đơn vị ban hành',
+      when: 'Văn bản do cấp cao hơn người ra thay đổi ban hành — bị khoá, không tự sửa.',
+      ex: 'Quy định cấp Trường chỉ Hiệu trưởng / Hội đồng Trường được sửa.' }
+  ];
+  function kindsGuide() {
+    return '<div class="kinds">' + KINDS.map(x => '<div class="kind ' + x.k + '"><div class="kind-head"><span class="kind-badge" aria-hidden="true">' + esc(x.badge) + '</span>' +
+      '<b>' + esc(x.k === 'auto' ? x.title : x.k + ' · ' + x.title) + '</b></div><div class="kind-who">' + esc(x.who) + '</div>' +
+      '<div class="small">' + esc(x.when) + '</div><div class="xs muted">Ví dụ: ' + esc(x.ex) + '</div></div>').join('') + '</div>';
+  }
+  const GLOSSARY = [
+    ['Neo chủ đề', 'Cụm từ cho biết dòng đang nói về việc gì (“phúc khảo”, “tạm ứng”).'],
+    ['Neo đại lượng', 'Cụm từ cho biết con số đo cái gì (“nộp đơn”, “thời hạn”). Máy chỉ tự sửa khi dòng có đủ cả hai loại neo.'],
+    ['Prover', 'Bộ kiểm độc lập 14 điều kiện trước mỗi lần máy tự sửa; thiếu một điều kiện là chặn.'],
+    ['AI giữ lại', 'AI đọc lại các dòng máy định tự sửa. AI chỉ được giữ lại một dòng cho người xem, không bao giờ tự sửa thay người.'],
+    ['Hồ sơ CR-n', 'Khi ban hành, phần chắc chắn được áp ngay; các câu hỏi còn lại thành một hồ sơ để đúng người trả lời trên máy của họ.'],
+    ['Câu hỏi gộp', 'Cùng một câu chép ở nhiều nơi (website, chatbot, mẫu email) chỉ hỏi một lần; sổ vẫn ghi từng dòng.'],
+    ['Sổ kiểm toán', 'Chỉ ghi thêm. Mỗi bản ghi băm SHA-256 nối với bản ghi trước; hoàn tác là một bản ghi mới.'],
+    ['Tập mù', 'Bộ ca kiểm thử do người không xem mã viết, khoá bằng mã băm trước khi chạy, để số đo không bị “học tủ”.']
+  ];
+  function helpHtml() {
+    return '<div class="help-head"><h2 id="helpTitle">Cách dùng PolicyChange OS</h2><button type="button" class="iconbtn" data-action="close-help" aria-label="Đóng hướng dẫn">×</button></div>' +
+      '<ol class="howto">' +
+        '<li><b>Mô tả thay đổi.</b> Gõ một câu như “Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành.”</li>' +
+        '<li><b>Xem tác động.</b> Máy tìm mọi dòng mang giá trị cũ và xếp mỗi dòng vào một trong bốn nhóm bên dưới.</li>' +
+        '<li><b>Trả lời câu hỏi.</b> Mỗi chỗ không chắc là đúng một câu hỏi, hai lựa chọn A / B, cho đúng người có thẩm quyền. Đổi <b>Vai trò</b> ở thanh trên để thử với người khác.</li>' +
+        '<li><b>Ban hành.</b> Phần chắc chắn được áp ngay và ghi sổ; mọi bản ghi hoàn tác được.</li>' +
+      '</ol>' + kindsGuide() +
+      '<h3>Thuật ngữ</h3><dl class="glossary">' + GLOSSARY.map(([t, d]) => '<div><dt>' + esc(t) + '</dt><dd>' + esc(d) + '</dd></div>').join('') + '</dl>';
+  }
+  /** Tiến trình một thay đổi trên màn hình Thay đổi quy định: 1 mô tả · 2 xem · 3 trả lời · 4 ban hành. */
+  function stepper() {
+    const cur = S.current;
+    const at = !cur ? 1 : !cur.props.length ? 2 : pending().length ? 3 : unissuedCount() ? 4 : 5;
+    const steps = ['Mô tả thay đổi', 'Xem tác động', 'Trả lời câu hỏi', 'Ban hành'];
+    return '<ol class="stepper" aria-label="Tiến trình">' + steps.map((s, i) => {
+      const n = i + 1, st = n < at ? 'done' : n === at ? 'current' : '';
+      return '<li class="' + st + '"' + (st === 'current' ? ' aria-current="step"' : '') + '><span class="dot" aria-hidden="true">' + (st === 'done' ? '✓' : n) + '</span><span>' + esc(s) + '</span></li>';
+    }).join('') + '</ol>';
+  }
+  /** Số thay đổi còn chờ bấm Ban hành: dòng áp được + quyết định “giữ nguyên” chưa ghi sổ. */
+  function unissuedCount() {
+    const cur = S.current;
+    return cur ? app.committableCount() + cur.props.filter(p => p.decided && !p.accepted && !p.logged).length : 0;
+  }
+  /** Tóm tắt kết quả bằng một câu và danh sách “ai cần trả lời gì”. */
+  function verdictHtml(cur) {
+    const props = cur.props;
+    if (!props.length) return '';
+    const auto = props.filter(p => p.outcome === 'AUTO_PATCH' && !p.semanticHold && Workflow.isCommittable(S, p)).length;
+    const toIssue = unissuedCount();
+    const applied = props.filter(p => p.applied).length;
+    const entries = queueEntries().filter(e => e.kind === 'local');
+    /** @type {Map<string, {label:string, ok:boolean, cats:Set<string>, n:number}>} */ const who = new Map();
+    for (const e of entries) {
+      const req = e.right.requirement || (e.p.semanticHold ? null : Authz.requirementFor(e.p, cur.change, S.registry));
+      const label = req ? req.label : 'Người rà soát bằng chứng AI';
+      const w = who.get(label) || { label, ok: e.right.ok, cats: new Set(), n: 0 };
+      w.n++; w.cats.add(e.p.semanticHold ? 'hold' : e.p.category); who.set(label, w);
+    }
+    const q = entries.length;
+    const head = q ? (auto ? 'Máy tự sửa ' + nf.format(auto) + ' chỗ chắc chắn. ' : '') + 'Còn ' + nf.format(q) + ' câu hỏi cần người trả lời.'
+      : toIssue ? 'Không cần hỏi ai thêm. ' + nf.format(toIssue) + ' thay đổi sẵn sàng ban hành.'
+      : applied ? 'Đã ban hành ' + nf.format(applied) + ' thay đổi.' : 'Không còn việc nào cần làm ở phân tích này.';
+    const sub = q ? 'Mỗi câu hỏi có hai lựa chọn A / B và chỉ người đúng thẩm quyền mới trả lời được.'
+      : toIssue ? 'Bấm Ban hành ở cuối trang để áp dụng và ghi sổ.' : applied ? 'Xem bản ghi trong Sổ kiểm toán; mọi bản ghi đều hoàn tác được.' : '';
+    return '<section class="verdict" aria-label="Tóm tắt kết quả"><div class="verdict-main"><span class="verdict-icon ' + (q ? 'ask' : 'ok') + '" aria-hidden="true">' + (q ? '?' : '✓') + '</span>' +
+      '<div><b>' + esc(head) + '</b>' + (sub ? '<div class="small muted">' + esc(sub) + '</div>' : '') + '</div></div>' +
+      (who.size ? '<ul class="who">' + [...who.values()].map(w => '<li><span class="row" style="gap:4px">' + [...w.cats].map(c => '<span class="tag ' + esc(c) + '">' + esc(c === 'hold' ? 'AI giữ lại' : c) + '</span>').join('') + '</span>' +
+        '<span><b>' + esc(nf.format(w.n) + ' câu') + '</b> cho ' + esc(w.label) + '</span>' + (w.ok ? '<span class="you">bạn trả lời được</span>' : '') + '</li>').join('') + '</ul>' : '') +
+      '</section>';
+  }
+  /** Thứ tự hiển thị: việc cần người trước, rồi dòng tự sửa, rồi dòng đã xong. */
+  function propRank(p) {
+    if (p.applied || p.logged) return 4;
+    if ((p.outcome === 'ESCALATE' && !p.decided && !p.inCase) || (p.semanticHold && !p.semanticHoldReviewed)) return 0;
+    if (p.outcome === 'ESCALATE' || p.semanticHold) return 1;
+    return 2;
   }
 
   function btn(action, label, opts) {
@@ -119,6 +217,7 @@
   /** Minh hoạ ghi đè biểu mẫu; lưu lại để khi thoát minh hoạ biểu mẫu khớp lại với phân tích được khôi phục. */
   function enterDemo(scenario) {
     if (S.source !== 'sandbox') ui.savedForm = { form: { ...ui.form }, understanding: ui.understanding, ratify: ui.ratify };
+    ui.shownAt = {};
     app.enterSandbox(scenario);
   }
   /** Biểu mẫu khớp phân tích VÀ câu yêu cầu gần nhất không bị từ chối / cần làm rõ. */
@@ -131,9 +230,30 @@
   function mine(list) { return list.filter(p => app.decisionRight(p).ok); }
   /** Mọi việc đang chờ: của phân tích đang mở trên máy này + hồ sơ dùng chung trên máy chủ. */
   function queueEntries() {
-    const local = pending().map(p => ({ kind: 'local', p, right: app.decisionRight(p) }));
-    const cases = app.caseItems().map((item, idx) => ({ kind: 'case', p: item.p, item, idx, right: app.caseRight(item) }));
+    const Grouping = G.PolicyChangeGrouping;
+    const local = Grouping.groupItems(pending(), p => p.semanticHold ? null : app.groupKeyOf(p))
+      .map(members => ({ kind: 'local', p: members[0], right: app.decisionRight(members[0]), members }));
+    const cases = Grouping.groupItems(app.caseItems().map((item, idx) => ({ item, idx })), e => app.caseGroupKeyOf(e.item))
+      .map(members => ({ kind: 'case', p: members[0].item.p, item: members[0].item, idx: members[0].idx, right: app.caseRight(members[0].item), members }));
     return local.concat(cases);
+  }
+  /** Nhóm câu hỏi trùng của phân tích đang mở: id đề xuất → danh sách đề xuất cùng câu hỏi. */
+  function localGroups() {
+    /** @type {Map<string, any[]>} */ const map = new Map();
+    for (const e of queueEntries()) if (e.kind === 'local' && e.members.length > 1) for (const m of e.members) map.set(m.id, e.members);
+    return map;
+  }
+  const questionKey = (p, o) => o && o.caseIdx !== undefined ? 'case:' + (o.caseId || '') + ':' + p.docId + ':' + p.lineIndex + ':' + p.line
+    : 'local:' + (S.current ? S.current.analysisId : 0) + ':' + p.id;
+  /** Số câu hỏi sau khi gộp, cho một danh sách đề xuất của phân tích hiện tại. */
+  const questionsOf = list => G.PolicyChangeGrouping.groupItems(list, p => p.semanticHold ? null : app.groupKeyOf(p)).length;
+  const caseRef = item => JSON.stringify({ changeId: item.oc.id, docId: item.p.docId, lineIndex: item.p.lineIndex, line: item.p.line });
+  /** Lần đầu câu hỏi có nút trả lời hiện trên màn hình (để đo thời gian quyết định). */
+  function markShown(key) { if (!ui.shownAt[key]) ui.shownAt[key] = Date.now(); }
+  function timeDecision(key, category, positions, docId) {
+    const t0 = ui.shownAt[key];
+    if (t0) app.recordTiming({ category, ms: Date.now() - t0, positions, docId });
+    delete ui.shownAt[key];
   }
 
   // ---------- Định tuyến ----------
@@ -212,7 +332,8 @@
           (S.workspace.id !== 'hcmut-pilot' ? btn('open-pilot', 'Mở workspace thí điểm', { cls: 'sm' }) : btn('open-demo', 'Về workspace trình diễn', { cls: 'sm' })) +
           btn('sign-out', 'Đăng xuất', { cls: 'sm ghost' }) + '</div>'
         : btn('open-login', 'Đăng nhập (thí điểm)', { cls: 'sm ghost' })) : '') +
-      (src !== 'sandbox' && (src === 'local' || S.workspace.mode === 'demo') ? btn('reset', 'Khôi phục dữ liệu mẫu', { cls: 'sm danger' }) : '');
+      (src !== 'sandbox' && (src === 'local' || S.workspace.mode === 'demo') ? btn('reset', 'Khôi phục dữ liệu mẫu', { cls: 'sm danger' }) : '') +
+      btn('open-help', 'Hướng dẫn & thuật ngữ', { cls: 'sm ghost', icon: 'help' });
 
     const themeBtn = $('#themeBtn');
     const dark = document.documentElement.getAttribute('data-theme') === 'dark' ||
@@ -263,19 +384,20 @@
     const pend = queueEntries();
     const m = member();
     if (!ui.overviewEval) {
-      const parsed = Evaluation.parseCsv(G.PolicyChangeBlindCsv || G.PolicyChangeHoldoutCsv || '');
-      ui.overviewEval = Evaluation.evaluate(parsed.cases, { registry: Data.SEED_REGISTRY });
+      // Hai tập mù, đo lại ngay trên trình duyệt bằng đúng động cơ đang chạy (không phải số chép tay).
+      ui.overviewEval = [['Tập mù số 1', G.PolicyChangeBlindCsv], ['Tập mù số 2', G.PolicyChangeBlind2Csv]].filter(([, csv]) => csv)
+        .map(([name, csv]) => ({ name, r: Evaluation.evaluate(Evaluation.parseCsv(csv).cases, { registry: Data.SEED_REGISTRY }) }));
     }
-    const ev = ui.overviewEval;
+    const evs = ui.overviewEval;
     const recent = S.ledger.slice(-6).reverse();
     return '' +
       '<section class="hero" aria-labelledby="heroTitle"><div>' +
         '<div class="eyebrow">MLAI Hackathon 2026 · Đề A · Escalation Referee</div>' +
         '<h1 id="heroTitle">Quy định đổi một chỗ — mọi văn bản nhắc lại nó được cập nhật đúng chỗ, đúng thẩm quyền.</h1>' +
-        '<p>PolicyChange OS tự sửa những vị trí chắc chắn, và chỉ hỏi đúng người ở đúng chỗ cần hỏi: con số không rõ thuộc quy định nào (U1), dòng đang nói về quy định khác (U2), hay văn bản do cấp trên ban hành (U3). Mọi thay đổi đều có bằng chứng, có người chịu trách nhiệm và hoàn tác được.</p>' +
+        '<p>Khi một quy định đổi, PolicyChange OS tìm mọi văn bản đang nhắc lại nó — quy trình, biểu mẫu, hỏi đáp, chatbot, mẫu email — <b>tự sửa chỗ chắc chắn</b> và <b>hỏi đúng người ở chỗ không chắc</b>. Mọi thay đổi có bằng chứng, có tên người chịu trách nhiệm và hoàn tác được.</p>' +
         '<div class="row"><a class="btn primary" href="#/thay-doi">' + icon('change', 16) + '<span>Tạo thay đổi</span></a>' +
-        btn('demo-safe', 'Xem minh hoạ 3 phút', { icon: 'spark' }) + '<a class="btn ghost" href="#/danh-gia">Đánh giá độ chính xác</a></div>' +
-      '</div><div class="stack small">' +
+        btn('demo-safe', 'Xem minh hoạ 3 phút', { icon: 'spark' }) + btn('open-help', 'Cách dùng trong 1 phút', { cls: 'ghost', icon: 'help' }) + '</div>' +
+      '</div><div class="hero-status small" aria-label="Trạng thái">' +
         '<div class="row"><span class="muted">Dữ liệu</span><b>' + esc(S.source === 'remote' ? 'Dùng chung · ' + S.workspace.name : S.source === 'sandbox' ? 'Minh hoạ' : 'Trên máy này') + '</b></div>' +
         '<div class="row"><span class="muted">AI</span><b>' + esc(S.ai.status === 'ready' ? 'Bật · ' + (S.ai.model || 'OpenAI') : 'Tắt — dùng động cơ tiền định') + '</b></div>' +
         '<div class="row"><span class="muted">Vai trò</span><b>' + esc(m ? m.displayName + ' · cấp ' + m.tier : 'Chưa xác định') + '</b></div>' +
@@ -284,14 +406,15 @@
       '<div class="grid g4">' +
         stat('', nf.format(S.docs.length), 'Tài liệu có kiểm soát', nf.format(lines) + ' dòng điều khoản') +
         stat('', nf.format(S.registry.length), 'Quy định trong sổ đăng ký', 'mỗi quy định có cụm từ neo riêng') +
-        stat(pend.length ? 'U3' : '', nf.format(pend.filter(e => e.right.ok).length) + ' / ' + nf.format(pend.length), 'Vị trí chờ bạn duyệt', 'trên tổng số vị trí đang chờ người quyết') +
+        stat(pend.length ? 'U3' : '', nf.format(pend.filter(e => e.right.ok).length) + ' / ' + nf.format(pend.length), 'Câu hỏi chờ bạn trả lời', 'trên tổng số câu hỏi đang chờ (câu trùng đã gộp)') +
         stat('', nf.format(S.ledger.length), 'Bản ghi kiểm toán', chainOk ? 'toàn vẹn, chỉ ghi thêm' : 'phát hiện chỉnh sửa trái phép') +
       '</div>' +
+      '<section class="card"><div class="card-head"><h2>Máy làm gì, khi nào thì hỏi người?</h2><p>Mỗi dòng mang giá trị cũ rơi vào đúng một trong bốn nhóm.</p></div><div class="card-body">' + kindsGuide() + '</div></section>' +
       '<section class="card"><div class="card-head"><h2>Luồng xử lý một thay đổi</h2><p>Động cơ tiền định là nơi duy nhất quyết định tự sửa hay chuyển người; AI chỉ đưa bằng chứng và chỉ có thể làm kết quả thận trọng hơn.</p></div>' +
         '<div class="card-body"><div class="pipeline">' +
-        step('Hiểu yêu cầu', 'Mô hình AI (OpenAI hoặc Gemini) hoặc bộ phân tích tiếng Việt bóc tách: quy định nào, giá trị cũ → mới, cấp ban hành.') +
-        step('Tìm vị trí', 'Quét toàn bộ kho, nhận mọi cách viết: 10 triệu = 10.000.000 = 10tr.') +
-        step('Phân xử', 'AUTO_PATCH, hoặc chuyển U1 / U2 / U3 kèm đúng một câu hỏi, hai lựa chọn.') +
+        step('Hiểu yêu cầu', 'AI (Gemini) hoặc bộ phân tích tiếng Việt bóc tách: quy định nào, giá trị cũ → mới, cấp ban hành.') +
+        step('Tìm vị trí', 'Quét toàn bộ kho, nhận mọi cách viết: 10 triệu = 10.000.000 = 10tr; “một tuần”, không dấu.') +
+        step('Phân xử', 'Xếp mỗi dòng vào Tự sửa hoặc U1 / U2 / U3; mỗi chỗ cần người là đúng một câu hỏi, hai lựa chọn.') +
         step('Chứng minh', 'Prover kiểm 14 điều kiện trước khi cho tự sửa (có neo chủ đề + neo đại lượng); thiếu một là chặn.') +
         step('Người duyệt', 'Chỉ người đúng cấp và đúng đơn vị phụ trách mới bấm được.') +
         step('Ban hành & kiểm toán', 'Ghi sổ băm SHA-256; hoàn tác thêm bản ghi mới, không xoá vết.') +
@@ -303,14 +426,18 @@
           demoRow('demo-safe', '1 · Tự sửa an toàn', 'Hạn phúc khảo 7 → 5 ngày; ngày “17/07/2025” trong cùng dòng không bị đụng tới. Prover xác nhận rồi ban hành, có thể hoàn tác.') +
           demoRow('demo-review', '2 · AI giữ lại cho người duyệt', 'Động cơ nói tự sửa được, nhưng bằng chứng ngữ nghĩa “có thể liên quan” → giữ lại chờ người. (Dữ liệu AI mẫu, ghi rõ là mock.)') +
           demoRow('demo-refuse', '3 · Từ chối yêu cầu mơ hồ', '“Đổi tất cả các thời hạn 7 ngày thành 5 ngày” → từ chối trước khi phân tích; kho và sổ không đổi.') +
+          demoRow('demo-group', '4 · Một câu, nhiều nơi', 'Cùng một câu FAQ chép lên website, chatbot và mẫu email → 3 vị trí cần hỏi nhưng chỉ 1 câu hỏi; trả lời một lần áp cho cả ba.') +
           '</div>' + (ui.demoStatus ? '<div class="notice ' + esc(ui.demoStatus.tone) + '" role="status"><div class="grow small">' + esc(ui.demoStatus.text) + '</div></div>' : '') +
         '</div></section>' +
         '<section class="card"><div class="card-head"><h2>Độ chính xác trên tập mù</h2><a class="btn sm ghost" href="#/danh-gia">Chi tiết</a></div><div class="card-body stack">' +
-          '<p class="small muted">' + nf.format(ev.total) + ' ca do một tác tử độc lập viết, không xem mã nguồn; đóng băng trước khi sửa động cơ. Chỉ động cơ tiền định (chưa bật AI).</p>' +
-          '<div class="row"><span class="tag ' + (ev.wrongEdits ? 'U3' : 'auto') + '">' + esc(ev.wrongEdits + ' lần tự sửa sai') + '</span><span class="xs muted">trên ' + nf.format(ev.autoActions) + ' lần máy tự sửa</span></div>' +
-          '<div class="bars">' +
-          bar('Đúng hoàn toàn', ev.accuracy, 'auto') + bar('Bỏ sót', ev.missRate, 'del') + bar('Báo lên thừa', ev.overEscalationRate, 'U1') +
-          '</div><p class="xs muted">Sửa sai và bỏ sót là hai lỗi nguy hiểm (máy quyết thay người). Báo lên thừa chỉ tốn thời gian người duyệt — cơ chế học neo và lớp AI kéo nó xuống dần.</p>' +
+          '<p class="small muted">Ca kiểm thử do người không xem mã viết, khoá bằng mã băm trước khi chạy. Số dưới đây được tính lại ngay trên trình duyệt này, chỉ bằng động cơ tiền định (chưa bật AI).</p>' +
+          '<div class="tablewrap"><table class="mini"><thead><tr><th scope="col">Tập</th><th scope="col" class="r">Tự sửa sai</th><th scope="col" class="r">Bỏ sót</th><th scope="col" class="r">Báo lên thừa</th></tr></thead><tbody>' +
+          evs.map(({ name, r }) => '<tr><th scope="row">' + esc(name) + '<div class="xs muted">' + esc(nf.format(r.total) + ' ca') + '</div></th>' +
+            '<td class="r num"><b class="' + (r.wrongEdits ? 'bad' : 'good') + '">' + esc(nf.format(r.wrongEdits || 0)) + '</b> / ' + esc(nf.format(r.autoActions || 0)) + '</td>' +
+            '<td class="r num"><b class="' + (r.misses ? 'bad' : 'good') + '">' + esc(nf.format(r.misses || 0)) + '</b> / ' + esc(nf.format(r.expectedEscalate || 0)) + '</td>' +
+            '<td class="r num">' + esc(pct(r.overEscalationRate)) + '</td></tr>').join('') +
+          '</tbody></table></div>' +
+          '<p class="xs muted"><b>Tự sửa sai</b> và <b>bỏ sót</b> là hai lỗi nguy hiểm (máy quyết thay người)' + (evs.every(({ r }) => !r.wrongEdits && !r.misses) ? ' — cả hai đều bằng 0 trên mọi tập' : '') + '. <b>Báo lên thừa</b> chỉ tốn thời gian người duyệt; học neo từ câu trả lời và lớp AI kéo con số này xuống dần.</p>' +
         '</div></section>' +
       '</div>' +
       '<section class="card"><div class="card-head"><h2>Hoạt động gần đây</h2><a class="btn sm ghost" href="#/so-kiem-toan">Mở sổ kiểm toán</a></div><div class="card-body">' +
@@ -333,6 +460,7 @@
     const issue = rule && tier ? Authz.canIssue(m, { rule, issuerTier: tier }) : { ok: true };
     return sandboxBanner() + staleBanner() +
       '<div class="page-head"><div><div class="eyebrow">Bước 1</div><h1>Thay đổi quy định</h1><p>Mô tả thay đổi bằng một câu tiếng Việt, hoặc chọn trực tiếp. Hệ thống xem trước tác động lên toàn bộ kho — chưa sửa gì cho tới khi bạn bấm Ban hành.</p></div></div>' +
+      stepper() +
       '<section class="card"><div class="card-body stack">' +
         '<label class="field" for="reqText">Câu mô tả thay đổi <span class="hint">Ví dụ: “Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành.” · Ctrl/⌘ + Enter để gửi</span></label>' +
         '<textarea id="reqText" name="requestText" data-bind="form.text" placeholder="Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành…">' + esc(f.text) + '</textarea>' +
@@ -377,11 +505,17 @@
     const props = cur.props;
     const count = fn => props.filter(fn).length;
     const filter = ui.query.get('loc') || 'all';
-    const shown = props.filter(p => filter === 'all' ? true : filter === 'auto' ? p.outcome === 'AUTO_PATCH' && !p.semanticHold : !(p.outcome === 'AUTO_PATCH' && !p.semanticHold));
+    const shown = props.filter(p => filter === 'all' ? true : filter === 'auto' ? p.outcome === 'AUTO_PATCH' && !p.semanticHold : !(p.outcome === 'AUTO_PATCH' && !p.semanticHold))
+      .map((p, i) => ({ p, i })).sort((x, y) => propRank(x.p) - propRank(y.p) || x.i - y.i).map(x => x.p);
     const sem = cur.semanticStatus;
+    const groups = localGroups();
+    const openEsc = props.filter(p => p.outcome === 'ESCALATE' && !p.decided && !p.applied && !p.logged && !p.inCase);
+    const qc = { positions: openEsc.length, questions: questionsOf(openEsc) };
     return '<div class="page-head"><div><div class="eyebrow">Bước 2</div><h2>Kết quả phân xử · ' + esc(cur.change.rule.id) + ' ' + esc(cur.change.oldValue) + ' → ' + esc(cur.change.newValue) + '</h2>' +
-      '<p>' + esc('Quét ' + S.docs.length + ' tài liệu trong ' + (cur.elapsedMs || 0) + ' ms.') + '</p></div>' +
+      '<p>' + esc('Quét ' + S.docs.length + ' tài liệu trong ' + (cur.elapsedMs || 0) + ' ms.' + (qc.questions < qc.positions ? ' ' + qc.positions + ' vị trí cần người được gộp còn ' + qc.questions + ' câu hỏi (cùng một câu ở nhiều nơi).' : '')) + '</p></div>' +
       '<div class="row">' + btn('semantic', S.ai.status === 'ready' ? 'Rà soát ngữ nghĩa bằng AI' : 'Rà soát ngữ nghĩa (AI đang tắt)', { icon: 'spark', disabled: sem === 'pending' }) + '</div></div>' +
+      verdictHtml(cur) +
+      '<details class="kinds-help"><summary>U1 / U2 / U3 nghĩa là gì?</summary>' + kindsGuide() + '</details>' +
       (sem && sem !== 'pending' ? '<div class="notice ' + (sem === 'complete' ? 'info' : '') + ' small">' + esc(semanticLabel(cur)) + '</div>' : '') +
       '<div class="grid g4" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
         stat('', nf.format(props.length), 'Vị trí bị ảnh hưởng', 'mang giá trị “' + cur.change.oldValue + '”') +
@@ -396,9 +530,9 @@
           .map(([c, l]) => '<span><i style="background:' + c + '"></i>' + l + '</span>').join('') + '</div></div>' +
         '<div class="card-body graph graph-wrap">' + G.PolicyChangeImpactSvg.render(cur) + '</div></section>' : '') +
       (props.length ? '<div class="row" style="justify-content:space-between"><div class="filters" role="group" aria-label="Lọc vị trí">' +
-        [['all', 'Tất cả ' + props.length], ['auto', 'Tự sửa'], ['human', 'Cần người']].map(([k, l]) => '<button type="button" data-action="filter-loc" data-value="' + k + '" aria-pressed="' + (filter === k) + '">' + esc(l) + '</button>').join('') +
+        [['all', 'Tất cả ' + props.length], ['human', 'Cần người · ' + count(p => !(p.outcome === 'AUTO_PATCH' && !p.semanticHold))], ['auto', 'Tự sửa · ' + count(p => p.outcome === 'AUTO_PATCH' && !p.semanticHold)]].map(([k, l]) => '<button type="button" data-action="filter-loc" data-value="' + k + '" aria-pressed="' + (filter === k) + '">' + esc(l) + '</button>').join('') +
         '</div><a class="btn sm ghost" href="#/hang-doi">Mở hàng đợi duyệt →</a></div>' : '') +
-      '<div class="stack">' + (shown.map(p => propCard(p, true)).join('') || (props.length ? '<div class="empty">Không có vị trí nào trong bộ lọc này.</div>' : '<div class="empty"><b>Không có vị trí nào cần sửa</b>Giá trị “' + esc(cur.change.oldValue) + '” không xuất hiện trong kho.</div>')) + '</div>' +
+      '<div class="stack">' + (shown.map(p => { const g = groups.get(p.id); return propCard(p, true, g ? (g[0].id === p.id ? { members: g } : { follower: g[0] }) : {}); }).join('') || (props.length ? '<div class="empty">Không có vị trí nào trong bộ lọc này.</div>' : '<div class="empty"><b>Không có vị trí nào cần sửa</b>Giá trị “' + esc(cur.change.oldValue) + '” không xuất hiện trong kho.</div>')) + '</div>' +
       commitBar();
   }
 
@@ -411,6 +545,7 @@
     return m[cur.semanticStatus] || '';
   }
 
+  const tdata = t => ({ tkey: t.key, tcat: t.cat, tn: t.n, tdoc: t.doc });
   function propCard(p, withActions, opts) {
     const o = opts || {};
     const cur = S.current || {};
@@ -431,15 +566,29 @@
       action = '<div class="small muted">Đã chuyển vào hồ sơ dùng chung <b>' + esc(p.inCase) + '</b> — người có thẩm quyền quyết trong Hàng đợi duyệt.</div>';
     } else if (withActions && !p.applied && !p.logged) {
       const right = o.right || app.decisionRight(p);
-      if (p.outcome === 'ESCALATE' && !p.decided) {
+      if (p.outcome === 'ESCALATE' && !p.decided && o.follower) {
+        action = '<div class="small muted">Cùng một câu hỏi với ' + btn('scroll-prop', o.follower.docId + ' dòng ' + (o.follower.lineIndex + 1), { cls: 'sm ghost', data: { target: 'prop-' + o.follower.id } }) + ' — trả lời ở đó một lần là áp cho cả vị trí này.</div>';
+      } else if (p.outcome === 'ESCALATE' && !p.decided) {
         const q = Engine.escalationQuestion(p, change, S.registry);
-        const choice = (act, label) => caseItem ? btn('decide-case', label, { data: { idx: o.caseIdx, act }, busyKey: 'case-' + o.caseIdx }) : btn('decide', label, { data: { p: p.id, act } });
-        action = '<div class="question"><div class="q-label">Câu hỏi chuyển tiếp · một lượt, quyết dứt điểm</div>' + esc(q.q) + '</div>' +
+        const members = o.members && o.members.length > 1 ? o.members : null;
+        const key = questionKey(p, o);
+        const timing = { key, cat: p.category, n: members ? members.length : 1, doc: p.docId };
+        const choice = (act, label) => caseItem
+          ? (members ? btn('decide-case-group', label, { data: { refs: '[' + members.map(m => caseRef(m.item)).join(',') + ']', idx: o.caseIdx, act, ...tdata(timing) }, busyKey: 'case-' + o.caseIdx })
+            : btn('decide-case', label, { data: { ref: caseRef(o.caseItem), idx: o.caseIdx, act, ...tdata(timing) }, busyKey: 'case-' + o.caseIdx }))
+          : (members ? btn('decide-group', label, { data: { ids: members.map(m => m.id).join(','), act, ...tdata(timing) } })
+            : btn('decide', label, { data: { p: p.id, act, ...tdata(timing) } }));
+        if (right.ok) markShown(key);
+        const where = members ? '<div class="group-note"><b>Câu này xuất hiện ở ' + members.length + ' vị trí</b> — trả lời một lần áp cho tất cả: ' +
+          members.map(m => { const mp = m.item ? m.item.p : m; return esc(mp.docId + ' dòng ' + (mp.lineIndex + 1)); }).join(' · ') + '</div>' : '';
+        const req = right.requirement;
+        action = '<div class="plain"><b>Vì sao phải hỏi:</b> ' + esc(p.plain) + '</div>' +
+          '<div class="question"><div class="q-label">Câu hỏi · chọn A hoặc B</div>' + esc(q.q) + '</div>' + where +
+          (req && right.ok ? '<div class="decider ok">✓ Bạn có quyền trả lời câu này (' + esc(req.label) + ')</div>' : '') +
           (right.ok ? '<div class="choices">' + choice('a', 'A · ' + q.a) + choice('b', 'B · ' + q.b) + '</div>'
-            : '<div class="lock">' + icon('lock', 16) + '<span>' + esc(right.reason) + (!liveWorkspace() ? ' Đổi vai trò ở thanh trên để thử.' : caseItem ? ' Người có thẩm quyền quyết hồ sơ này trên máy của họ.' : ' Khi ban hành, vị trí này được chuyển thành hồ sơ dùng chung cho người có thẩm quyền.') + '</span></div>') +
-          '<div class="xs muted"><b>Giải thích dễ hiểu:</b> ' + esc(p.plain) + '</div>';
+            : '<div class="lock">' + icon('lock', 16) + '<span>' + esc(right.reason) + (!liveWorkspace() ? ' Đổi vai trò ở thanh trên để thử.' : caseItem ? ' Người có thẩm quyền quyết hồ sơ này trên máy của họ.' : ' Khi ban hành, vị trí này được chuyển thành hồ sơ dùng chung cho người có thẩm quyền.') + '</span></div>');
       } else if (p.outcome === 'ESCALATE' && p.decided) {
-        action = '<div class="row small"><span>✔ ' + esc(p.decisionLabel) + (p.decidedBy ? ' · ' + esc(p.decidedBy) : '') + '</span>' + btn('undo-decision', 'Đổi quyết định', { cls: 'sm ghost', data: { p: p.id } }) + '</div>';
+        action = '<div class="row small"><span>✔ ' + esc(p.decisionLabel) + (p.decidedBy ? ' · ' + esc(p.decidedBy) : '') + (p.groupSize > 1 ? ' · quyết chung ' + p.groupSize + ' vị trí' : '') + '</span>' + btn('undo-decision', 'Đổi quyết định', { cls: 'sm ghost', data: { p: p.id } }) + '</div>';
       } else if (p.semanticHold && !p.semanticHoldReviewed) {
         action = right.ok ? '<div class="row">' + (caseItem
             ? btn('decide-case', 'Duyệt sửa dòng này', { cls: 'sm', data: { idx: o.caseIdx, act: 'approve' }, busyKey: 'case-' + o.caseIdx }) + btn('decide-case', 'Giữ nguyên dòng', { cls: 'sm', data: { idx: o.caseIdx, act: 'reject' }, busyKey: 'case-' + o.caseIdx })
@@ -454,8 +603,10 @@
       (o.caseLabel ? '<span class="tag done" title="Hồ sơ dùng chung">' + esc(o.caseLabel) + '</span>' : '') +
       '<span class="chip">' + esc(tierLabel(p.docTier)) + '</span>' + stateTag(p) + '<span class="meta">' + esc(p.docOwner) + '</span></div>' +
       '<div class="prop-body">' + (o.caseMeta ? '<div class="xs muted">' + esc(o.caseMeta) + '</div>' : '') + diffHtml(p, change) +
-      '<div class="why"><b>Căn cứ:</b> ' + esc(p.reason) + '</div><div class="cite">Trích dẫn: ' + esc(p.citation) + '</div>' +
-      proofHtml + evidence + action + '</div></article>';
+      evidence + action +
+      '<details class="more"><summary>' + esc(p.outcome === 'AUTO_PATCH' && !p.semanticHold ? 'Vì sao máy tự sửa được?' : 'Căn cứ kỹ thuật') + '</summary>' +
+        '<div class="why"><b>Căn cứ:</b> ' + esc(p.reason) + '</div><div class="cite">Trích dẫn: ' + esc(p.citation) + '</div>' + proofHtml + '</details>' +
+      '</div></article>';
   }
 
   function commitBar() {
@@ -471,7 +622,9 @@
     const nothing = n === 0 && rejections === 0 && !(shared && open);
     const formMatches = formStillMatches();
     const cases = shared ? app.caseItems().length : 0;
-    const waiting = open ? open + ' vị trí của phân tích này còn chờ người quyết — ' + (shared ? 'khi ban hành, các vị trí này được chuyển thành hồ sơ dùng chung để đúng người quyết trên máy của họ.' : 'có thể ban hành phần đã sẵn sàng trước.')
+    const qAsked = questionsOf(pending());
+    const asked = qAsked < open ? ' (gộp còn ' + qAsked + ' câu hỏi)' : '';
+    const waiting = open ? open + ' vị trí của phân tích này' + asked + ' còn chờ người quyết — ' + (shared ? 'khi ban hành, các vị trí này được chuyển thành hồ sơ dùng chung để đúng người quyết trên máy của họ.' : 'có thể ban hành phần đã sẵn sàng trước.')
       : 'Phân tích này không còn vị trí chờ.';
     return '<div class="notice warn" role="status" data-form-guard' + (formMatches ? ' hidden' : '') + '><div class="grow small">Biểu mẫu ở trên đã khác với phân tích đang hiện (' + esc(cur.change.rule.id + ' ' + cur.change.oldValue + ' → ' + cur.change.newValue + ', cấp ' + cur.change.issuerTier) + '). Bấm “Phân tích tác động” lại trước khi ban hành.</div>' + btn('analyze', 'Phân tích lại', { cls: 'sm' }) + '</div>' +
       '<div class="commitbar" role="region" aria-label="Ban hành">' +
@@ -510,22 +663,33 @@
     const mineList = all.filter(e => e.right.ok);
     const m = member();
     const card = e => e.kind === 'case'
-      ? propCard(e.p, true, { change: e.item.change, caseIdx: e.idx, right: e.right, caseLabel: e.item.oc.id,
+      ? propCard(e.p, true, { change: e.item.change, caseIdx: e.idx, caseId: e.item.oc.id, caseItem: e.item, right: e.right, caseLabel: e.item.oc.id, members: e.members.length > 1 ? e.members : null,
           caseMeta: 'Hồ sơ ' + e.item.oc.id + ' · ' + e.item.oc.ruleId + ' ' + e.item.oc.oldValue + ' → ' + e.item.oc.newValue +
             ' · cấp ban hành ' + e.item.oc.issuerTier + ' · khởi tạo bởi ' + e.item.oc.createdBy })
-      : propCard(e.p, true, { right: e.right });
+      : propCard(e.p, true, { right: e.right, members: e.members.length > 1 ? e.members : null });
     const body = tab === 'done' ? decided.map(p => propCard(p, true)).join('') : (tab === 'all' ? all : mineList).map(card).join('');
     const shared = S.source === 'remote';
     return sandboxBanner() + staleBanner() +
       '<div class="page-head"><div><div class="eyebrow">Bước 3</div><h1>Hàng đợi duyệt</h1><p>Mỗi vị trí là đúng một câu hỏi với hai lựa chọn. Chỉ người đúng cấp và đúng đơn vị phụ trách mới quyết được — “Chuyên viên phòng ban chỉ duyệt văn bản thuộc phạm vi của mình”.' +
         (shared ? ' Ở chế độ dùng chung, vị trí chưa quyết của một thay đổi đã ban hành trở thành hồ sơ mà người có thẩm quyền thấy ngay trên máy của mình; quyết định được áp dụng và ghi sổ ngay.' : '') + '</p></div>' +
       '<span class="pill" style="max-width:100%"><span class="t">' + esc(m ? 'Bạn: ' + m.displayName + ' · cấp ' + m.tier : 'Chưa xác định vai trò') + '</span></span></div>' +
+      timingBox() +
       (!cur && !all.length ? '<div class="empty"><b>Không có việc nào đang chờ</b>Tạo một thay đổi ở mục <a href="#/thay-doi">Thay đổi quy định</a>.</div>' :
       '<div class="filters" role="group" aria-label="Lọc hàng đợi">' +
         [['mine', 'Việc của tôi · ' + mineList.length], ['all', 'Tất cả đang chờ · ' + all.length], ['done', 'Đã quyết (chưa ban hành) · ' + decided.length]]
           .map(([k, l]) => '<button type="button" data-action="queue-tab" data-value="' + k + '" aria-pressed="' + (tab === k) + '">' + esc(l) + '</button>').join('') + '</div>' +
       '<div class="stack">' + (body ||
         '<div class="empty"><b>' + (tab === 'mine' ? 'Không có vị trí nào thuộc thẩm quyền của bạn' : 'Không có vị trí nào') + '</b>' + (tab === 'mine' && all.length ? 'Còn ' + all.length + ' vị trí cần người khác — xem tab “Tất cả”' + (liveWorkspace() ? '.' : ' hoặc đổi vai trò.') : '') + '</div>') + '</div>' + commitBar());
+  }
+
+  function timingBox() {
+    const t = app.timingStats();
+    if (!t.n && !t.excluded) return '';
+    const sec = ms => (ms / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + ' giây';
+    return '<div class="notice info small"><div class="grow"><b>Thời gian trả lời câu hỏi</b> (đo trên trình duyệt này): trung vị ' + esc(t.medianMs === null ? '—' : sec(t.medianMs)) +
+      ', 90 % dưới ' + esc(t.p90Ms === null ? '—' : sec(t.p90Ms)) + ' · ' + t.n + ' câu trả lời cho ' + t.positions + ' vị trí' +
+      (t.excluded ? ' · bỏ ' + t.excluded + ' lần quá 10 phút (có thể đã rời máy)' : '') + '.</div>' +
+      btn('export-timings', 'Tải CSV', { cls: 'sm' }) + btn('clear-timings', 'Xoá số đo', { cls: 'sm ghost' }) + '</div>';
   }
 
   // ---------- Màn hình: Sổ kiểm toán ----------
@@ -546,7 +710,7 @@
           const undoable = String(e.action).startsWith('PATCH') && !Ledger.isReverted(S.ledger, e.seq);
           return '<tr><td class="num">' + esc(e.seq) + '</td><td class="num small" style="white-space:nowrap">' + fmtTime(e.ts) + '</td><td class="small">' + esc(e.actor) + '</td><td><span class="docid">' + esc(e.docId) + '</span></td>' +
             '<td class="small">' + esc(e.action) + (Ledger.isReverted(S.ledger, e.seq) ? ' <span class="tag neutral">đã hoàn tác</span>' : '') + '</td>' +
-            '<td class="small" style="min-width:260px"><div class="clamp">' + esc(e.basis) + '</div>' + (e.from !== e.to ? '<details><summary class="xs muted" style="cursor:pointer">Trước / sau</summary><div class="diff"><div><span class="ln">−</span>' + esc(e.from) + '</div><div><span class="ln">+</span>' + esc(e.to) + '</div></div></details>' : '') + '</td>' +
+            '<td class="small" style="min-width:260px"><div class="clamp">' + esc(e.basis) + '</div>' + (e.from !== e.to ? '<details><summary class="xs muted" style="cursor:pointer">Trước / sau</summary><div class="diff"><div><span class="ln">Trước</span><span>' + esc(e.from) + '</span></div><div><span class="ln">Sau</span><span>' + esc(e.to) + '</span></div></div></details>' : '') + '</td>' +
             '<td class="hash" title="' + esc(e.hash) + '">' + esc(e.hash.slice(0, 10)) + '…</td><td>' +
             (undoable ? btn('undo', 'Hoàn tác', { cls: 'sm danger', data: { seq: e.seq }, disabled: !u.ok || !ok, title: u.ok ? 'Khôi phục dòng và ghi thêm bản ghi hoàn tác' : (u.reason || '') }) : '') + '</td></tr>';
         }).join('') + '</tbody></table></div>'
@@ -571,12 +735,14 @@
       '<div>' + (docs.map(d => '<details class="doc"' + (q ? ' open' : '') + '><summary><span class="docid">' + esc(d.id) + '</span><span class="title">' + esc(d.title) + '</span><span class="chip">' + esc(tierLabel(d.tier)) + '</span><span class="xs muted">v' + esc(d.version) + ' · ' + esc(d.owner) + '</span></summary>' +
         '<ol class="lines">' + d.lines.map((l, i) => '<li' + (hits.has(d.id + ':' + i) ? ' class="hit"' : '') + '>' + esc(l) + '</li>').join('') + '</ol></details>').join('') ||
         '<div class="empty"><b>Không tìm thấy tài liệu</b>Thử từ khoá khác.</div>') + '</div>' +
-      '<section class="card"><div class="card-head"><h2>Nạp tài liệu mới</h2><p>Dán nội dung, mỗi dòng một điều khoản. Chỉ nạp được tài liệu của đơn vị mình phụ trách, ở cấp ≤ cấp của mình.</p></div><div class="card-body stack">' +
+      '<section class="card"><div class="card-head"><h2>Nạp tài liệu mới</h2><p>Chọn tệp .docx, .txt hoặc .md (đọc ngay trên máy, không gửi tệp đi đâu), hoặc dán nội dung, mỗi dòng một điều khoản. Chỉ nạp được tài liệu của đơn vị mình phụ trách, ở cấp ≤ cấp của mình.</p></div><div class="card-body stack">' +
         '<div class="grid g3">' +
           '<label class="field" for="ndTitle">Tên tài liệu<input id="ndTitle" type="text" name="title" autocomplete="off" data-bind="newDoc.title" placeholder="Hướng dẫn nội bộ Khoa…" value="' + esc(nd.title) + '"></label>' +
           '<label class="field" for="ndOwner">Đơn vị ban hành<select id="ndOwner" name="owner" data-bind="newDoc.owner">' + units.map(u => '<option' + (u === nd.owner ? ' selected' : '') + '>' + esc(u) + '</option>').join('') + '</select></label>' +
           '<label class="field" for="ndTier">Cấp<select id="ndTier" name="tier" data-bind="newDoc.tier">' + [1, 2, 3].map(t => '<option value="' + t + '"' + (String(t) === nd.tier ? ' selected' : '') + '>' + esc(tierLabel(t)) + '</option>').join('') + '</select></label>' +
         '</div>' +
+        '<div class="row"><label class="btn sm" for="ndFile">Chọn tệp .docx / .txt / .md…</label><input id="ndFile" type="file" accept=".docx,.txt,.md,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="sr-only" data-action-change="doc-file">' +
+          (ui.docFileNote ? '<span class="xs muted">' + esc(ui.docFileNote) + '</span>' : '') + '</div>' +
         '<label class="field" for="ndBody">Nội dung<textarea id="ndBody" name="body" data-bind="newDoc.body" placeholder="Sinh viên nộp đơn phúc khảo trong 7 ngày kể từ ngày công bố điểm…">' + esc(nd.body) + '</textarea></label>' +
         '<div class="row">' + btn('add-doc', 'Nạp vào kho', { cls: 'primary' }) + '</div>' +
       '</div></section>';
@@ -637,6 +803,11 @@
         '<label class="btn" for="evalFile">Tải CSV của bạn…</label><input id="evalFile" type="file" accept=".csv,text/csv" class="sr-only" data-action-change="eval-file">' +
       '</div></div><div class="card-body stack">' +
         '<p class="small muted">Định dạng CSV: <code>id,rule_id,new_value,issuer_tier,doc_tier,line,expected[,phenomenon]</code> với expected ∈ AUTO, U1, U2, U3, NONE (ca bẫy: dòng không mang giá trị cũ, không được đụng tới). Cả hai tập đều là dữ liệu tổng hợp; giám khảo có thể tải CSV của mình lên để chấm trực tiếp.</p>' +
+        '<div class="metric-help">' +
+          '<div><b>Tự sửa sai</b><span>Máy sửa một dòng lẽ ra phải hỏi người. Lỗi nguy hiểm nhất — mục tiêu là 0.</span></div>' +
+          '<div><b>Bỏ sót</b><span>Ca cần người nhưng máy không hỏi. Cũng là máy quyết thay người — mục tiêu là 0.</span></div>' +
+          '<div><b>Báo lên thừa</b><span>Máy hỏi dù tự sửa được. Chỉ tốn thời gian người duyệt; được công bố, không giấu.</span></div>' +
+        '</div>' +
         (r ? evalReportHtml(r) : '<div class="empty">Chưa chạy. Kết quả sẽ hiện tỉ lệ bỏ sót, tỉ lệ chuyển tiếp thừa, ma trận nhầm lẫn và từng ca sai.</div>') +
       '</div></section>';
   }
@@ -685,6 +856,7 @@
 
   /** @param {{ autoReview?:boolean }} [opts] */
   function analyzeFromForm(opts) {
+    ui.shownAt = {};
     const res = app.analyze({ ruleId: ui.form.ruleId, newValue: ui.form.newValue, issuerTier: Number(ui.form.issuerTier), requestText: ui.form.text });
     ui.ratify = false;
     // Người dùng tự điền biểu mẫu rồi phân tích: lời từ chối của câu trước không còn áp cho phân tích mới.
@@ -723,6 +895,25 @@
     go('thay-doi');
   }
 
+  async function demoGroup() {
+    const line = 'Kết quả phúc khảo được gửi về email sinh viên sau 7 ngày.';
+    const mk = (id, title, extra) => ({ id, title, owner: 'Phòng Đào tạo', tier: 1, version: '1.0', lines: [line, ...extra] });
+    enterDemo({ label: 'Một câu, nhiều nơi (gộp câu hỏi trùng)', docs: [
+      mk('WEB-FAQ', 'Website · Hỏi đáp phúc khảo', ['Sinh viên nộp đơn phúc khảo trong 7 ngày kể từ ngày công bố điểm.']),
+      mk('BOT-01', 'Chatbot tư vấn · kịch bản phúc khảo', []),
+      mk('MAIL-07', 'Mẫu email trả lời sinh viên', [])
+    ] });
+    app.setPersona('cv-dt');
+    ui.form.text = 'Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành.';
+    const r = await understand(ui.form.text);
+    if (!(r.status === 'ai_candidate' || r.status === 'deterministic_fallback')) { ui.demoStatus = { tone: 'error', text: 'Minh hoạ dừng: không hiểu được yêu cầu.' }; return; }
+    analyzeFromForm({ autoReview: false });
+    const escs = S.current ? S.current.props.filter(p => p.outcome === 'ESCALATE') : [];
+    const qc = { positions: escs.length, questions: questionsOf(escs) };
+    ui.demoStatus = { tone: 'info', text: qc.positions + ' vị trí cần người quyết nhưng chỉ ' + qc.questions + ' câu hỏi: cùng một câu (thời gian GỬI KẾT QUẢ, không phải hạn nộp đơn) được chép ở 3 nơi. Vai trò đang là Chuyên viên Phòng Đào tạo — mở Hàng đợi duyệt và trả lời một lần.' };
+    go('hang-doi');
+  }
+
   async function demoRefuse() {
     const text = 'Đổi tất cả các thời hạn 7 ngày thành 5 ngày.';
     // Chạy trên bản sao tạm như các minh hoạ khác: không đụng phân tích đang dở của người dùng.
@@ -735,6 +926,8 @@
     ui.demoStatus = { tone: good ? 'ok' : 'error', text: good ? 'Đã từ chối trước khi phân tích: ' + vi(r.reason) + ' Kho tài liệu và sổ kiểm toán không thay đổi; không còn kết quả phân tích nào để ban hành.' : 'Kết quả bất thường; không thực hiện thêm thao tác nào.' };
     go('thay-doi');
   }
+
+  function timed(el) { const d = el.dataset; if (d.tkey) timeDecision(d.tkey, d.tcat, Number(d.tn) || 1, d.tdoc); }
 
   function download(name, text, type) {
     const blob = new Blob([text], { type });
@@ -761,10 +954,24 @@
     'analyze': () => { analyzeFromForm(); render(); },
     'clear-analysis': () => app.clearAnalysis(),
     'semantic': () => withBusy('semantic', () => app.discoverSemantics()),
-    'decide': el => app.decide(el.dataset.p, el.dataset.act),
+    'decide': el => { const r = app.decide(el.dataset.p, el.dataset.act); if (r.ok) timed(el); },
+    'decide-group': el => { const r = app.decideGroup(el.dataset.ids.split(','), el.dataset.act); if (r.ok) timed(el); },
+    'decide-case-group': el => {
+      const refs = JSON.parse(el.dataset.refs);
+      withBusy('case-' + el.dataset.idx, async () => { const r = await app.decideCaseGroup(refs, el.dataset.act); if (r.ok) timed(el); });
+    },
+    'scroll-prop': el => { const t = document.getElementById(el.dataset.target); if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'center' }); t.focus && t.focus({ preventScroll: true }); } },
+    'export-timings': () => {
+      const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+      download('thoi-gian-quyet-dinh.csv', '\uFEFF' + ['at,workspace,source,actor,category,docId,positions,ms']
+        .concat(S.timings.map(t => [t.at, t.workspace, t.source, t.actor, t.category, t.docId, t.positions, t.ms].map(q).join(','))).join('\n'), 'text/csv;charset=utf-8');
+    },
+    'clear-timings': () => { if (confirm('Xoá toàn bộ số đo thời gian trên trình duyệt này?')) app.clearTimings(); },
     'decide-case': el => {
-      const item = app.caseItems()[Number(el.dataset.idx)];
-      if (item) withBusy('case-' + el.dataset.idx, () => app.decideCase(item, el.dataset.act));
+      // Tìm lại theo danh tính hồ sơ (danh sách có thể vừa đổi sau một lần nạp lại); nút duyệt AI cũ vẫn dùng chỉ số.
+      const item = el.dataset.ref ? app.findCase(JSON.parse(el.dataset.ref)) : app.caseItems()[Number(el.dataset.idx)];
+      if (!item && el.dataset.ref) { toast('Hồ sơ vừa thay đổi trên máy chủ; hãy xem lại rồi quyết.', 'error'); app.reload(); return; }
+      if (item) withBusy('case-' + el.dataset.idx, async () => { const r = await app.decideCase(item, el.dataset.act); if (r.ok) timed(el); });
     },
     'undo-decision': el => app.undoDecision(el.dataset.p),
     'review': el => app.reviewSemantic(el.dataset.p, el.dataset.approve === '1'),
@@ -773,6 +980,8 @@
     'filter-loc': el => { setQuery('loc', el.dataset.value); render(); },
     'queue-tab': el => { setQuery('tab', el.dataset.value); render(); },
     'reload': () => withBusy('reload', () => app.reload()),
+    'open-help': () => { const d = $('#helpDlg'); $('#helpBody').innerHTML = helpHtml(); if (!d.open) d.showModal(); const c = d.querySelector('[data-action="close-help"]'); if (c) c.focus(); },
+    'close-help': () => { const d = $('#helpDlg'); if (d.open) d.close(); },
     'exit-sandbox': () => { app.exitSandbox(); ui.demoStatus = null; },
     'go-online': () => withBusy('go-online', () => app.switchSource('remote', 'demo')),
     'go-offline': () => withBusy('go-offline', async () => { const res = await app.switchSource('local'); writeWorkspace('local'); return res; }),
@@ -784,10 +993,11 @@
     'demo-safe': () => withBusy('demo-safe', demoSafe),
     'demo-review': () => withBusy('demo-review', demoReview),
     'demo-refuse': () => withBusy('demo-refuse', demoRefuse),
+    'demo-group': () => withBusy('demo-group', demoGroup),
     'add-doc': () => withBusy('add-doc', async () => {
       const nd = ui.newDoc;
       const res = await app.addDocument({ title: nd.title.trim(), owner: nd.owner || ($('#ndOwner') || {}).value, tier: Number(nd.tier), lines: nd.body.split(/\n+/).map(s => s.trim()).filter(Boolean) });
-      if (res.ok) ui.newDoc = { title: '', owner: nd.owner, tier: nd.tier, body: '' };
+      if (res.ok) { ui.newDoc = { title: '', owner: nd.owner, tier: nd.tier, body: '' }; ui.docFileNote = null; }
     }),
     'add-anchor': el => withBusy('add-anchor', async () => {
       const id = el.dataset.rule;
@@ -841,6 +1051,18 @@
         bindValue(el.dataset.bind, el.type === 'checkbox' ? el.checked : el.value);
         if (['form.ruleId', 'form.issuerTier', 'docTier', 'ratify'].includes(el.dataset.bind)) render();
       }
+      if (el.dataset && el.dataset.actionChange === 'doc-file' && el.files && el.files[0]) {
+        const file = el.files[0];
+        if (file.size > G.PolicyChangeDocImport.MAX_BYTES) { toast('Tệp lớn hơn 5 MB.', 'error'); el.value = ''; return; }
+        file.arrayBuffer().then(buf => G.PolicyChangeDocImport.readDocument(file.name, buf)).then(res => {
+          if (!res.lines.length) { toast('Tệp không có dòng chữ nào.', 'error'); return; }
+          ui.newDoc.title = ui.newDoc.title.trim() || res.title;
+          ui.newDoc.body = res.lines.join('\n');
+          ui.docFileNote = 'Đã đọc ' + res.lines.length + ' dòng từ “' + file.name + '”' + (res.truncated ? ' (chỉ lấy ' + res.lines.length + ' dòng đầu)' : '') + '. Kiểm tra nội dung, chọn đơn vị và cấp, rồi bấm “Nạp vào kho”.';
+          render();
+        }).catch(err => toast(err && err.message ? err.message : 'Không đọc được tệp.', 'error'));
+        el.value = '';
+      }
       if (el.dataset && el.dataset.actionChange === 'eval-file' && el.files && el.files[0]) {
         el.files[0].text().then(text => { ui.evalCsv = text; runEval(text, 'CSV của bạn · ' + el.files[0].name, false); });
       }
@@ -865,6 +1087,12 @@
       $('meta[name="theme-color"]').setAttribute('content', dark ? '#f3f5f9' : '#0b0f17');
       renderShell();
     });
+    // Bấm ra ngoài khung hướng dẫn (vào nền mờ) thì đóng.
+    $('#helpDlg').addEventListener('click', ev => {
+      const d = /** @type {HTMLDialogElement} */ (ev.currentTarget), r = d.getBoundingClientRect();
+      if (ev.target === d && (ev.clientX < r.left || ev.clientX > r.right || ev.clientY < r.top || ev.clientY > r.bottom)) d.close();
+    });
+    $('#helpBtn').innerHTML = icon('help');
     $('#loginForm').addEventListener('submit', async ev => {
       ev.preventDefault();
       if (ev.submitter && ev.submitter.value === 'cancel') { $('#loginDlg').close(); return; }
@@ -887,7 +1115,7 @@
     app.subscribe(() => {
       if (ui.savedForm && S.source !== 'sandbox') {
         Object.assign(ui.form, ui.savedForm.form); ui.understanding = ui.savedForm.understanding; ui.ratify = ui.savedForm.ratify;
-        ui.savedForm = null; ui.demoStatus = null;
+        ui.savedForm = null; ui.demoStatus = null; ui.shownAt = {};
       }
     });
     app.subscribe(() => render());

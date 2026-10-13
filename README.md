@@ -56,7 +56,11 @@ ghi thêm và hoàn tác được.
 | TypeScript + Vite | Giữ JavaScript thuần để vẫn mở được bằng `file://`, nhưng kiểm kiểu bằng **JSDoc + `tsc --noEmit`** trong CI. Lý do: `docs/PHAN-HOI-BTC-SPRINT-1.md`. |
 | Chưa có E2E, chưa có kiểm thử tải | **Playwright** (luồng chính, phân quyền, 390 px sáng/tối) và `bench/load.cjs`. |
 | Yêu cầu nâng cao của Đề A | **Học từ phản hồi** (đề xuất cụm từ neo mới từ các câu trả lời U1, người duyệt rồi mới áp dụng) và **báo cáo độ chính xác** trên tập độc lập 48 ca (tỉ lệ bỏ sót, chuyển tiếp thừa, ma trận nhầm lẫn). |
+| Người duyệt bị hỏi lặp | **Gộp câu hỏi trùng**: cùng loại hồ sơ, cùng người có thẩm quyền, cùng mệnh đề chứa con số → một câu hỏi, trả lời một lần áp cho mọi vị trí; sổ vẫn ghi từng dòng, vòng học chỉ nhận một phản hồi. Minh hoạ 4 trên Tổng quan. |
+| Chưa có số đo chi phí người duyệt | **Đo thời gian quyết định** ngay trong ứng dụng (trung vị, mức 90 %, tải CSV) — số liệu cho buổi thử nghiệm và `docs/GIA-TRI-KINH-DOANH.md`. |
+| Giám khảo muốn thử tài liệu của mình | **Nạp tài liệu từ tệp .docx / .txt / .md**, đọc ngay trên trình duyệt, không gửi tệp đi đâu; hàng bảng thành một dòng "ô \| ô". |
 | Giao diện | Làm lại thành ứng dụng 7 màn hình: Tổng quan · Thay đổi quy định · Hàng đợi duyệt · Sổ kiểm toán · Kho tài liệu · Sổ đăng ký & học · Đánh giá; đồ thị tác động SVG; chế độ tối; dùng tốt trên điện thoại. |
+| Người mới nhìn vào phải hiểu ngay | **Giao diện bằng lời thường** (13/10): kết quả mở đầu bằng một câu tóm tắt ("Máy tự sửa 6 chỗ chắc chắn. Còn 3 câu hỏi cần người trả lời.") kèm danh sách *ai cần trả lời câu nào*; thanh tiến trình 4 bước; việc cần người xếp lên đầu, căn cứ kỹ thuật thu gọn; mỗi câu hỏi có "Vì sao phải hỏi"; bảng giải thích Tự sửa / U1 / U2 / U3 và hộp **Hướng dẫn & thuật ngữ**; Tổng quan tính lại độ chính xác trên cả hai tập mù. |
 
 ## Chạy thử
 

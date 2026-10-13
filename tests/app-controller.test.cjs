@@ -477,3 +477,104 @@ test('rà lại lần hai không làm prover chặn dòng đã được người
     assert.ok(res.applied > 0, [first, second].join('→') + ': ' + res.message);
   }
 });
+
+test('gộp câu hỏi trùng: quyết một lần cho cả nhóm, ghi sổ từng dòng, chỉ một phản hồi cho vòng học', async () => {
+  const Grouping = require('../js/policy-grouping.js');
+  const app = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend(), workspace: 'local' }), Grouping }));
+  await app.init({ prefer: 'local' });
+  const line = 'Kết quả phúc khảo được gửi về email sinh viên sau 7 ngày.';
+  app.enterSandbox({ label: 'Gộp', docs: ['A', 'B', 'C'].map(id => ({ id, title: id, owner: 'Phòng Đào tạo', tier: 1, version: '1.0', lines: [line] })) });
+  app.analyze(CHANGE);
+  const ids = app.state.current.props.map(p => p.id);
+  app.setPersona('tp-tc');
+  assert.equal(app.decideGroup(ids, 'b').ok, false, 'người không phụ trách không quyết được');
+  app.setPersona('cv-dt');
+  assert.equal(app.decideGroup([ids[0], 'P-khong-co'], 'b').ok, false);
+  const res = app.decideGroup(ids, 'b');
+  assert.equal(res.ok, true, res.message);
+  assert.ok(app.state.current.props.every(p => p.decided && !p.accepted && p.groupSize === 3));
+  assert.equal(app.undoDecision(ids[2]).ok, true);
+  assert.ok(app.state.current.props.every(p => !p.decided), 'bỏ quyết định thì bỏ cả nhóm');
+  app.decideGroup(ids, 'b');
+  app.setPersona('tp-dt');
+  assert.equal((await app.commit()).ok, true);
+  assert.equal(app.state.ledger.filter(e => e.action.startsWith('TỪ CHỐI SỬA')).length, 3, 'mỗi dòng một bản ghi');
+  assert.equal(app.state.feedback.length, 1, 'một câu trả lời của người = một phản hồi');
+});
+
+test('không quyết chung được các vị trí khác câu hỏi', async () => {
+  const Grouping = require('../js/policy-grouping.js');
+  const app = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend(), workspace: 'local' }), Grouping }));
+  await app.init({ prefer: 'local' });
+  app.analyze(CHANGE);
+  const esc = app.state.current.props.filter(p => p.outcome === 'ESCALATE');
+  app.setPersona('ht');
+  const res = app.decideGroup(esc.map(p => p.id), 'a');
+  assert.equal(res.ok, false);
+  assert.match(res.message, /không cùng một câu hỏi/);
+  assert.ok(esc.every(p => !p.decided));
+});
+
+test('đo thời gian quyết định: trung vị, bỏ lần quá 10 phút, bỏ minh hoạ, lưu qua timingStore', async () => {
+  let saved = null;
+  const timingStore = { load: () => [{ category: 'U1', ms: 4000, positions: 1, source: 'local' }], save: rows => { saved = rows.slice(); } };
+  const app = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend(), workspace: 'local' }), timingStore }));
+  await app.init({ prefer: 'local' });
+  app.recordTiming({ category: 'U2', ms: 12000, positions: 3 });
+  app.recordTiming({ category: 'U1', ms: 8000 });
+  app.recordTiming({ category: 'U3', ms: 11 * 60 * 1000 });
+  app.recordTiming({ category: 'U1', ms: -5 });
+  const t = app.timingStats();
+  assert.deepEqual([t.n, t.excluded, t.medianMs, t.positions], [3, 1, 8000, 5]);
+  assert.equal(saved.length, 4);
+  assert.equal(saved[1].actor, 'Người · Trưởng phòng Đào tạo (demo)');
+  app.enterSandbox({ label: 'x', docs: [] });
+  app.recordTiming({ category: 'U1', ms: 1 });
+  assert.equal(app.timingStats().n, 3, 'số đo trong minh hoạ không tính');
+  app.clearTimings();
+  assert.equal(app.timingStats().n, 0);
+});
+
+test('gộp: dòng có phần sau khác (sẽ bị sửa theo) không gộp; id trùng không làm nhóm "quyết dở"', async () => {
+  const Grouping = require('../js/policy-grouping.js');
+  const app = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend(), workspace: 'local' }), Grouping }));
+  await app.init({ prefer: 'local' });
+  const line = 'Kết quả phúc khảo được gửi về email sinh viên sau 7 ngày.';
+  app.enterSandbox({ label: 'G', docs: [
+    { id: 'A', title: 'A', owner: 'Phòng Đào tạo', tier: 1, version: '1.0', lines: [line] },
+    { id: 'B', title: 'B', owner: 'Phòng Đào tạo', tier: 1, version: '1.0', lines: [line + ' Bài thi gốc được lưu tại khoa trong 7 ngày.'] }] });
+  app.analyze(CHANGE);
+  const [a, b] = app.state.current.props;
+  assert.notEqual(app.groupKeyOf(a), app.groupKeyOf(b));
+  app.setPersona('cv-dt');
+  assert.equal(app.decideGroup([a.id, b.id], 'a').ok, false);
+  assert.equal(app.decideGroup([a.id, a.id], 'a').ok, true, 'id lặp được bỏ trùng');
+  assert.equal(a.groupSize, 1);
+  assert.ok(!b.decided);
+});
+
+test('trực tuyến: quyết chung hồ sơ dùng chung theo danh tính, vị trí đi kèm không ghi thêm phản hồi', async () => {
+  const Grouping = require('../js/policy-grouping.js');
+  const Data = require('../js/policy-data.js');
+  const Engine = require('../js/policy-engine.js');
+  const line = 'Kết quả phúc khảo được gửi về email sinh viên sau 7 ngày.';
+  const docs = ['A', 'B'].map(id => ({ id, title: id, owner: 'Phòng Đào tạo', tier: 1, version: '1.0', lines: [line] }));
+  const calls = [];
+  const remote = { configured: true, tail: async () => null,
+    loadWorkspace: async () => ({ ok: true, workspace: { id: 'demo', name: 'Demo', mode: 'demo' }, registry: Engine.cloneRegistry(Data.SEED_REGISTRY), docs: Engine.cloneDocs(docs),
+      ledger: [], feedback: [], decisions: [],
+      openChanges: [{ id: 'CR-1', ruleId: 'R-PK-01', oldValue: '7 ngày', newValue: '5 ngày', issuerTier: 2, requestText: '', createdBy: 'A', status: 'open', held: [] }] }),
+    call: async body => { calls.push(body); return { ok: true, status: 200, data: { message: 'ok' } }; } };
+  const app = App.createController(deps({ localStore: Store.createLocalStore({ backend: Store.memoryBackend() }), remote, Grouping }));
+  await app.init();
+  const items = app.caseItems();
+  assert.equal(items.length, 2);
+  assert.equal(app.caseGroupKeyOf(items[0]), app.caseGroupKeyOf(items[1]));
+  const refs = items.map(i => ({ changeId: i.oc.id, docId: i.p.docId, lineIndex: i.p.lineIndex, line: i.p.line }));
+  app.setPersona('cv-dt');
+  const stale = await app.decideCaseGroup([...refs, { ...refs[0], docId: 'KHONG-CO' }], 'b');
+  assert.equal(stale.ok, false, 'một hồ sơ không còn → không quyết gì');
+  assert.equal(calls.length, 0);
+  assert.equal((await app.decideCaseGroup(refs, 'b')).ok, true);
+  assert.deepEqual(calls.map(c => [c.docId, c.groupFollower]), [['A', false], ['B', true]]);
+});
