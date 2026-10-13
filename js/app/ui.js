@@ -151,20 +151,24 @@
   /** Tiến trình một thay đổi trên màn hình Thay đổi quy định: 1 mô tả · 2 xem · 3 trả lời · 4 ban hành. */
   function stepper() {
     const cur = S.current;
-    const open = pending();
-    const done = cur && cur.props.length && cur.props.every(p => p.applied || p.logged || p.inCase);
-    const at = !cur ? 1 : done ? 5 : open.length ? 3 : 4;
+    const at = !cur ? 1 : !cur.props.length ? 2 : pending().length ? 3 : unissuedCount() ? 4 : 5;
     const steps = ['Mô tả thay đổi', 'Xem tác động', 'Trả lời câu hỏi', 'Ban hành'];
     return '<ol class="stepper" aria-label="Tiến trình">' + steps.map((s, i) => {
-      const n = i + 1, st = n < at || (n === 3 && cur && !open.length) ? 'done' : n === at ? 'current' : '';
+      const n = i + 1, st = n < at ? 'done' : n === at ? 'current' : '';
       return '<li class="' + st + '"' + (st === 'current' ? ' aria-current="step"' : '') + '><span class="dot" aria-hidden="true">' + (st === 'done' ? '✓' : n) + '</span><span>' + esc(s) + '</span></li>';
     }).join('') + '</ol>';
+  }
+  /** Số thay đổi còn chờ bấm Ban hành: dòng áp được + quyết định “giữ nguyên” chưa ghi sổ. */
+  function unissuedCount() {
+    const cur = S.current;
+    return cur ? app.committableCount() + cur.props.filter(p => p.decided && !p.accepted && !p.logged).length : 0;
   }
   /** Tóm tắt kết quả bằng một câu và danh sách “ai cần trả lời gì”. */
   function verdictHtml(cur) {
     const props = cur.props;
     if (!props.length) return '';
-    const auto = props.filter(p => p.outcome === 'AUTO_PATCH' && !p.semanticHold && !p.applied && !p.logged).length;
+    const auto = props.filter(p => p.outcome === 'AUTO_PATCH' && !p.semanticHold && Workflow.isCommittable(S, p)).length;
+    const toIssue = unissuedCount();
     const applied = props.filter(p => p.applied).length;
     const entries = queueEntries().filter(e => e.kind === 'local');
     /** @type {Map<string, {label:string, ok:boolean, cats:Set<string>, n:number}>} */ const who = new Map();
@@ -175,10 +179,13 @@
       w.n++; w.cats.add(e.p.semanticHold ? 'hold' : e.p.category); who.set(label, w);
     }
     const q = entries.length;
-    const head = q ? 'Máy tự sửa ' + nf.format(auto) + ' chỗ chắc chắn. Còn ' + nf.format(q) + ' câu hỏi cần người trả lời.'
-      : auto ? 'Máy tự sửa được cả ' + nf.format(auto) + ' chỗ. Không cần hỏi ai.' : applied ? 'Đã ban hành ' + nf.format(applied) + ' thay đổi.' : 'Không còn việc nào cần làm ở phân tích này.';
+    const head = q ? (auto ? 'Máy tự sửa ' + nf.format(auto) + ' chỗ chắc chắn. ' : '') + 'Còn ' + nf.format(q) + ' câu hỏi cần người trả lời.'
+      : toIssue ? 'Không cần hỏi ai thêm. ' + nf.format(toIssue) + ' thay đổi sẵn sàng ban hành.'
+      : applied ? 'Đã ban hành ' + nf.format(applied) + ' thay đổi.' : 'Không còn việc nào cần làm ở phân tích này.';
+    const sub = q ? 'Mỗi câu hỏi có hai lựa chọn A / B và chỉ người đúng thẩm quyền mới trả lời được.'
+      : toIssue ? 'Bấm Ban hành ở cuối trang để áp dụng và ghi sổ.' : applied ? 'Xem bản ghi trong Sổ kiểm toán; mọi bản ghi đều hoàn tác được.' : '';
     return '<section class="verdict" aria-label="Tóm tắt kết quả"><div class="verdict-main"><span class="verdict-icon ' + (q ? 'ask' : 'ok') + '" aria-hidden="true">' + (q ? '?' : '✓') + '</span>' +
-      '<div><b>' + esc(head) + '</b><div class="small muted">' + esc(q ? 'Mỗi câu hỏi có hai lựa chọn A / B và chỉ người đúng thẩm quyền mới trả lời được.' : 'Bấm Ban hành ở cuối trang để áp dụng và ghi sổ.') + '</div></div></div>' +
+      '<div><b>' + esc(head) + '</b>' + (sub ? '<div class="small muted">' + esc(sub) + '</div>' : '') + '</div></div>' +
       (who.size ? '<ul class="who">' + [...who.values()].map(w => '<li><span class="row" style="gap:4px">' + [...w.cats].map(c => '<span class="tag ' + esc(c) + '">' + esc(c === 'hold' ? 'AI giữ lại' : c) + '</span>').join('') + '</span>' +
         '<span><b>' + esc(nf.format(w.n) + ' câu') + '</b> cho ' + esc(w.label) + '</span>' + (w.ok ? '<span class="you">bạn trả lời được</span>' : '') + '</li>').join('') + '</ul>' : '') +
       '</section>';
@@ -424,13 +431,13 @@
         '</div></section>' +
         '<section class="card"><div class="card-head"><h2>Độ chính xác trên tập mù</h2><a class="btn sm ghost" href="#/danh-gia">Chi tiết</a></div><div class="card-body stack">' +
           '<p class="small muted">Ca kiểm thử do người không xem mã viết, khoá bằng mã băm trước khi chạy. Số dưới đây được tính lại ngay trên trình duyệt này, chỉ bằng động cơ tiền định (chưa bật AI).</p>' +
-          '<div class="tablewrap"><table class="mini"><thead><tr><th scope="col">Tập</th><th scope="col" class="r">Tự sửa sai</th><th scope="col" class="r">Bỏ sót</th><th scope="col" class="r">Hỏi thừa</th></tr></thead><tbody>' +
+          '<div class="tablewrap"><table class="mini"><thead><tr><th scope="col">Tập</th><th scope="col" class="r">Tự sửa sai</th><th scope="col" class="r">Bỏ sót</th><th scope="col" class="r">Báo lên thừa</th></tr></thead><tbody>' +
           evs.map(({ name, r }) => '<tr><th scope="row">' + esc(name) + '<div class="xs muted">' + esc(nf.format(r.total) + ' ca') + '</div></th>' +
             '<td class="r num"><b class="' + (r.wrongEdits ? 'bad' : 'good') + '">' + esc(nf.format(r.wrongEdits || 0)) + '</b> / ' + esc(nf.format(r.autoActions || 0)) + '</td>' +
             '<td class="r num"><b class="' + (r.misses ? 'bad' : 'good') + '">' + esc(nf.format(r.misses || 0)) + '</b> / ' + esc(nf.format(r.expectedEscalate || 0)) + '</td>' +
             '<td class="r num">' + esc(pct(r.overEscalationRate)) + '</td></tr>').join('') +
           '</tbody></table></div>' +
-          '<p class="xs muted"><b>Tự sửa sai</b> và <b>bỏ sót</b> là hai lỗi nguy hiểm (máy quyết thay người) — cả hai đều bằng 0. <b>Hỏi thừa</b> chỉ tốn thời gian người duyệt; học neo từ câu trả lời và lớp AI kéo con số này xuống dần.</p>' +
+          '<p class="xs muted"><b>Tự sửa sai</b> và <b>bỏ sót</b> là hai lỗi nguy hiểm (máy quyết thay người)' + (evs.every(({ r }) => !r.wrongEdits && !r.misses) ? ' — cả hai đều bằng 0 trên mọi tập' : '') + '. <b>Báo lên thừa</b> chỉ tốn thời gian người duyệt; học neo từ câu trả lời và lớp AI kéo con số này xuống dần.</p>' +
         '</div></section>' +
       '</div>' +
       '<section class="card"><div class="card-head"><h2>Hoạt động gần đây</h2><a class="btn sm ghost" href="#/so-kiem-toan">Mở sổ kiểm toán</a></div><div class="card-body">' +
@@ -1081,7 +1088,10 @@
       renderShell();
     });
     // Bấm ra ngoài khung hướng dẫn (vào nền mờ) thì đóng.
-    $('#helpDlg').addEventListener('click', ev => { if (ev.target === ev.currentTarget) ev.currentTarget.close(); });
+    $('#helpDlg').addEventListener('click', ev => {
+      const d = /** @type {HTMLDialogElement} */ (ev.currentTarget), r = d.getBoundingClientRect();
+      if (ev.target === d && (ev.clientX < r.left || ev.clientX > r.right || ev.clientY < r.top || ev.clientY > r.bottom)) d.close();
+    });
     $('#helpBtn').innerHTML = icon('help');
     $('#loginForm').addEventListener('submit', async ev => {
       ev.preventDefault();

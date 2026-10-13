@@ -288,8 +288,13 @@ test('trả lời hết câu hỏi thì bước hiện tại chuyển sang Ban h
   await persona(page, 'ht');
   for (const id of ['P6', 'P9']) await page.locator('#prop-' + id).getByRole('button', { name: /^B · / }).click();
   await page.locator('article.prop.U3').getByRole('button', { name: /^B · / }).click();
-  await expect(page.locator('.verdict')).toContainText('Không cần hỏi ai');
+  await expect(page.locator('.verdict')).toContainText('Không cần hỏi ai thêm. 9 thay đổi sẵn sàng ban hành.');
   await expect(page.locator('.stepper [aria-current="step"]')).toContainText('Ban hành');
+  await page.getByRole('button', { name: 'Ban hành' }).click();
+  await expect(page.locator('.toast').last()).toContainText('Đã ban hành');
+  await expect(page.locator('.verdict')).toContainText(/Đã ban hành \d+ thay đổi\./);
+  await expect(page.locator('.stepper [aria-current="step"]')).toHaveCount(0);
+  await expect(page.locator('.stepper li.done')).toHaveCount(4);
 });
 
 test('hướng dẫn & thuật ngữ mở từ thanh trên, đóng bằng Esc', async ({ page }) => {
