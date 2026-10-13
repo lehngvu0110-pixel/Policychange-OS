@@ -9,7 +9,7 @@ Bản cập nhật 11/10/2026 cho Demo Day.
 
 ## Các bước
 
-1. **Tổng quan.** Giới thiệu một câu: *tự sửa chỗ chắc chắn, hỏi đúng người ở chỗ cần hỏi*. Chỉ vào các ô Dữ liệu, AI
+1. **Tổng quan.** Giới thiệu một câu: *tự sửa chỗ chắc chắn, hỏi đúng người ở chỗ cần hỏi*. Chỉ vào khung **Máy làm gì, khi nào thì hỏi người?** (Tự sửa / U1 / U2 / U3 bằng lời thường) và bảng độ chính xác của hai tập mù. Nút **?** trên thanh trên mở hướng dẫn và thuật ngữ. Chỉ vào các ô Dữ liệu, AI
    (đang dùng Gemini) và Vai trò, cùng trạng thái chuỗi SHA-256.
 
 2. **Minh hoạ 1 · Tự sửa an toàn** (bấm "Chạy").
@@ -21,7 +21,7 @@ Bản cập nhật 11/10/2026 cho Demo Day.
 3. **Thay đổi quy định.**
    - Gõ: "Rút thời hạn nộp đơn phúc khảo từ 7 xuống 5 ngày, do Trưởng phòng Đào tạo ban hành."
    - Bấm **Hiểu yêu cầu**. Hệ thống hiểu đúng dù câu chỉ ghi "ngày" một lần, và nhắc người dùng kiểm tra lại.
-   - Bấm **Phân tích tác động**: 9 vị trí, gồm 6 tự sửa và U1, U2, U3 mỗi loại một. Nếu AI giữ lại dòng nào, ô "AI giữ
+   - Bấm **Phân tích tác động**. Đọc to câu tóm tắt ở đầu kết quả: *Máy tự sửa 6 chỗ chắc chắn. Còn 3 câu hỏi cần người trả lời*, kèm ai trả lời câu nào. 9 vị trí, gồm 6 tự sửa và U1, U2, U3 mỗi loại một; ba câu hỏi nằm trên cùng. Nếu AI giữ lại dòng nào, ô "AI giữ
      lại" hiện ra và số tự sửa giảm tương ứng. Chỉ vào đồ thị tác động.
    - Sửa thử câu trong ô: nút **Ban hành** khoá ngay vì biểu mẫu đã khác phân tích. Sửa lại như cũ thì nút mở lại.
 

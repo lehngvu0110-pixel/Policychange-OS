@@ -26,3 +26,14 @@ test('menu điều hướng trên màn hình hẹp', async ({ page }) => {
   await expect(page.locator('main h1')).toHaveText('Sổ kiểm toán');
   await expect(menu).toHaveAttribute('aria-expanded', 'false');
 });
+
+test('hướng dẫn mở được trên màn hình hẹp và không tràn ngang', async ({ page }) => {
+  await page.goto('/index.html?offline=1#/tong-quan');
+  await page.getByRole('button', { name: 'Cách dùng trong 1 phút' }).click();
+  const dlg = page.getByRole('dialog', { name: 'Cách dùng PolicyChange OS' });
+  await expect(dlg).toBeVisible();
+  const overflow = await dlg.evaluate(d => d.scrollWidth - d.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+  await dlg.getByRole('button', { name: 'Đóng hướng dẫn' }).click();
+  await expect(dlg).toBeHidden();
+});

@@ -256,3 +256,59 @@ test('tệp không hỗ trợ bị từ chối với thông báo rõ ràng', asy
   await page.setInputFiles('#ndFile', { name: 'quy-dinh.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') });
   await expect(page.locator('.toast').last()).toContainText('Chỉ nhận tệp .docx, .txt hoặc .md');
 });
+
+// ---------- Giao diện dễ hiểu (13/10/2026) ----------
+test('kết quả mở đầu bằng một câu tóm tắt và ai cần trả lời gì; việc cần người nằm trên cùng', async ({ page }) => {
+  await open(page);
+  await analyze(page);
+  const verdict = page.locator('.verdict');
+  await expect(verdict).toContainText('Máy tự sửa 6 chỗ chắc chắn. Còn 3 câu hỏi cần người trả lời.');
+  await expect(verdict.locator('.who li')).toHaveCount(3);
+  await expect(verdict.locator('.who li').filter({ hasText: 'Cổng thông tin sinh viên' })).toContainText('1 câu');
+  // Vai trò hiện tại (Trưởng phòng Đào tạo) không trả lời được U2 của Phòng Thanh tra – Pháp chế.
+  await expect(verdict.locator('.who li').filter({ hasText: 'Phòng Thanh tra' }).locator('.you')).toHaveCount(0);
+  await expect(page.locator('.stepper [aria-current="step"]')).toContainText('Trả lời câu hỏi');
+  // Ba thẻ đầu tiên là ba câu hỏi; thẻ tự sửa nằm sau.
+  const cards = page.locator('article.prop');
+  for (const i of [0, 1, 2]) await expect(cards.nth(i).locator('.question')).toBeVisible();
+  await expect(cards.nth(3).locator('.tag.auto')).toBeVisible();
+  // Căn cứ kỹ thuật thu gọn mặc định, mở được.
+  const more = cards.nth(3).locator('details.more');
+  await expect(more.locator('.why').first()).toBeHidden();
+  await more.locator('summary').click();
+  await expect(more).toContainText('14/14 điều kiện');
+  // Giải thích U1/U2/U3 ngay trên màn hình kết quả.
+  await page.getByText('U1 / U2 / U3 nghĩa là gì?').click();
+  await expect(page.locator('.kinds-help .kind')).toHaveCount(4);
+});
+
+test('trả lời hết câu hỏi thì bước hiện tại chuyển sang Ban hành', async ({ page }) => {
+  await open(page);
+  await analyze(page);
+  await persona(page, 'ht');
+  for (const id of ['P6', 'P9']) await page.locator('#prop-' + id).getByRole('button', { name: /^B · / }).click();
+  await page.locator('article.prop.U3').getByRole('button', { name: /^B · / }).click();
+  await expect(page.locator('.verdict')).toContainText('Không cần hỏi ai');
+  await expect(page.locator('.stepper [aria-current="step"]')).toContainText('Ban hành');
+});
+
+test('hướng dẫn & thuật ngữ mở từ thanh trên, đóng bằng Esc', async ({ page }) => {
+  await open(page);
+  await page.getByRole('button', { name: 'Hướng dẫn và thuật ngữ' }).click();
+  const dlg = page.getByRole('dialog', { name: 'Cách dùng PolicyChange OS' });
+  await expect(dlg).toBeVisible();
+  await expect(dlg.locator('.kind')).toHaveCount(4);
+  await expect(dlg.locator('dt', { hasText: 'Neo đại lượng' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dlg).toBeHidden();
+});
+
+test('Tổng quan: độ chính xác tính lại trên cả hai tập mù, không sửa sai, không bỏ sót', async ({ page }) => {
+  await open(page);
+  const rows = page.locator('table.mini tbody tr');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText('40 ca');
+  await expect(rows.nth(1)).toContainText('36 ca');
+  await expect(page.locator('table.mini b.bad')).toHaveCount(0);
+  await expect(page.locator('.kinds .kind')).toHaveCount(4);
+});
