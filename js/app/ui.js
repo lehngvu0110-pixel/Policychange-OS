@@ -187,13 +187,13 @@
     return '<section class="verdict" aria-label="Tóm tắt kết quả"><div class="verdict-main"><span class="verdict-icon ' + (q ? 'ask' : 'ok') + '" aria-hidden="true">' + (q ? '?' : '✓') + '</span>' +
       '<div><b>' + esc(head) + '</b>' + (sub ? '<div class="small muted">' + esc(sub) + '</div>' : '') + '</div></div>' +
       (who.size ? '<ul class="who">' + [...who.values()].map(w => '<li><span class="row" style="gap:4px">' + [...w.cats].map(c => '<span class="tag ' + esc(c) + '">' + esc(c === 'hold' ? 'AI giữ lại' : c) + '</span>').join('') + '</span>' +
-        '<span><b>' + esc(nf.format(w.n) + ' câu') + '</b> cho ' + esc(w.label) + '</span>' + (w.ok ? '<span class="you">bạn trả lời được</span>' : nudgeButtons(w.n, w.label, changeLabel(cur.change))) + '</li>').join('') + '</ul>' +
+        '<span><b>' + esc(nf.format(w.n) + ' câu') + '</b> cho ' + esc(w.label) + '</span>' + (w.ok ? '<span class="you">bạn trả lời được</span>' : nudgeButtons(w.n, w.label, changeLabel(cur.change), true)) + '</li>').join('') + '</ul>' +
         ([...who.values()].some(w => !w.ok) ? nudgeNote() : '') : '') +
       '</section>';
   }
   // ---------- Báo cho người cần trả lời (không tự gửi: người dùng tự dán hoặc tự bấm gửi email) ----------
   function queueLink() {
-    const ws = S.source === 'remote' && S.workspace.id !== (cfg.defaultWorkspace || 'demo') ? '?workspace=' + encodeURIComponent(S.workspace.id) : '';
+    const ws = S.source === 'remote' ? '?workspace=' + encodeURIComponent(S.workspace.id) : '';
     return location.origin + location.pathname + ws + '#/hang-doi';
   }
   /** @param {number} n @param {string} label @param {string} what */
@@ -201,8 +201,10 @@
     return 'Chào anh/chị, PolicyChange OS đang có ' + n + ' câu hỏi cần ' + label + ' trả lời về thay đổi ' + what +
       '. Mỗi câu chỉ cần chọn A hoặc B, khoảng một phút: ' + queueLink() + ' (vào mục Hàng đợi duyệt → Việc của tôi).';
   }
-  /** @param {number} n @param {string} label @param {string} what */
-  function nudgeButtons(n, label, what) {
+  /** @param {number} n @param {string} label @param {string} what @param {boolean} [local] câu hỏi của phân tích chưa ban hành */
+  function nudgeButtons(n, label, what, local) {
+    // Dùng chung: câu hỏi của phân tích chưa ban hành chỉ nằm trên máy này; người nhận chưa thấy gì cho tới khi Ban hành.
+    if (local && S.source === 'remote') return '<span class="nudge xs muted">Bấm Ban hành trước để câu hỏi thành hồ sơ dùng chung, rồi mới báo.</span>';
     const text = nudgeText(n, label, what);
     return '<span class="nudge">' + btn('copy-nudge', 'Sao chép lời nhắn', { cls: 'sm', data: { text } }) +
       '<a class="btn sm ghost" href="mailto:?subject=' + encodeURIComponent('[PolicyChange OS] ' + n + ' câu hỏi chờ ' + label) + '&amp;body=' + encodeURIComponent(text) + '">Soạn email</a></span>';
@@ -717,18 +719,18 @@
 
   /** Câu hỏi đang chờ người khác: gom theo người cần trả lời và thay đổi, kèm lời nhắn sao chép được. */
   function othersBox(/** @type {any[]} */ all) {
-    /** @type {Map<string, {label:string, what:string, n:number}>} */ const groups = new Map();
+    /** @type {Map<string, {label:string, what:string, n:number, local:boolean}>} */ const groups = new Map();
     for (const e of all) {
       if (e.right.ok || !e.right.requirement) continue;
       const what = e.kind === 'case' ? e.item.oc.ruleId + ' “' + e.item.oc.oldValue + '” → “' + e.item.oc.newValue + '”' : changeLabel(S.current.change);
-      const key = e.right.requirement.label + '\u0000' + what;
-      const g = groups.get(key) || { label: e.right.requirement.label, what, n: 0 };
+      const key = e.kind + '\u0000' + e.right.requirement.label + '\u0000' + what;
+      const g = groups.get(key) || { label: e.right.requirement.label, what, n: 0, local: e.kind === 'local' };
       g.n++; groups.set(key, g);
     }
     if (!groups.size) return '';
     const total = [...groups.values()].reduce((s, g) => s + g.n, 0);
     return '<details class="kinds-help others"><summary>' + esc(nf.format(total) + ' câu hỏi đang chờ người khác — báo cho họ') + '</summary><ul class="who">' +
-      [...groups.values()].map(g => '<li><span><b>' + esc(nf.format(g.n) + ' câu') + '</b> cho ' + esc(g.label) + ' · <span class="muted">' + esc(g.what) + '</span></span>' + nudgeButtons(g.n, g.label, g.what) + '</li>').join('') +
+      [...groups.values()].map(g => '<li><span><b>' + esc(nf.format(g.n) + ' câu') + '</b> cho ' + esc(g.label) + ' · <span class="muted">' + esc(g.what) + '</span></span>' + nudgeButtons(g.n, g.label, g.what, g.local) + '</li>').join('') +
       '</ul>' + nudgeNote() + '</details>';
   }
 
@@ -875,7 +877,7 @@
           '<td class="r num nowrap">' + frac(r.before.overEscalations, r.before.notEscalatable, r.before.overEscalationRate) + ' → <b class="' + (r.after.overEscalations < r.before.overEscalations ? 'good' : '') + '">' + frac(r.after.overEscalations, r.after.notEscalatable, r.after.overEscalationRate).replace(' (', '<br>(') + '</b></td>' +
           '<td class="r num"><b class="' + (r.after.wrongEdits || r.after.misses ? 'bad' : 'good') + '">' + esc(nf.format(r.after.wrongEdits) + ' · ' + nf.format(r.after.misses)) + '</b></td></tr>').join('') +
         '</tbody></table></div>' +
-        '<p class="xs muted"><b>Đọc kết quả:</b> ' + (rows.every(({ r }) => !r.after.wrongEdits && !r.after.misses) ? 'ở mọi cách chia, học neo không làm phát sinh sửa sai hay bỏ sót. ' : 'có cách chia làm phát sinh sửa sai hoặc bỏ sót — xem cột cuối. ') + 'Nhưng nó chỉ giúp khi một từ đồng nghĩa lặp lại ở nhiều câu trả lời; trong các tập nhỏ này, phần lớn từ đồng nghĩa chỉ xuất hiện một lần nên máy chưa học được. Đây là giới hạn đang công bố, không phải kết quả đã chứng minh trên dữ liệu thật.</p>'
+        '<p class="xs muted"><b>Đọc kết quả:</b> ' + (rows.every(({ r }) => !r.after.wrongEdits && !r.after.misses) ? 'ở mọi cách chia, học neo không làm phát sinh sửa sai hay bỏ sót. ' : 'có cách chia làm phát sinh sửa sai hoặc bỏ sót — xem cột cuối. ') + 'Nhưng nó chỉ giúp khi một từ đồng nghĩa lặp lại ở nhiều câu trả lời; ở những cách chia ghi “không có”, chưa cụm từ nào lặp lại đủ 2 câu “Có” nên máy chưa đề xuất neo. Đây là giới hạn đang công bố, không phải kết quả đã chứng minh trên dữ liệu thật.</p>'
         : '<div class="empty">Chưa chạy. Bấm “Chạy thí nghiệm học neo” — chạy ngay trên trình duyệt, không gọi AI.</div>') +
       '</div></section>';
   }
@@ -1008,13 +1010,15 @@
     if (!doc.ok) return fail(doc.message || 'không nạp được tài liệu.');
     analyzeFromForm({ autoReview: false });
     const props = S.current ? S.current.props : [];
-    const auto = props.filter(p => p.outcome === 'AUTO_PATCH' && !p.semanticHold).length;
-    ui.demoStatus = { tone: auto ? 'ok' : 'error', text: auto ? 'Máy đã học: email mới được tự sửa, không phải hỏi lại.' : 'Sau khi học, dòng mới vẫn chưa được tự sửa.',
+    const newDocId = (S.docs.find(d => d.title === 'Mẫu email · nhắc hạn phúc tra') || {}).id;
+    const emailLine = props.find(p => p.docId === newDocId);
+    const auto = !!emailLine && emailLine.outcome === 'AUTO_PATCH' && !emailLine.semanticHold && !props.some(p => p.outcome === 'ESCALATE');
+    ui.demoStatus = { tone: auto ? 'ok' : 'error', text: auto ? 'Máy đã học: dòng trong email mới được xếp tự sửa, không phải hỏi lại.' : 'Sau khi học, dòng mới vẫn chưa được xếp tự sửa.',
       steps: [
         'Lần 1: máy hỏi 2 câu U1 — hai dòng viết “phúc tra”, từ máy chưa biết là phúc khảo.',
         'Trưởng phòng Đào tạo trả lời “A · Có” cả hai rồi ban hành; hai câu trả lời được ghi làm phản hồi.',
         'Hệ thống đề xuất neo chủ đề «' + sug.phrase + '» (' + sug.support + ' câu “Có”); trưởng phòng duyệt — bản ghi THÊM NEO nằm trong Sổ kiểm toán.',
-        'Lần 2: một mẫu email mới cũng viết “phúc tra”. ' + (auto ? 'Máy tự sửa, không hỏi lại (xem thẻ bên dưới).' : 'Máy vẫn hỏi — kiểm tra lại sổ đăng ký.')
+        'Lần 2: một mẫu email mới cũng viết “phúc tra”. ' + (auto ? 'Máy xếp dòng này vào Tự sửa, không hỏi lại — bấm Ban hành để áp dụng.' : 'Máy vẫn hỏi — kiểm tra lại sổ đăng ký.')
       ] };
     go('thay-doi');
   }

@@ -324,7 +324,7 @@ test('Minh hoạ 5: trả lời “Có” hai lần → học neo → dòng mớ
   await page.locator('[data-action="demo-learn"]').click();
   const banner = page.locator('.notice.sandbox');
   await expect(banner).toContainText('Hệ thống đề xuất neo chủ đề «phúc tra»');
-  await expect(banner).toContainText('Máy tự sửa, không hỏi lại');
+  await expect(banner).toContainText('Máy xếp dòng này vào Tự sửa, không hỏi lại');
   await expect(page.locator('.verdict')).toContainText('Không cần hỏi ai thêm. 1 thay đổi sẵn sàng ban hành.');
   await expect(page.locator('article.prop')).toHaveCount(1);
   await expect(page.locator('article.prop .tag.auto')).toBeVisible();

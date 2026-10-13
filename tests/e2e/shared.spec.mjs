@@ -13,6 +13,9 @@ test('dùng chung: trưởng phòng ban hành, vị trí U2 thành hồ sơ; tr�
   await page.fill('#reqText', 'Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành.');
   await page.getByRole('button', { name: /Hiểu yêu cầu/ }).click();
   await page.getByRole('button', { name: 'Phân tích tác động' }).click();
+  // Chưa ban hành thì câu hỏi chỉ nằm trên máy này: không cho gửi lời nhắn sai.
+  await expect(page.locator('.verdict')).toContainText('Bấm Ban hành trước để câu hỏi thành hồ sơ dùng chung');
+  await expect(page.locator('.verdict').getByRole('button', { name: 'Sao chép lời nhắn' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Ban hành' }).click();
   await expect(page.locator('.toast').last()).toContainText('Hồ sơ CR-1 còn 3 vị trí');
   expect(backend.db.ledger).toHaveLength(6);
@@ -21,6 +24,9 @@ test('dùng chung: trưởng phòng ban hành, vị trí U2 thành hồ sơ; tr�
   await page.selectOption('#personaSel', 'tp-tt');
   await page.goto('/index.html#/hang-doi');
   await expect(page.getByRole('button', { name: /Việc của tôi · 1/ })).toBeVisible();
+  // Hồ sơ đã ban hành: lời nhắn có đường dẫn kèm workspace.
+  await page.getByText('câu hỏi đang chờ người khác — báo cho họ').click();
+  await expect(page.locator('.others').getByRole('link', { name: 'Soạn email' }).first()).toHaveAttribute('href', /workspace%3Ddemo/);
   const card = page.locator('article.prop').filter({ hasText: 'QT-07' });
   await expect(card.locator('.tag.done')).toHaveText('CR-1');
   await card.getByRole('button', { name: /^A · Không/ }).click();
