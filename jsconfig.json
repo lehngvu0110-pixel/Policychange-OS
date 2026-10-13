@@ -15,6 +15,6 @@
     "js/sha256.js", "js/policy-engine.js", "js/policy-data.js", "js/policy-ledger.js", "js/policy-workflow.js",
     "js/policy-authz.js", "js/policy-server.js", "js/policy-store.js", "js/openai-mapping.js", "js/remote-ai-adapter.js",
     "js/remote-store.js", "js/policy-learning.js", "js/policy-evaluation.js", "js/app-controller.js", "js/app/graph.js",
-    "js/policy-grouping.js", "js/doc-import.js"
+    "js/policy-grouping.js", "js/doc-import.js", "js/policy-learning-eval.js"
   ]
 }

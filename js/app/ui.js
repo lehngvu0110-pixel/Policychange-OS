@@ -187,9 +187,41 @@
     return '<section class="verdict" aria-label="Tóm tắt kết quả"><div class="verdict-main"><span class="verdict-icon ' + (q ? 'ask' : 'ok') + '" aria-hidden="true">' + (q ? '?' : '✓') + '</span>' +
       '<div><b>' + esc(head) + '</b>' + (sub ? '<div class="small muted">' + esc(sub) + '</div>' : '') + '</div></div>' +
       (who.size ? '<ul class="who">' + [...who.values()].map(w => '<li><span class="row" style="gap:4px">' + [...w.cats].map(c => '<span class="tag ' + esc(c) + '">' + esc(c === 'hold' ? 'AI giữ lại' : c) + '</span>').join('') + '</span>' +
-        '<span><b>' + esc(nf.format(w.n) + ' câu') + '</b> cho ' + esc(w.label) + '</span>' + (w.ok ? '<span class="you">bạn trả lời được</span>' : '') + '</li>').join('') + '</ul>' : '') +
+        '<span><b>' + esc(nf.format(w.n) + ' câu') + '</b> cho ' + esc(w.label) + '</span>' + (w.ok ? '<span class="you">bạn trả lời được</span>' : nudgeButtons(w.n, w.label, changeLabel(cur.change), true)) + '</li>').join('') + '</ul>' +
+        ([...who.values()].some(w => !w.ok) ? nudgeNote() : '') : '') +
       '</section>';
   }
+  // ---------- Báo cho người cần trả lời (không tự gửi: người dùng tự dán hoặc tự bấm gửi email) ----------
+  function queueLink() {
+    const ws = S.source === 'remote' ? '?workspace=' + encodeURIComponent(S.workspace.id) : '';
+    return location.origin + location.pathname + ws + '#/hang-doi';
+  }
+  /** @param {number} n @param {string} label @param {string} what */
+  function nudgeText(n, label, what) {
+    return 'Chào anh/chị, PolicyChange OS đang có ' + n + ' câu hỏi cần ' + label + ' trả lời về thay đổi ' + what +
+      '. Mỗi câu chỉ cần chọn A hoặc B, khoảng một phút: ' + queueLink() + ' (vào mục Hàng đợi duyệt → Việc của tôi).';
+  }
+  /** @param {number} n @param {string} label @param {string} what @param {boolean} [local] câu hỏi của phân tích chưa ban hành */
+  function nudgeButtons(n, label, what, local) {
+    // Dùng chung: câu hỏi của phân tích chưa ban hành chỉ nằm trên máy này; người nhận chưa thấy gì cho tới khi Ban hành.
+    if (local && S.source === 'remote') return '<span class="nudge xs muted">Bấm Ban hành trước để câu hỏi thành hồ sơ dùng chung, rồi mới báo.</span>';
+    const text = nudgeText(n, label, what);
+    return '<span class="nudge">' + btn('copy-nudge', 'Sao chép lời nhắn', { cls: 'sm', data: { text } }) +
+      '<a class="btn sm ghost" href="mailto:?subject=' + encodeURIComponent('[PolicyChange OS] ' + n + ' câu hỏi chờ ' + label) + '&amp;body=' + encodeURIComponent(text) + '">Soạn email</a></span>';
+  }
+  function nudgeNote() {
+    return S.source === 'remote' ? '' : '<div class="xs muted">' + esc(S.source === 'sandbox' ? 'Đang ở chế độ minh hoạ: lời nhắn chỉ để xem thử.'
+      : 'Đang ngoại tuyến: câu hỏi chỉ nằm trên máy này. Chuyển sang Dùng chung để người nhận mở được câu hỏi trên máy của họ.') + '</div>';
+  }
+  const changeLabel = (/** @type {any} */ c) => c.rule.id + ' “' + c.oldValue + '” → “' + c.newValue + '”';
+  async function copyText(/** @type {string} */ text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch (_) { /* thử cách cũ */ }
+    try {
+      const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); return ok;
+    } catch (_) { return false; }
+  }
+
   /** Thứ tự hiển thị: việc cần người trước, rồi dòng tự sửa, rồi dòng đã xong. */
   function propRank(p) {
     if (p.applied || p.logged) return 4;
@@ -421,12 +453,13 @@
       '</div></div></section>' +
       '<div class="split">' +
         '<section class="card"><div class="card-head"><h2>Minh hoạ có hướng dẫn</h2><span class="tag neutral">chạy trên bản sao tạm</span></div><div class="card-body stack">' +
-          '<p class="small muted">Ba kịch bản ngắn cho buổi trình bày. Kịch bản chạy trong chế độ Minh hoạ — không ghi vào dữ liệu dùng chung.</p>' +
+          '<p class="small muted">Năm kịch bản ngắn cho buổi trình bày. Kịch bản chạy trong chế độ Minh hoạ — không ghi vào dữ liệu dùng chung.</p>' +
           '<div class="stack">' +
           demoRow('demo-safe', '1 · Tự sửa an toàn', 'Hạn phúc khảo 7 → 5 ngày; ngày “17/07/2025” trong cùng dòng không bị đụng tới. Prover xác nhận rồi ban hành, có thể hoàn tác.') +
           demoRow('demo-review', '2 · AI giữ lại cho người duyệt', 'Động cơ nói tự sửa được, nhưng bằng chứng ngữ nghĩa “có thể liên quan” → giữ lại chờ người. (Dữ liệu AI mẫu, ghi rõ là mock.)') +
           demoRow('demo-refuse', '3 · Từ chối yêu cầu mơ hồ', '“Đổi tất cả các thời hạn 7 ngày thành 5 ngày” → từ chối trước khi phân tích; kho và sổ không đổi.') +
           demoRow('demo-group', '4 · Một câu, nhiều nơi', 'Cùng một câu FAQ chép lên website, chatbot và mẫu email → 3 vị trí cần hỏi nhưng chỉ 1 câu hỏi; trả lời một lần áp cho cả ba.') +
+          demoRow('demo-learn', '5 · Máy học từ câu trả lời', 'Hai dòng viết “phúc tra” (máy chưa biết là phúc khảo) → hỏi người, trả lời “Có” → hệ thống đề xuất neo, trưởng phòng duyệt → email mới viết “phúc tra” được tự sửa, không hỏi lại.') +
           '</div>' + (ui.demoStatus ? '<div class="notice ' + esc(ui.demoStatus.tone) + '" role="status"><div class="grow small">' + esc(ui.demoStatus.text) + '</div></div>' : '') +
         '</div></section>' +
         '<section class="card"><div class="card-head"><h2>Độ chính xác trên tập mù</h2><a class="btn sm ghost" href="#/danh-gia">Chi tiết</a></div><div class="card-body stack">' +
@@ -645,7 +678,9 @@
 
   function sandboxBanner() {
     if (S.source !== 'sandbox') return '';
-    return '<div class="notice sandbox"><div class="grow small"><b>Chế độ minh hoạ:</b> ' + esc(S.workspace.name) + '. Mọi thao tác chỉ diễn ra trên bản sao tạm.</div>' + btn('exit-sandbox', 'Thoát minh hoạ', { cls: 'sm' }) + '</div>';
+    const d = ui.demoStatus;
+    return '<div class="notice sandbox"><div class="grow small"><b>Chế độ minh hoạ:</b> ' + esc(S.workspace.name) + '. Mọi thao tác chỉ diễn ra trên bản sao tạm.' +
+      (d && d.steps ? '<ol class="demo-steps">' + d.steps.map((/** @type {string} */ x) => '<li>' + esc(x) + '</li>').join('') + '</ol>' : '') + '</div>' + btn('exit-sandbox', 'Thoát minh hoạ', { cls: 'sm' }) + '</div>';
   }
   function staleBanner() {
     let html = '';
@@ -673,13 +708,30 @@
       '<div class="page-head"><div><div class="eyebrow">Bước 3</div><h1>Hàng đợi duyệt</h1><p>Mỗi vị trí là đúng một câu hỏi với hai lựa chọn. Chỉ người đúng cấp và đúng đơn vị phụ trách mới quyết được — “Chuyên viên phòng ban chỉ duyệt văn bản thuộc phạm vi của mình”.' +
         (shared ? ' Ở chế độ dùng chung, vị trí chưa quyết của một thay đổi đã ban hành trở thành hồ sơ mà người có thẩm quyền thấy ngay trên máy của mình; quyết định được áp dụng và ghi sổ ngay.' : '') + '</p></div>' +
       '<span class="pill" style="max-width:100%"><span class="t">' + esc(m ? 'Bạn: ' + m.displayName + ' · cấp ' + m.tier : 'Chưa xác định vai trò') + '</span></span></div>' +
-      timingBox() +
+      timingBox() + othersBox(all) +
       (!cur && !all.length ? '<div class="empty"><b>Không có việc nào đang chờ</b>Tạo một thay đổi ở mục <a href="#/thay-doi">Thay đổi quy định</a>.</div>' :
       '<div class="filters" role="group" aria-label="Lọc hàng đợi">' +
         [['mine', 'Việc của tôi · ' + mineList.length], ['all', 'Tất cả đang chờ · ' + all.length], ['done', 'Đã quyết (chưa ban hành) · ' + decided.length]]
           .map(([k, l]) => '<button type="button" data-action="queue-tab" data-value="' + k + '" aria-pressed="' + (tab === k) + '">' + esc(l) + '</button>').join('') + '</div>' +
       '<div class="stack">' + (body ||
         '<div class="empty"><b>' + (tab === 'mine' ? 'Không có vị trí nào thuộc thẩm quyền của bạn' : 'Không có vị trí nào') + '</b>' + (tab === 'mine' && all.length ? 'Còn ' + all.length + ' vị trí cần người khác — xem tab “Tất cả”' + (liveWorkspace() ? '.' : ' hoặc đổi vai trò.') : '') + '</div>') + '</div>' + commitBar());
+  }
+
+  /** Câu hỏi đang chờ người khác: gom theo người cần trả lời và thay đổi, kèm lời nhắn sao chép được. */
+  function othersBox(/** @type {any[]} */ all) {
+    /** @type {Map<string, {label:string, what:string, n:number, local:boolean}>} */ const groups = new Map();
+    for (const e of all) {
+      if (e.right.ok || !e.right.requirement) continue;
+      const what = e.kind === 'case' ? e.item.oc.ruleId + ' “' + e.item.oc.oldValue + '” → “' + e.item.oc.newValue + '”' : changeLabel(S.current.change);
+      const key = e.kind + '\u0000' + e.right.requirement.label + '\u0000' + what;
+      const g = groups.get(key) || { label: e.right.requirement.label, what, n: 0, local: e.kind === 'local' };
+      g.n++; groups.set(key, g);
+    }
+    if (!groups.size) return '';
+    const total = [...groups.values()].reduce((s, g) => s + g.n, 0);
+    return '<details class="kinds-help others"><summary>' + esc(nf.format(total) + ' câu hỏi đang chờ người khác — báo cho họ') + '</summary><ul class="who">' +
+      [...groups.values()].map(g => '<li><span><b>' + esc(nf.format(g.n) + ' câu') + '</b> cho ' + esc(g.label) + ' · <span class="muted">' + esc(g.what) + '</span></span>' + nudgeButtons(g.n, g.label, g.what, g.local) + '</li>').join('') +
+      '</ul>' + nudgeNote() + '</details>';
   }
 
   function timingBox() {
@@ -809,6 +861,24 @@
           '<div><b>Báo lên thừa</b><span>Máy hỏi dù tự sửa được. Chỉ tốn thời gian người duyệt; được công bố, không giấu.</span></div>' +
         '</div>' +
         (r ? evalReportHtml(r) : '<div class="empty">Chưa chạy. Kết quả sẽ hiện tỉ lệ bỏ sót, tỉ lệ chuyển tiếp thừa, ma trận nhầm lẫn và từng ca sai.</div>') +
+      '</div></section>' + learningCard();
+  }
+
+  /** Thí nghiệm học neo: học trên một tập, đo trên tập khác (js/policy-learning-eval.js). */
+  function learningCard() {
+    const rows = ui.learnRows;
+    const frac = (n, d, rate) => esc(nf.format(n) + '/' + nf.format(d) + ' (' + pct(rate) + ')');
+    return '<section class="card" id="learning"><div class="card-head"><h2>Học từ câu trả lời có giảm báo lên thừa không?</h2>' + btn('eval-learning', 'Chạy thí nghiệm học neo', { cls: 'primary' }) + '</div><div class="card-body stack">' +
+      '<p class="small muted">Máy hỏi các dòng U1 của <b>tập học</b>; một người phụ trách <b>mô phỏng</b> trả lời đúng theo nhãn (“Có” nếu dòng lẽ ra tự sửa được, “Không” nếu không). Hệ thống chỉ đề xuất neo khi một cụm từ lặp lại ở ít nhất 2 câu “Có”; giả định trưởng đơn vị duyệt hết. Sau đó chấm <b>tập đo</b> — tập này không tham gia bước học. Lệnh tương đương: <code>npm run eval:learning</code>.</p>' +
+      (rows ? '<div class="tablewrap"><table class="mini"><thead><tr><th scope="col">Học trên → đo trên</th><th scope="col" class="r">Câu trả lời (Có / Không)</th><th scope="col">Neo được duyệt</th><th scope="col" class="r">Báo lên thừa: trước → sau</th><th scope="col" class="r">Sửa sai · bỏ sót sau khi học</th></tr></thead><tbody>' +
+        rows.map(({ s, r }) => '<tr><th scope="row">' + esc(s.train) + ' → ' + esc(s.test) + '</th>' +
+          '<td class="r num">' + esc(nf.format(r.feedback.accept) + ' / ' + nf.format(r.feedback.reject)) + '</td>' +
+          '<td class="small">' + (r.anchors.length ? r.anchors.map(a => '<span class="chip">' + esc(a.ruleId + ' · ' + a.phrase) + '</span>').join(' ') : '<span class="muted">không có</span>') + '</td>' +
+          '<td class="r num nowrap">' + frac(r.before.overEscalations, r.before.notEscalatable, r.before.overEscalationRate) + ' → <b class="' + (r.after.overEscalations < r.before.overEscalations ? 'good' : '') + '">' + frac(r.after.overEscalations, r.after.notEscalatable, r.after.overEscalationRate).replace(' (', '<br>(') + '</b></td>' +
+          '<td class="r num"><b class="' + (r.after.wrongEdits || r.after.misses ? 'bad' : 'good') + '">' + esc(nf.format(r.after.wrongEdits) + ' · ' + nf.format(r.after.misses)) + '</b></td></tr>').join('') +
+        '</tbody></table></div>' +
+        '<p class="xs muted"><b>Đọc kết quả:</b> ' + (rows.every(({ r }) => !r.after.wrongEdits && !r.after.misses) ? 'ở mọi cách chia, học neo không làm phát sinh sửa sai hay bỏ sót. ' : 'có cách chia làm phát sinh sửa sai hoặc bỏ sót — xem cột cuối. ') + 'Nhưng nó chỉ giúp khi một từ đồng nghĩa lặp lại ở nhiều câu trả lời; ở những cách chia ghi “không có”, chưa cụm từ nào lặp lại đủ 2 câu “Có” nên máy chưa đề xuất neo. Đây là giới hạn đang công bố, không phải kết quả đã chứng minh trên dữ liệu thật.</p>'
+        : '<div class="empty">Chưa chạy. Bấm “Chạy thí nghiệm học neo” — chạy ngay trên trình duyệt, không gọi AI.</div>') +
       '</div></section>';
   }
 
@@ -914,6 +984,45 @@
     go('hang-doi');
   }
 
+  async function demoLearn() {
+    const fail = (/** @type {string} */ why) => { ui.demoStatus = { tone: 'error', text: 'Minh hoạ dừng: ' + why }; render(); };
+    const mk = (/** @type {string} */ id, /** @type {string} */ title, /** @type {string} */ line) => ({ id, title, owner: 'Phòng Đào tạo', tier: 1, version: '1.0', lines: [line] });
+    enterDemo({ label: 'Máy học từ câu trả lời', docs: [
+      mk('WEB-PT', 'Website · Hỏi đáp phúc tra', 'Hỏi: Hạn nộp đơn phúc tra bài thi là bao lâu? Đáp: 7 ngày kể từ khi có điểm.'),
+      mk('BOT-PT', 'Chatbot · kịch bản phúc tra', 'Bot: Em nộp đơn phúc tra trong vòng 7 ngày sau khi điểm được công bố nhé.')
+    ] });
+    app.setPersona('tp-dt');
+    ui.form.text = 'Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành.';
+    const r = await understand(ui.form.text);
+    if (!(r.status === 'ai_candidate' || r.status === 'deterministic_fallback')) return fail('không hiểu được yêu cầu.');
+    analyzeFromForm({ autoReview: false });
+    const asked = S.current ? S.current.props.filter(p => p.outcome === 'ESCALATE' && p.category === 'U1') : [];
+    if (asked.length !== 2) return fail('kỳ vọng 2 câu hỏi U1, thấy ' + asked.length + '.');
+    for (const p of asked) { const d = app.decide(p.id, 'a'); if (!d.ok) return fail(d.message || 'không quyết được.'); }
+    const issued = await app.commit({ expect: formInput() });
+    if (!issued.ok) return fail(issued.message || 'không ban hành được.');
+    const sug = app.suggestions().find(s => s.ruleId === 'R-PK-01');
+    if (!sug) return fail('chưa có đề xuất neo.');
+    const added = await app.addAnchor(sug.ruleId, sug.phrase, 'Học từ ' + sug.support + ' phản hồi “Có” ở hồ sơ U1', sug.field);
+    if (!added.ok) return fail(added.message || 'không thêm được neo.');
+    const doc = await app.addDocument({ title: 'Mẫu email · nhắc hạn phúc tra', owner: 'Phòng Đào tạo', tier: 1,
+      lines: ['Thông báo: sinh viên nộp đơn phúc tra trong 7 ngày kể từ ngày công bố điểm.'] });
+    if (!doc.ok) return fail(doc.message || 'không nạp được tài liệu.');
+    analyzeFromForm({ autoReview: false });
+    const props = S.current ? S.current.props : [];
+    const newDocId = (S.docs.find(d => d.title === 'Mẫu email · nhắc hạn phúc tra') || {}).id;
+    const emailLine = props.find(p => p.docId === newDocId);
+    const auto = !!emailLine && emailLine.outcome === 'AUTO_PATCH' && !emailLine.semanticHold && !props.some(p => p.outcome === 'ESCALATE');
+    ui.demoStatus = { tone: auto ? 'ok' : 'error', text: auto ? 'Máy đã học: dòng trong email mới được xếp tự sửa, không phải hỏi lại.' : 'Sau khi học, dòng mới vẫn chưa được xếp tự sửa.',
+      steps: [
+        'Lần 1: máy hỏi 2 câu U1 — hai dòng viết “phúc tra”, từ máy chưa biết là phúc khảo.',
+        'Trưởng phòng Đào tạo trả lời “A · Có” cả hai rồi ban hành; hai câu trả lời được ghi làm phản hồi.',
+        'Hệ thống đề xuất neo chủ đề «' + sug.phrase + '» (' + sug.support + ' câu “Có”); trưởng phòng duyệt — bản ghi THÊM NEO nằm trong Sổ kiểm toán.',
+        'Lần 2: một mẫu email mới cũng viết “phúc tra”. ' + (auto ? 'Máy xếp dòng này vào Tự sửa, không hỏi lại — bấm Ban hành để áp dụng.' : 'Máy vẫn hỏi — kiểm tra lại sổ đăng ký.')
+      ] };
+    go('thay-doi');
+  }
+
   async function demoRefuse() {
     const text = 'Đổi tất cả các thời hạn 7 ngày thành 5 ngày.';
     // Chạy trên bản sao tạm như các minh hoạ khác: không đụng phân tích đang dở của người dùng.
@@ -994,6 +1103,7 @@
     'demo-review': () => withBusy('demo-review', demoReview),
     'demo-refuse': () => withBusy('demo-refuse', demoRefuse),
     'demo-group': () => withBusy('demo-group', demoGroup),
+    'demo-learn': () => withBusy('demo-learn', demoLearn),
     'add-doc': () => withBusy('add-doc', async () => {
       const nd = ui.newDoc;
       const res = await app.addDocument({ title: nd.title.trim(), owner: nd.owner || ($('#ndOwner') || {}).value, tier: Number(nd.tier), lines: nd.body.split(/\n+/).map(s => s.trim()).filter(Boolean) });
@@ -1014,6 +1124,14 @@
     'eval-blind2': () => runEval(G.PolicyChangeBlind2Csv, 'Tập mù số 2 · 36 ca · động cơ tiền định', false),
     'eval-builtin': () => runEval(G.PolicyChangeHoldoutCsv, 'Tập phát triển 48 ca · động cơ tiền định', false),
     'eval-ai': () => runEval(ui.evalCsv || G.PolicyChangeBlindCsv, (ui.evalCsv ? 'CSV của bạn' : 'Tập mù 40 ca') + ' · động cơ + AI ngữ nghĩa', true),
+    'copy-nudge': el => { copyText(el.dataset.text || '').then(ok => toast(ok ? 'Đã sao chép lời nhắn — dán vào Zalo, Teams hoặc email để gửi.' : 'Không sao chép được; hãy dùng “Soạn email”.', ok ? 'info' : 'error')); },
+    'eval-learning': () => {
+      const parse = (/** @type {string} */ csv) => Evaluation.parseCsv(csv || '').cases;
+      const sets = { dev: parse(G.PolicyChangeHoldoutCsv), blind1: parse(G.PolicyChangeBlindCsv), blind2: parse(G.PolicyChangeBlind2Csv) };
+      const deps = { Engine, Learning: G.PolicyChangeLearning, Workflow, Evaluation };
+      ui.learnRows = G.PolicyChangeLearningEval.splits(sets).map((/** @type {any} */ s) => ({ s, r: G.PolicyChangeLearningEval.run({ train: s.trainCases, test: s.testCases, registry: Data.SEED_REGISTRY, ...deps }) }));
+      render();
+    },
     'eval-download': () => download('bao-cao-danh-gia.csv', '﻿' + Evaluation.toCsv(ui.evalReport), 'text/csv;charset=utf-8'),
     'export-json': () => download('so-kiem-toan-' + S.workspace.id + '.json', JSON.stringify(S.ledger, null, 2), 'application/json'),
     'export-csv': () => {

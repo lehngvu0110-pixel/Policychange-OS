@@ -425,3 +425,10 @@ table.mini tbody tr:last-child th{border-bottom:0}
 .metric-help div{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;background:var(--panel-2);display:flex;flex-direction:column;gap:2px;font-size:13px;color:var(--ink-2)}
 .metric-help b{color:var(--ink);font-size:14px}
 @media (max-width:640px){.metric-help{grid-template-columns:minmax(0,1fr)}}
+.demo-steps{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:2px}
+table.mini .chip{height:auto;min-height:24px;white-space:normal;margin:2px 0;line-height:1.4;padding:2px 8px}
+.nudge{margin-left:auto;display:inline-flex;gap:6px;flex-wrap:wrap}
+.others .who{padding:12px}
+.others>.xs{padding:0 12px 12px}
+.verdict .xs.muted{margin-top:-4px}
+@media (max-width:640px){.nudge{margin-left:0}}

@@ -56,6 +56,8 @@ ghi thêm và hoàn tác được.
 | TypeScript + Vite | Giữ JavaScript thuần để vẫn mở được bằng `file://`, nhưng kiểm kiểu bằng **JSDoc + `tsc --noEmit`** trong CI. Lý do: `docs/PHAN-HOI-BTC-SPRINT-1.md`. |
 | Chưa có E2E, chưa có kiểm thử tải | **Playwright** (luồng chính, phân quyền, 390 px sáng/tối) và `bench/load.cjs`. |
 | Yêu cầu nâng cao của Đề A | **Học từ phản hồi** (đề xuất cụm từ neo mới từ các câu trả lời U1, người duyệt rồi mới áp dụng) và **báo cáo độ chính xác** trên tập độc lập 48 ca (tỉ lệ bỏ sót, chuyển tiếp thừa, ma trận nhầm lẫn). |
+| Chứng minh vòng học chạy thật | **Minh hoạ 5** trọn vòng: hỏi → trả lời "Có" → đề xuất neo → duyệt (ghi sổ) → dòng mới tự sửa. **Thí nghiệm học neo** trên màn hình Đánh giá: học trên một tập, đo trên tập khác, công bố cả các cách chia không giảm. |
+| Người được hỏi biết bằng cách nào? | Câu tóm tắt và Hàng đợi duyệt gom câu hỏi theo người cần trả lời, kèm **Sao chép lời nhắn** / **Soạn email** có đường dẫn tới Hàng đợi (không tự gửi). |
 | Người duyệt bị hỏi lặp | **Gộp câu hỏi trùng**: cùng loại hồ sơ, cùng người có thẩm quyền, cùng mệnh đề chứa con số → một câu hỏi, trả lời một lần áp cho mọi vị trí; sổ vẫn ghi từng dòng, vòng học chỉ nhận một phản hồi. Minh hoạ 4 trên Tổng quan. |
 | Chưa có số đo chi phí người duyệt | **Đo thời gian quyết định** ngay trong ứng dụng (trung vị, mức 90 %, tải CSV) — số liệu cho buổi thử nghiệm và `docs/GIA-TRI-KINH-DOANH.md`. |
 | Giám khảo muốn thử tài liệu của mình | **Nạp tài liệu từ tệp .docx / .txt / .md**, đọc ngay trên trình duyệt, không gửi tệp đi đâu; hàng bảng thành một dòng "ô \| ô". |
@@ -84,9 +86,10 @@ Mở thẳng `index.html` bằng trình duyệt cũng chạy được.
 ```bash
 npm install                       # chỉ cần cho Playwright và TypeScript
 npm run verify                    # kiểm từng điều của QT-KSTL-01 v2.0 — bảng ĐẠT/TRƯỢT (không cần npm install)
-npm test                          # 219 unit test: động cơ, sổ, phân quyền, máy chủ, học, đánh giá, bộ điều khiển
+npm test                          # 261 unit test: động cơ, sổ, phân quyền, máy chủ, học, đánh giá, bộ điều khiển
 npm run eval:blind                # tập mù 40 ca (đóng băng, do tác tử độc lập viết)
 npm run eval:blind2               # tập mù số 2, 36 ca (đóng băng 04/10)
+npm run eval:learning             # thí nghiệm học neo: học trên một tập, đo trên tập khác
 npm run bench                     # benchmark 26 fixture (naive / LLM-only / PolicyChange OS)
 npm run eval                      # tập phát triển bench/holdout.csv
 npm run load                      # kiểm thử tải cục bộ
@@ -110,10 +113,16 @@ npx playwright install chromium && npm run e2e
   sai (H40, H47) được giữ lại làm bằng chứng giới hạn của lớp tiền định — cần lớp AI.
 - **Lớp AI (đo thật, Gemini 3.5 Flash-Lite miễn phí):** trên 24 dòng động cơ muốn tự sửa, AI giữ lại đúng 2 ca lớp tiền
   định bỏ sót (H40, H47) và không giữ oan dòng đúng nào → tập phát triển còn **0 sửa sai, 0 bỏ sót**. `npm run eval:ai`.
+- **Học neo, đo trung thực** (13/10): học trên một tập, đo trên tập khác không tham gia học; câu trả lời của người ở
+  tập học là **mô phỏng** (đúng theo nhãn). Học từ tập phát triển + tập mù số 2, đo trên tập mù số 1: báo lên thừa
+  **9/17 → 6/17**, không phát sinh sửa sai hay bỏ sót. Ba cách chia còn lại **không giảm** (từ đồng nghĩa ít lặp nên
+  không đủ 2 câu "Có" để đề xuất neo). `npm run eval:learning`; màn hình Đánh giá.
 - **Tải:** 2.400 tài liệu / 9.200 dòng phân tích trong ~30 ms; máy chủ lập kế hoạch ghi với sổ 10.000 bản ghi
   trong ~0,3 s (kiểm lại toàn chuỗi SHA-256 mỗi lần ghi). Số đo trên máy phát triển, chạy `npm run load` để tái lập.
 
 Toàn bộ dữ liệu là **dữ liệu tổng hợp** do nhóm tự soạn; các con số trên không phải tỉ lệ lỗi trên văn bản thật.
+
+**Thử nghiệm người dùng:** cách làm ở `docs/THU-NGHIEM-NGUOI-DUNG.md`; kết quả ghi ở `docs/KET-QUA-THU-NGHIEM.md` (đang thực hiện 13–15/10, chỉ điền số đo và lời nói thật).
 
 ## Kiến trúc tóm tắt
 
