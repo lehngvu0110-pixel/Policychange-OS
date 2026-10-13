@@ -1,40 +1,53 @@
-# Kịch bản thử nghiệm với nhân sự thật (Sprint 2)
+# Thử nghiệm với người dùng (Sprint 2, 13–15/10/2026)
 
-Mục tiêu: ít nhất **3 người** đang làm công việc văn bản/hành chính (chuyên viên phòng ban, trưởng/phó phòng,
-thư ký khoa…) dùng thử trên workspace `hcmut-pilot`, mỗi buổi 20–25 phút. Dữ liệu trong workspace là dữ liệu tổng
-hợp; không nhập văn bản thật có thông tin cá nhân.
+Mục tiêu theo thang điểm: **ít nhất 3 người** dùng thử, ghi **nguyên văn** điều họ nói, và chỉ ra **một cải tiến làm
+ra từ phản hồi của họ** (có commit). Mỗi buổi 15 phút. Kết quả ghi vào `docs/KET-QUA-THU-NGHIEM.md`.
 
-## Chuẩn bị (quản trị)
+## Quy tắc trung thực (bắt buộc)
 
-1. Tạo 3 tài khoản và cấp quyền theo `docs/SETUP-BACKEND.md` mục 2, ví dụ:
+- Ghi đúng người thử là ai: vai trò thật, có làm văn bản hành chính hay không. Một sinh viên đóng vai chuyên viên
+  được ghi là *sinh viên đóng vai chuyên viên*, không ghi là *chuyên viên*.
+- Chỉ trích những câu người thử thực sự nói hoặc viết. Không viết lại cho "hay hơn", không thêm người.
+- Câu chê cũng ghi. Thang điểm chấm 0 nếu báo cáo "không có bất cập nào".
+- Xin phép trước khi ghi tên. Nếu họ không muốn, ghi P1, P2, P3 kèm vai trò.
 
-   | Người | Cấp | Đơn vị |
-   |---|---|---|
-   | P1 | 1 · chuyên viên | Phòng Đào tạo, Cổng thông tin sinh viên |
-   | P2 | 2 · trưởng đơn vị | Phòng Đào tạo, Cổng thông tin sinh viên |
-   | P3 | 2 · trưởng đơn vị | Phòng Thanh tra – Pháp chế |
+**Nên tìm ai.** Tốt nhất là người đang soạn hoặc duyệt văn bản hành chính: thư ký văn phòng khoa, trợ giảng, anh chị
+trong BCH Đoàn – Hội khoa hay CLB đang ra thông báo, kế hoạch, biểu mẫu. Bạn bè chưa làm văn bản vẫn dùng được để thử
+độ dễ hiểu của giao diện, nhưng nên có ít nhất một người thật sự làm văn bản.
 
-2. Mỗi người mở ứng dụng trên máy của mình → **Đăng nhập (thí điểm)** → **Mở workspace thí điểm**.
+## Chuẩn bị (5 phút, không cần tài khoản)
+
+1. Mỗi người mở https://lehngvu0110-pixel.github.io/Policychange-OS/ trên máy hoặc điện thoại của họ, nhấn
+   Cmd+Shift+R (máy tính) để tải bản mới.
+2. Thanh bên → **Khôi phục dữ liệu mẫu**.
+3. Người quan sát mở `docs/KET-QUA-THU-NGHIEM.md` (hoặc giấy) để ghi. Không giải thích trước cách dùng; chỉ đọc nhiệm
+   vụ.
 
 ## Nhiệm vụ (người thử tự làm, người quan sát không gợi ý)
 
-| # | Ai | Nhiệm vụ | Quan sát |
-|---|---|---|---|
-| T1 | P2 | Gõ: “Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành.” → phân tích | Có hiểu 5 ô thống kê và đồ thị không? |
-| T2 | P1 | Mở **Hàng đợi duyệt** → trả lời hồ sơ U1 của HD-04 | Có trả lời được trong < 90 giây? Có hiểu câu hỏi? |
-| T3 | P3 | Trả lời hồ sơ U2 của QT-07 | Có thấy vì sao hồ sơ thuộc về mình? |
-| T4 | P1 | Thử bấm **Ban hành** | Có hiểu vì sao bị khoá? |
-| T5 | P2 | Ban hành → mở **Sổ kiểm toán** → hoàn tác một bản ghi | Có tin tưởng sổ kiểm toán? |
-| T6 | P2 | Mở **Sổ đăng ký & học**, thêm một cụm từ neo | Có hiểu tác dụng của neo? |
+| # | Nhiệm vụ đọc cho người thử | Quan sát và ghi |
+|---|---|---|
+| N1 | "Bạn là Trưởng phòng Đào tạo. Hạn nộp đơn phúc khảo đổi từ 7 xuống 5 ngày. Hãy cho hệ thống biết và xem nó định sửa những gì." | Có tìm ra mục Thay đổi quy định? Đọc câu tóm tắt có hiểu không? Mất bao lâu? |
+| N2 | "Chỗ nào máy không chắc? Vì sao nó hỏi?" | Người thử giải thích U1 / U2 / U3 bằng lời của họ — ghi nguyên văn |
+| N3 | "Đổi vai trò thành Chuyên viên Phòng Đào tạo và trả lời câu hỏi của bạn." | Trả lời trong bao lâu? Có chọn đúng ý mình không? |
+| N4 | "Thử ban hành với vai trò Chuyên viên." | Có hiểu vì sao bị khoá? |
+| N5 | "Quay lại Trưởng phòng, ban hành, rồi tìm xem ai đã sửa gì." | Có tìm ra Sổ kiểm toán? Có tin sổ này không? |
+| N6 | (Tuỳ chọn) "Nạp một văn bản của bạn (.docx) và thử đổi một con số trong đó." | Kết quả có hợp lý với văn bản thật của họ không? |
 
-## Phiếu ghi nhận (mỗi người)
+Cuối buổi, trên máy người thử: **Hàng đợi duyệt → Tải CSV** (tệp `thoi-gian-quyet-dinh.csv`, thời gian trả lời từng câu
+hỏi do ứng dụng tự đo). Gửi tệp về cho nhóm.
 
-- Thời gian hoàn thành từng nhiệm vụ; số lần hỏi người quan sát. Thời gian trả lời từng câu hỏi chuyển tiếp được
-  ứng dụng tự đo: cuối buổi, mở **Hàng đợi duyệt → Tải CSV** (tệp `thoi-gian-quyet-dinh.csv`) trên máy của từng người.
-- Thang 1–5: *Tôi hiểu vì sao hệ thống dừng lại hỏi tôi* · *Tôi tin các chỗ hệ thống tự sửa là đúng* ·
-  *Tôi sẵn sàng dùng công cụ này khi quy định đổi*.
-- Một điều làm bạn khó chịu nhất; một điều bạn muốn có thêm.
-- Có câu hỏi chuyển tiếp nào bạn trả lời khác với ý định thật không?
+## Ba câu hỏi phỏng vấn (ghi nguyên văn)
 
-Sau buổi thử: màn hình **Sổ đăng ký & học** hiển thị các phản hồi đã ghi; màn hình **Đánh giá** chạy lại tập độc lập để
-xem cơ chế học neo có làm giảm tỉ lệ chuyển tiếp thừa không. Ghi kết quả tổng hợp vào `BUILD_LOG.md`.
+1. "Chỗ nào làm bạn khó hiểu hoặc khó chịu nhất?"
+2. "Nếu được sửa một thứ, bạn sửa gì?"
+3. "Ở chỗ bạn làm, khi một quy định đổi thì hiện giờ mọi người cập nhật các văn bản khác thế nào?"
+
+Thang 1–5 (khoanh): *Tôi hiểu vì sao hệ thống dừng lại hỏi tôi* · *Tôi tin các chỗ hệ thống tự sửa* · *Tôi sẽ dùng nếu
+chỗ tôi làm có công cụ này*.
+
+## Sau buổi thử: biến phản hồi thành một cải tiến
+
+1. Chọn một góp ý mà nhiều người cùng gặp, hoặc một góp ý sửa được trong vài giờ.
+2. Sửa trên một nhánh riêng. Ghi trong commit message: `Theo phản hồi thử nghiệm P2 (13/10): "…nguyên văn…"`.
+3. Ghi vào mục 4 của `docs/KET-QUA-THU-NGHIEM.md`: góp ý gốc → đã sửa gì → commit nào.

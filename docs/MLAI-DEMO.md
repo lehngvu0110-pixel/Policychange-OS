@@ -70,8 +70,14 @@ Bản cập nhật 11/10/2026 cho Demo Day.
      vì "sửa sai". Vòng học neo cùng lớp AI là cách kéo con số này xuống.
    - Ở terminal: `npm run verify` in kết quả 14/14 điều của QT-KSTL-01.
 
-10. **Sổ đăng ký & học.** Mỗi quy định có neo chủ đề và neo đại lượng. Từ câu trả lời U1, hệ thống đề xuất đúng loại
-   neo còn thiếu; trưởng đơn vị duyệt; lần sau máy tự xử lý được.
+10. **Sổ đăng ký & học · Minh hoạ 5.** Mỗi quy định có neo chủ đề và neo đại lượng. Bấm **Chạy** ở *5 · Máy học từ
+   câu trả lời*: hai dòng viết "phúc tra" bị hỏi U1 → trả lời "Có" → hệ thống đề xuất neo «phúc tra», trưởng phòng duyệt
+   → một email mới cũng viết "phúc tra" được tự sửa, không hỏi lại. Khung tím ở đầu trang kể lại 4 bước.
+   - Trên **Đánh giá**, bấm **Chạy thí nghiệm học neo**. Nói thẳng: học trên tập này, đo trên tập khác; một cách chia
+     giảm báo lên thừa 9/17 → 6/17, ba cách còn lại chưa giảm vì từ đồng nghĩa ít lặp. Không cách nào làm phát sinh
+     sửa sai.
+   - Câu hỏi đang chờ người khác: nút **Sao chép lời nhắn** tạo tin nhắn có đường dẫn tới Hàng đợi để gửi qua Zalo /
+     Teams / email.
 
 ## Câu hỏi thường gặp
 

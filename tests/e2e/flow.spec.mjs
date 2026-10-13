@@ -317,3 +317,49 @@ test('Tổng quan: độ chính xác tính lại trên cả hai tập mù, khôn
   await expect(page.locator('table.mini b.bad')).toHaveCount(0);
   await expect(page.locator('.kinds .kind')).toHaveCount(4);
 });
+
+// ---------- Học từ phản hồi, đo trung thực, báo người cần trả lời (13/10/2026) ----------
+test('Minh hoạ 5: trả lời “Có” hai lần → học neo → dòng mới tự sửa, không hỏi lại; sổ ghi THÊM NEO', async ({ page }) => {
+  await open(page);
+  await page.locator('[data-action="demo-learn"]').click();
+  const banner = page.locator('.notice.sandbox');
+  await expect(banner).toContainText('Hệ thống đề xuất neo chủ đề «phúc tra»');
+  await expect(banner).toContainText('Máy tự sửa, không hỏi lại');
+  await expect(page.locator('.verdict')).toContainText('Không cần hỏi ai thêm. 1 thay đổi sẵn sàng ban hành.');
+  await expect(page.locator('article.prop')).toHaveCount(1);
+  await expect(page.locator('article.prop .tag.auto')).toBeVisible();
+  await page.goto(APP + '#/so-kiem-toan');
+  await expect(page.locator('tbody')).toContainText('THÊM NEO R-PK-01');
+  await page.getByRole('button', { name: 'Thoát minh hoạ' }).first().click();
+  await expect(page.locator('#connPill')).toContainText('Ngoại tuyến');
+});
+
+test('Đánh giá: thí nghiệm học neo — tập đo không tham gia học; học không gây sửa sai hay bỏ sót', async ({ page }) => {
+  await open(page, 'danh-gia');
+  await page.getByRole('button', { name: 'Chạy thí nghiệm học neo' }).click();
+  const rows = page.locator('#learning tbody tr');
+  await expect(rows).toHaveCount(4);
+  await expect(rows.nth(2)).toContainText('Tập phát triển + tập mù số 2 → Tập mù số 1');
+  await expect(rows.nth(2)).toContainText('9/17');
+  await expect(rows.nth(2)).toContainText('6/17');
+  await expect(page.locator('#learning b.bad')).toHaveCount(0);
+});
+
+test('báo người cần trả lời: lời nhắn có đúng người, đúng thay đổi và đường dẫn tới Hàng đợi', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await open(page);
+  await analyze(page);
+  const u2 = page.locator('.verdict .who li').filter({ hasText: 'Phòng Thanh tra' });
+  await u2.getByRole('button', { name: 'Sao chép lời nhắn' }).click();
+  await expect(page.locator('.toast').last()).toContainText('Đã sao chép lời nhắn');
+  const text = await page.evaluate(() => navigator.clipboard.readText());
+  expect(text).toContain('Trưởng đơn vị chủ quản · Phòng Thanh tra – Pháp chế');
+  expect(text).toContain('R-PK-01 “7 ngày” → “5 ngày”');
+  expect(text).toMatch(/#\/hang-doi/);
+  await expect(u2.getByRole('link', { name: 'Soạn email' })).toHaveAttribute('href', /^mailto:\?subject=/);
+  await expect(page.locator('.verdict')).toContainText('Đang ngoại tuyến');
+  // Hàng đợi: gom các câu hỏi đang chờ người khác.
+  await page.goto(APP + '#/hang-doi');
+  await page.getByText('câu hỏi đang chờ người khác — báo cho họ').click();
+  await expect(page.locator('.others .who li')).toHaveCount(2);
+});
