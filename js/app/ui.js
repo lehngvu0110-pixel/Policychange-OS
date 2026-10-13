@@ -365,7 +365,8 @@
           btn('sign-out', 'Đăng xuất', { cls: 'sm ghost' }) + '</div>'
         : btn('open-login', 'Đăng nhập (thí điểm)', { cls: 'sm ghost' })) : '') +
       (src !== 'sandbox' && (src === 'local' || S.workspace.mode === 'demo') ? btn('reset', 'Khôi phục dữ liệu mẫu', { cls: 'sm danger' }) : '') +
-      btn('open-help', 'Hướng dẫn & thuật ngữ', { cls: 'sm ghost', icon: 'help' });
+      btn('open-help', 'Hướng dẫn & thuật ngữ', { cls: 'sm ghost', icon: 'help' }) +
+      '<a class="btn sm ghost" href="./thu-nghiem.html" target="_blank" rel="noopener">Phiếu góp ý dùng thử</a>';
 
     const themeBtn = $('#themeBtn');
     const dark = document.documentElement.getAttribute('data-theme') === 'dark' ||

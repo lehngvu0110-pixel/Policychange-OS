@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Phiếu dùng thử · PolicyChange OS</title>
+<meta name="description" content="Phiếu góp ý 10 phút sau khi dùng thử PolicyChange OS.">
+<meta name="theme-color" content="#f3f5f9">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Crect width=%2224%22 height=%2224%22 rx=%226%22 fill=%22%232447d6%22/%3E%3Cpath d=%22m8 12 3 3 5-6%22 stroke=%22white%22 stroke-width=%222.4%22 fill=%22none%22 stroke-linecap=%22round%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="./css/app.css">
+<script>
+  try { var t = localStorage.getItem('policychange-os:theme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<style>
+  .form-page{max-width:760px;margin:0 auto;padding:24px 16px 80px;display:flex;flex-direction:column;gap:18px}
+  .form-page h1{font-size:clamp(22px,4vw,28px)}
+  .steps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+  fieldset{border:0;margin:0;padding:0;min-width:0}
+  legend{font-weight:650;font-size:15px;padding:0;margin-bottom:8px;color:var(--ink)}
+  .q{display:flex;flex-direction:column;gap:8px;padding:14px 0;border-bottom:1px solid var(--line)}
+  .q:last-child{border-bottom:0}
+  .q .hint{font-size:13px;color:var(--muted)}
+  .opts{display:flex;flex-wrap:wrap;gap:8px}
+  .opt{position:relative}
+  .opt input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+  .opt span{display:inline-flex;align-items:center;justify-content:center;min-height:40px;min-width:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line-2);background:var(--panel);font-weight:600;font-size:14px;color:var(--ink-2)}
+  .opt input:checked+span{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+  .opt input:focus-visible+span{outline:2.5px solid var(--brand);outline-offset:2px}
+  .scale{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .scale .end{font-size:12.5px;color:var(--muted)}
+  .task-text{font-size:14.5px}
+  .q.missing legend,.q.missing label.field{color:var(--del)}
+  .q.missing .opt span{border-color:var(--del)}
+  .done{padding:28px 20px;text-align:center}
+  .done b{display:block;font-size:20px;margin-bottom:6px}
+  .topline{display:flex;align-items:center;gap:10px}
+  .req{color:var(--del)}
+</style>
+</head>
+<body>
+<main class="form-page" id="main">
+  <div class="topline">
+    <span class="brand-mark" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span>
+    <span class="brand-name" translate="no">PolicyChange<span> OS</span></span>
+  </div>
+
+  <section class="card"><div class="card-body stack">
+    <div class="eyebrow">Phiếu dùng thử · khoảng 10 phút</div>
+    <h1>Nhờ anh/chị dùng thử và góp ý giúp em</h1>
+    <p>Em là Vũ, nhóm AbleMind (MLAI Hackathon 2026). Nhóm em làm một công cụ: khi một quy định thay đổi, nó tìm mọi văn bản đang nhắc tới quy định đó, <b>tự sửa chỗ chắc chắn</b> và <b>hỏi đúng người ở chỗ không chắc</b>. Anh/chị góp ý thật lòng giúp em, chê cũng được ạ.</p>
+    <ol class="steps">
+      <li>Bấm <b>Mở ứng dụng</b> (mở ở tab mới, nên dùng máy tính), rồi bấm <b>Khôi phục dữ liệu mẫu</b> ở menu bên trái.</li>
+      <li>Làm ba việc ở phần dưới. Chỗ nào vướng cứ ghi lại — đó chính là điều nhóm cần biết.</li>
+      <li>Quay lại tab này, điền phiếu và bấm <b>Gửi phiếu</b>.</li>
+    </ol>
+    <div class="row"><a class="btn primary" href="./index.html#/tong-quan" target="_blank" rel="noopener">Mở ứng dụng</a><span class="xs muted">Dữ liệu trong ứng dụng là văn bản mẫu; đừng nhập thông tin cá nhân hay văn bản mật.</span></div>
+  </div></section>
+
+  <div id="already" class="notice info" hidden><div class="grow small">Trình duyệt này đã gửi một phiếu lúc <b id="alreadyAt"></b>. Anh/chị vẫn có thể gửi thêm nếu muốn bổ sung.</div></div>
+
+  <form id="f" novalidate>
+    <section class="card"><div class="card-head"><h2>Thông tin</h2></div><div class="card-body">
+      <div class="q"><label class="field" for="ten">Tên <span class="hint">(không bắt buộc)</span><input id="ten" name="ten" type="text" autocomplete="name" maxlength="120"></label></div>
+      <div class="q" data-required="congViec"><label class="field" for="congViec">Công việc hiện tại <span class="req">*</span><span class="hint">Ví dụ: thư ký văn phòng khoa, chuyên viên phòng Đào tạo, BCH Đoàn khoa, sinh viên năm 2…</span><input id="congViec" name="congViec" type="text" maxlength="200"></label></div>
+      <div class="q" data-required="vanBan"><fieldset><legend>Anh/chị có hay soạn hoặc duyệt văn bản hành chính không? <span class="req">*</span></legend>
+        <div class="opts">
+          <label class="opt"><input type="radio" name="vanBan" value="co"><span>Có</span></label>
+          <label class="opt"><input type="radio" name="vanBan" value="thinh-thoang"><span>Thỉnh thoảng</span></label>
+          <label class="opt"><input type="radio" name="vanBan" value="khong"><span>Không</span></label>
+        </div></fieldset></div>
+    </div></section>
+
+    <section class="card"><div class="card-head"><h2>Ba việc cần làm</h2><p>Làm trong ứng dụng, rồi đánh dấu kết quả.</p></div><div class="card-body">
+      <div class="q" data-required="viec1"><fieldset><legend>1. Báo một thay đổi quy định <span class="req">*</span></legend>
+        <p class="task-text">Ở ô <b>Vai trò</b> trên cùng, chọn <b>Trưởng phòng Đào tạo</b>. Vào <b>Thay đổi quy định</b>, gõ: “Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành.” rồi xem máy định sửa gì.</p>
+        <div class="opts"><label class="opt"><input type="radio" name="viec1" value="duoc"><span>Làm được</span></label><label class="opt"><input type="radio" name="viec1" value="vuong"><span>Bị vướng</span></label></div></fieldset>
+        <label class="field" for="viec1Note">Vướng ở đâu? <span class="hint">(nếu có)</span><textarea id="viec1Note" name="viec1Note" maxlength="1500" rows="2"></textarea></label></div>
+      <div class="q" data-required="viec2"><fieldset><legend>2. Trả lời câu hỏi của mình <span class="req">*</span></legend>
+        <p class="task-text">Đổi <b>Vai trò</b> sang <b>Chuyên viên Phòng Đào tạo</b> và trả lời câu hỏi máy dành cho mình (chọn A hoặc B).</p>
+        <div class="opts"><label class="opt"><input type="radio" name="viec2" value="duoc"><span>Làm được</span></label><label class="opt"><input type="radio" name="viec2" value="vuong"><span>Bị vướng</span></label></div></fieldset>
+        <label class="field" for="viec2Note">Vướng ở đâu? <span class="hint">(nếu có)</span><textarea id="viec2Note" name="viec2Note" maxlength="1500" rows="2"></textarea></label></div>
+      <div class="q" data-required="viec3"><fieldset><legend>3. Ban hành và xem lại <span class="req">*</span></legend>
+        <p class="task-text">Đổi lại <b>Trưởng phòng Đào tạo</b>, bấm <b>Ban hành</b>, rồi vào <b>Sổ kiểm toán</b> xem máy đã ghi lại những gì.</p>
+        <div class="opts"><label class="opt"><input type="radio" name="viec3" value="duoc"><span>Làm được</span></label><label class="opt"><input type="radio" name="viec3" value="vuong"><span>Bị vướng</span></label></div></fieldset>
+        <label class="field" for="viec3Note">Vướng ở đâu? <span class="hint">(nếu có)</span><textarea id="viec3Note" name="viec3Note" maxlength="1500" rows="2"></textarea></label></div>
+    </div></section>
+
+    <section class="card"><div class="card-head"><h2>Anh/chị chấm giúp em</h2><p>1 = rất không đồng ý, 5 = rất đồng ý.</p></div><div class="card-body">
+      <div class="q" data-required="diemHieu"><fieldset><legend>Tôi hiểu vì sao máy dừng lại hỏi người. <span class="req">*</span></legend>
+        <div class="scale" id="scaleHieu"></div></fieldset></div>
+      <div class="q" data-required="diemDung"><fieldset><legend>Nếu nơi tôi làm có công cụ này, tôi sẽ dùng. <span class="req">*</span></legend>
+        <div class="scale" id="scaleDung"></div></fieldset></div>
+    </div></section>
+
+    <section class="card"><div class="card-head"><h2>Ba câu hỏi</h2><p>Viết ngắn thôi cũng được ạ.</p></div><div class="card-body">
+      <div class="q" data-required="cau1"><label class="field" for="cau1">1. Chỗ nào khó hiểu hoặc khó chịu nhất? <span class="req">*</span><textarea id="cau1" name="cau1" maxlength="2000" rows="3"></textarea></label></div>
+      <div class="q"><label class="field" for="cau2">2. Nếu được sửa một thứ, anh/chị sửa gì?<textarea id="cau2" name="cau2" maxlength="2000" rows="3"></textarea></label></div>
+      <div class="q"><label class="field" for="cau3">3. Ở chỗ anh/chị, khi một quy định đổi thì các văn bản khác (thông báo, biểu mẫu, hỏi đáp…) hiện được cập nhật thế nào?<textarea id="cau3" name="cau3" maxlength="2000" rows="3"></textarea></label></div>
+    </div></section>
+
+    <section class="card"><div class="card-body stack">
+      <div class="q" data-required="ghiTen"><fieldset><legend>Nhóm em được trích câu góp ý của anh/chị trong báo cáo nộp ban giám khảo kèm… <span class="req">*</span></legend>
+        <div class="opts">
+          <label class="opt"><input type="radio" name="ghiTen" value="ten"><span>Tên và công việc</span></label>
+          <label class="opt"><input type="radio" name="ghiTen" value="vai-tro"><span>Chỉ công việc</span></label>
+          <label class="opt"><input type="radio" name="ghiTen" value="khong"><span>Không trích</span></label>
+        </div><div class="hint">Nhóm trích nguyên văn, không sửa câu chữ.</div></fieldset></div>
+      <label class="check small" id="timingRow" hidden><input type="checkbox" id="sendTiming" checked><span id="timingText"></span></label>
+      <div class="row"><button class="btn primary" type="submit" id="submitBtn">Gửi phiếu</button><button class="btn ghost" type="button" id="copyBtn">Sao chép câu trả lời</button></div>
+      <p class="small" id="msg" role="status" aria-live="polite"></p>
+    </div></section>
+  </form>
+
+  <section class="card" id="thanks" hidden><div class="done"><b>Em cảm ơn anh/chị nhiều ạ!</b><span class="muted">Phiếu đã được gửi tới nhóm. Anh/chị có thể đóng trang này.</span></div></section>
+</main>
+
+<script src="./js/config.js"></script>
+<script>
+(function () {
+  'use strict';
+  var cfg = window.PolicyChangeConfig || {};
+  var $ = function (id) { return document.getElementById(id); };
+  var form = $('f');
+
+  // Thang 1–5 dựng bằng mã để hai câu dùng chung một mẫu.
+  [['scaleHieu', 'diemHieu'], ['scaleDung', 'diemDung']].forEach(function (pair) {
+    var box = $(pair[0]);
+    var html = '<span class="end">Rất không đồng ý</span>';
+    for (var i = 1; i <= 5; i++) html += '<label class="opt"><input type="radio" name="' + pair[1] + '" value="' + i + '"><span>' + i + '</span></label>';
+    box.innerHTML = html + '<span class="end">Rất đồng ý</span>';
+  });
+
+  function readLocal(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+  function writeLocal(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* bỏ qua */ } }
+
+  var SENT_KEY = 'policychange-os:test-submitted';
+  var sentAt = readLocal(SENT_KEY);
+  if (sentAt) { $('already').hidden = false; $('alreadyAt').textContent = new Date(sentAt).toLocaleString('vi-VN'); }
+
+  // Số đo thời gian trả lời câu hỏi do ứng dụng tự ghi trên trình duyệt này (cùng địa chỉ trang nên đọc được).
+  function timing() {
+    var rows;
+    try { rows = JSON.parse(readLocal('policychange-os:timings') || '[]'); } catch (e) { rows = []; }
+    if (!Array.isArray(rows)) rows = [];
+    var kept = rows.filter(function (r) { return r && typeof r.ms === 'number' && r.ms > 0 && r.ms <= 600000 && r.source !== 'sandbox'; }).slice(-50);
+    if (!kept.length) return null;
+    var ms = kept.map(function (r) { return r.ms; }).sort(function (a, b) { return a - b; });
+    var mid = Math.floor(ms.length / 2);
+    var median = ms.length % 2 ? ms[mid] : Math.round((ms[mid - 1] + ms[mid]) / 2);
+    return { n: kept.length, medianMs: median, rows: kept.map(function (r) { return { category: String(r.category || '').slice(0, 12), positions: Number(r.positions) || 1, ms: Math.round(r.ms) }; }) };
+  }
+  var t = timing();
+  if (t) {
+    $('timingRow').hidden = false;
+    $('timingText').textContent = 'Gửi kèm số đo thời gian trả lời câu hỏi trên trình duyệt này (' + t.n + ' câu trả lời, trung vị ' +
+      (t.medianMs / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + ' giây). Chỉ có số giây, không có thông tin cá nhân.';
+  }
+
+  function value(name) {
+    var el = form.elements[name];
+    if (!el) return '';
+    if (el instanceof RadioNodeList || (el.length && el[0] && el[0].type === 'radio')) { var c = form.querySelector('input[name="' + name + '"]:checked'); return c ? c.value : ''; }
+    return String(el.value || '').trim();
+  }
+  var FIELDS = ['ten', 'congViec', 'vanBan', 'viec1', 'viec1Note', 'viec2', 'viec2Note', 'viec3', 'viec3Note', 'diemHieu', 'diemDung', 'cau1', 'cau2', 'cau3', 'ghiTen'];
+  function answers() { var o = { phieu: 'v1-13-10-2026' }; FIELDS.forEach(function (k) { o[k] = value(k); }); return o; }
+
+  function validate() {
+    var first = null;
+    form.querySelectorAll('[data-required]').forEach(function (q) {
+      var missing = !value(q.getAttribute('data-required'));
+      q.classList.toggle('missing', missing);
+      if (missing && !first) first = q;
+    });
+    return first;
+  }
+  form.addEventListener('change', function (ev) { var q = ev.target.closest('.q.missing'); if (q && value(q.getAttribute('data-required'))) q.classList.remove('missing'); });
+
+  var LABELS = { ten: 'Tên', congViec: 'Công việc', vanBan: 'Soạn/duyệt văn bản', viec1: 'Việc 1', viec1Note: 'Việc 1 · vướng', viec2: 'Việc 2', viec2Note: 'Việc 2 · vướng',
+    viec3: 'Việc 3', viec3Note: 'Việc 3 · vướng', diemHieu: 'Hiểu vì sao máy hỏi (1–5)', diemDung: 'Sẽ dùng (1–5)', cau1: 'Khó hiểu nhất', cau2: 'Muốn sửa', cau3: 'Hiện cập nhật thế nào', ghiTen: 'Cho trích' };
+  function asText() { var a = answers(); return 'Phiếu dùng thử PolicyChange OS\n' + FIELDS.map(function (k) { return LABELS[k] + ': ' + (a[k] || '—'); }).join('\n'); }
+
+  $('copyBtn').addEventListener('click', function () {
+    var text = asText();
+    var done = function (ok) { $('msg').textContent = ok ? 'Đã sao chép. Anh/chị có thể dán gửi em qua Zalo.' : 'Không sao chép được trên trình duyệt này.'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+    else done(false);
+  });
+
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var missing = validate();
+    if (missing) {
+      $('msg').textContent = 'Anh/chị điền giúp em các mục có dấu * nhé.';
+      missing.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      var input = missing.querySelector('input, textarea'); if (input) input.focus({ preventScroll: true });
+      return;
+    }
+    if (!cfg.supabaseUrl || !cfg.anonKey) { $('msg').textContent = 'Trang này chưa nối máy chủ. Anh/chị bấm “Sao chép câu trả lời” rồi gửi em qua Zalo giúp em.'; return; }
+    var btn = $('submitBtn');
+    btn.disabled = true; $('msg').textContent = 'Đang gửi…';
+    var body = { answers: answers(), timing: $('sendTiming').checked && t ? t : null, user_agent: String(navigator.userAgent || '').slice(0, 400) };
+    fetch(cfg.supabaseUrl + '/rest/v1/user_test_responses', {
+      method: 'POST',
+      headers: { apikey: cfg.anonKey, Authorization: 'Bearer ' + cfg.anonKey, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      writeLocal(SENT_KEY, new Date().toISOString());
+      form.hidden = true; $('already').hidden = true; $('thanks').hidden = false;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }).catch(function () {
+      btn.disabled = false;
+      $('msg').textContent = 'Chưa gửi được (mạng hoặc máy chủ). Anh/chị thử lại, hoặc bấm “Sao chép câu trả lời” rồi gửi em qua Zalo giúp em.';
+    });
+  });
+})();
+</script>
+</body>
+</html>
