@@ -14,7 +14,7 @@ Chúng tôi xử lý theo hai hướng song song.
 
 **(a) Mô hình thật, schema ràng buộc, bộ chứng minh tất định giữ vai trò lớp kiểm tra**
 
-- `ai-extract` đọc câu yêu cầu tiếng Việt, `ai-discover` rà ngữ nghĩa. Cả hai gọi **OpenAI Structured Outputs** với JSON
+- `ai-extract` đọc câu yêu cầu tiếng Việt, `ai-discover` rà ngữ nghĩa. Cả hai gọi **Google Gemini 3.5 Flash-Lite** (qua endpoint tương thích OpenAI) với JSON
   schema `strict`, qua Edge Function. Khoá chỉ nằm ở máy chủ.
 - Mới trong đợt này: khi máy chủ có khoá, mô hình **tự động** rà mọi dòng sắp tự sửa trước khi ban hành
   (`app.ensureSemanticReview`), không cần ai nhớ bấm nút. Mô hình chỉ trả trích dẫn nguyên văn. Trích dẫn được kiểm
@@ -61,7 +61,7 @@ Chi tiết: `docs/PHUONG-PHAP-KIEM-CHUNG.md`.
 
 | # | Phản hồi | Đã làm | Kiểm chứng |
 |---|---|---|---|
-| 1 | Nối bộ chuyển đổi AI vào mô hình thật; giữ bộ chứng minh tất định làm lớp kiểm tra | OpenAI Structured Outputs qua `ai-extract` / `ai-discover`, tự rà trước khi ban hành, prover 14 điều kiện, validator trích dẫn | `tests/openai-mapping.test.cjs`, `tests/app-controller.test.cjs`, verify §5.4, §5.6 |
+| 1 | Nối bộ chuyển đổi AI vào mô hình thật; giữ bộ chứng minh tất định làm lớp kiểm tra | Gemini 3.5 Flash-Lite (schema ràng buộc) qua `ai-extract` / `ai-discover`, tự rà trước khi ban hành, prover 14 điều kiện, validator trích dẫn | `tests/openai-mapping.test.cjs`, `tests/app-controller.test.cjs`, verify §5.4, §5.6 |
 | 2 | Thêm backend nhỏ và CSDL để lịch sử thẩm định không mất khi tải lại trang | Supabase Postgres + RLS. Mọi ghi đi qua `policy-api`, chạy lại động cơ và gọi `apply_change` trong một giao dịch. Có hàng đợi duyệt dùng chung cho nhiều người. Mất mạng thì dùng IndexedDB | E2E "tải lại vẫn còn"; smoke test trên máy chủ thật (commit → 403 / 200 / 409) |
 | 3 | Bộ dữ liệu thử nội bộ ≥ 15 ca, cách diễn đạt cố tình đa dạng | **Tập mù 40 ca** (`bench/blind.csv`) gồm FAQ, chatbot, SMS không dấu, số viết bằng chữ, từ đồng nghĩa và bẫy chuỗi con, đóng băng SHA-256. Kèm tập phát triển 48 ca | `bench/BLIND-PROVENANCE.md`; kiểm thử khoá mã băm |
 | 4 | Đo tỷ lệ báo lên sai | Đo cả 3 chiều: **tự sửa sai**, **bỏ sót**, **báo lên thừa**, kèm ma trận nhầm lẫn và khoảng tin cậy | `npm run eval:blind`; màn hình Đánh giá; `docs/PHUONG-PHAP-KIEM-CHUNG.md` §4 |
