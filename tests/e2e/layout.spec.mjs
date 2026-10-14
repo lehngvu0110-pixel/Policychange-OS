@@ -12,6 +12,9 @@ for (const scheme of ['light', 'dark']) {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow, route).toBeLessThanOrEqual(0);
     }
+    await page.goto('/thu-nghiem.html');
+    const formOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(formOverflow, 'thu-nghiem').toBeLessThanOrEqual(0);
     expect(errors).toEqual([]);
   });
 }

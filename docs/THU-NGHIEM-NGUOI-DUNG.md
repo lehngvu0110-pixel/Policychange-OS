@@ -3,6 +3,20 @@
 Mục tiêu theo thang điểm: **ít nhất 3 người** dùng thử, ghi **nguyên văn** điều họ nói, và chỉ ra **một cải tiến làm
 ra từ phản hồi của họ** (có commit). Mỗi buổi 15 phút. Kết quả ghi vào `docs/KET-QUA-THU-NGHIEM.md`.
 
+## Cách nhanh nhất: gửi đường dẫn phiếu
+
+Gửi hàng loạt đường dẫn **https://lehngvu0110-pixel.github.io/Policychange-OS/thu-nghiem.html**. Phiếu tự hướng dẫn
+mở ứng dụng, giao ba việc, hỏi hai câu chấm điểm và ba câu hỏi mở. Người thử bấm **Gửi phiếu** là câu trả lời vào thẳng
+bảng `user_test_responses` trên Supabase (ai cũng gửi được, không ai đọc được qua API công khai; nhóm đọc bằng SQL trong
+Supabase). Nếu họ đồng ý, phiếu gửi kèm số đo thời gian trả lời câu hỏi đã đo trên trình duyệt của họ — không cần tải CSV.
+Mạng lỗi thì nút **Sao chép câu trả lời** cho phép dán gửi qua Zalo.
+
+Đọc kết quả (SQL Editor của Supabase):
+
+```sql
+select created_at, answers, timing from public.user_test_responses order by created_at;
+```
+
 ## Quy tắc trung thực (bắt buộc)
 
 - Ghi đúng người thử là ai: vai trò thật, có làm văn bản hành chính hay không. Một sinh viên đóng vai chuyên viên
