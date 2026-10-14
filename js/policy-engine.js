@@ -375,11 +375,11 @@
         let reason, plain;
         if (foreign.length) {
           outcome = 'ESCALATE'; cat = 'U2';
-          reason = 'Dòng này cũng được neo vào ' + foreign[0].id + ' — ' + foreign[0].name + ' (' + foreign[0].source + '). Giá trị cũ trùng nhau; cần người rà soát để tránh đổi quy định ngoài phạm vi.';
+          reason = 'Dòng này cũng được neo vào ' + foreign[0].id + ': ' + foreign[0].name + ' (' + foreign[0].source + '). Giá trị cũ trùng nhau; cần người rà soát để tránh đổi quy định ngoài phạm vi.';
           plain = 'Dòng này còn nhắc tới một quy định khác đang dùng cùng giá trị. Hệ thống giữ nguyên phân loại U2 và yêu cầu rà soát trước khi sửa.';
         } else if (doc.tier > change.issuerTier) {
           outcome = 'ESCALATE'; cat = 'U3';
-          reason = 'Tài liệu thuộc ' + TIER_LABEL[doc.tier] + ', do ' + doc.owner + ' ban hành — cao hơn cấp ban hành thay đổi (' + TIER_APPROVER[change.issuerTier] + ').';
+          reason = 'Tài liệu thuộc ' + TIER_LABEL[doc.tier] + ', do ' + doc.owner + ' ban hành, cao hơn cấp ban hành thay đổi (' + TIER_APPROVER[change.issuerTier] + ').';
           plain = 'Văn bản này do cấp trên ký ban hành. Người ra thay đổi lần này không có quyền sửa, phải trình đúng cấp.';
         } else if (variants.length) {
           // §5.3.b — giá trị viết khác dạng: nhận ra để không bỏ sót, nhưng không tự viết lại câu.
@@ -429,7 +429,7 @@
           id: 'P' + (++seq),
           docId: doc.id, docTitle: doc.title, docOwner: doc.owner, docTier: doc.tier,
           lineIndex: li, line, newLine, hits: variantOnly ? variants : hits, variants, variantOnly, outcome, category: cat, reason, plain,
-          citation: rule ? (rule.id + ' — ' + rule.source) : '—',
+          citation: rule ? (rule.id + ', ' + rule.source) : '—',
           decided: false, accepted: false, decisionLabel: null
         });
       });
@@ -447,7 +447,7 @@
   function measureHint(p, rule) {
     const cues = measuresOf(rule);
     if (!rule || !cues.length || measureCuesInLine(p.line, rule).length) return '';
-    return 'Quy định này đo ' + cues.slice(0, 3).map(c => '“' + c + '”').join(' / ') + '; dòng này không có cụm nào như vậy — nếu con số ở đây đo việc khác (ví dụ thời gian lưu, thời gian chờ kết quả) thì chọn Không. ';
+    return 'Quy định này đo ' + cues.slice(0, 3).map(c => '“' + c + '”').join(' / ') + '; dòng này không có cụm nào như vậy. Nếu con số ở đây đo việc khác (ví dụ thời gian lưu, thời gian chờ kết quả) thì chọn Không. ';
   }
 
   /**
@@ -460,30 +460,30 @@
     const who = TIER_APPROVER[p.docTier];
     if (p.category === 'U1') {
       return {
-        q: 'Tài liệu ' + p.docId + ' — ' + p.docTitle + ', dòng ' + (p.lineIndex + 1) + ': “' + p.line.trim() + '”. ' + (p.variants && p.variants.length ? 'Giá trị “' + change.oldValue + '” xuất hiện ở dạng khác (“' + p.variants[0].text + '”). ' : 'Giá trị “' + change.oldValue + '” ở đây chưa được xác định chắc chắn thuộc quy định nào. ') + 'Đề xuất đổi thành “' + change.newValue + '”. ' +
+        q: 'Tài liệu ' + p.docId + ' (' + p.docTitle + '), dòng ' + (p.lineIndex + 1) + ': “' + p.line.trim() + '”. ' + (p.variants && p.variants.length ? 'Giá trị “' + change.oldValue + '” xuất hiện ở dạng khác (“' + p.variants[0].text + '”). ' : 'Giá trị “' + change.oldValue + '” ở đây chưa được xác định chắc chắn thuộc quy định nào. ') + 'Đề xuất đổi thành “' + change.newValue + '”. ' +
            measureHint(p, rule) +
            'Chuyên viên phụ trách tài liệu quyết định: giá trị này có thuộc ' + (rule ? rule.name.toLowerCase() : 'quy định vừa sửa') + ' không?',
-        a: 'Có — sửa thành “' + change.newValue + '”',
-        b: 'Không — giữ nguyên “' + change.oldValue + '”'
+        a: 'Có, sửa thành “' + change.newValue + '”',
+        b: 'Không, giữ nguyên “' + change.oldValue + '”'
       };
     }
     // QT-KSTL-01 §6.1: mọi câu hỏi nêu đủ mã tài liệu, số dòng, trích nguyên văn, giá trị cũ và giá trị mới đề xuất.
-    const where = 'Tài liệu ' + p.docId + ' — ' + p.docTitle + ', dòng ' + (p.lineIndex + 1) + ': “' + p.line.trim() + '”. ';
+    const where = 'Tài liệu ' + p.docId + ' (' + p.docTitle + '), dòng ' + (p.lineIndex + 1) + ': “' + p.line.trim() + '”. ';
     const proposal = 'Đề xuất đổi “' + change.oldValue + '” → “' + change.newValue + '”';
     if (p.category === 'U2') {
       const low = p.line.toLowerCase();
       const other = (registry || []).find(r => r.id !== (rule ? rule.id : null) && r.aliases.some(a => low.includes(a.toLowerCase())));
       return {
-        q: where + 'Dòng này đang diễn đạt ' + (other ? other.id + ' — ' + other.name + ' (' + other.source + ')' : 'một quy định khác') + ', hiện vẫn giữ giá trị ' + (other ? other.value : change.oldValue) + '. ' +
+        q: where + 'Dòng này đang diễn đạt ' + (other ? other.id + ' (' + other.name + ', ' + other.source + ')' : 'một quy định khác') + ', hiện vẫn giữ giá trị ' + (other ? other.value : change.oldValue) + '. ' +
            proposal + ' tại đây sẽ thay đổi cả quy định đó. ' + (other ? other.owner : who) + ' quyết định: có sửa kèm không?',
-        a: 'Không — chỉ sửa ' + (rule ? rule.id : 'quy định đích') + ', giữ nguyên dòng này',
-        b: 'Có — sửa cả ' + (other ? other.id : 'quy định kia') + ' và ghi nhận là sửa đổi có chủ đích'
+        a: 'Không, chỉ sửa ' + (rule ? rule.id : 'quy định đích') + ', giữ nguyên dòng này',
+        b: 'Có, sửa cả ' + (other ? other.id : 'quy định kia') + ' và ghi nhận là sửa đổi có chủ đích'
       };
     }
     return {
       q: where + 'Văn bản do ' + p.docOwner + ' ban hành ở ' + TIER_LABEL[p.docTier] + ', cao hơn cấp ra thay đổi lần này (' + TIER_APPROVER[change.issuerTier] + '). ' +
          proposal + ' đã bị khoá quyền sửa. ' + TIER_APPROVER[p.docTier] + ' quyết định: xử lý thế nào?',
-      a: 'Từ chối — giữ nguyên, yêu cầu ban hành quyết định sửa đổi đúng cấp',
+      a: 'Từ chối: giữ nguyên, yêu cầu ban hành quyết định sửa đổi đúng cấp',
       b: 'Chấp thuận sửa ngay và ghi nhận ngoại lệ có phê duyệt'
     };
   }
@@ -539,11 +539,11 @@
     if (!candidates.length) {
       const anyValue = (registry || []).some(r => parseValue(r.value).num === oldNum);
       return { ok: false, msg: anyValue
-        ? 'Có nhiều quy định đang mang giá trị “' + oldV + '”. Câu lệnh chưa nêu rõ quy định nào — hãy chọn ở ô bên trái.'
+        ? 'Có nhiều quy định đang mang giá trị “' + oldV + '”. Câu lệnh chưa nêu rõ quy định nào. Hãy chọn ở ô bên trái.'
         : 'Không có quy định nào trong sổ đăng ký đang mang giá trị “' + oldV + '”. Hệ thống từ chối xử lý để tránh sửa nhầm.' };
     }
     if (candidates.length > 1 && candidates[0].score === candidates[1].score) {
-      return { ok: false, msg: 'Câu lệnh có thể khớp với nhiều quy định. Chưa rõ policy đích — hãy chọn một quy định cụ thể.' };
+      return { ok: false, msg: 'Câu lệnh có thể khớp với nhiều quy định. Chưa rõ quy định đích, hãy chọn một quy định cụ thể.' };
     }
     return { ok: true, ruleId: candidates[0].r.id, oldValue: oldV, newValue: newV, issuerTier, ...(unitBorrowed ? { unitBorrowed: true } : {}) };
   }

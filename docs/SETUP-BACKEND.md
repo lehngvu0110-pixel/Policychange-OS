@@ -4,7 +4,7 @@ Dự án Supabase `rsenhrsrzylubjavkqxs` đã có sẵn schema, dữ liệu mẫ
 `ai-extract`, `ai-discover`). Ứng dụng tự kết nối qua `js/config.js`. Phần dưới là những việc **nhóm tự làm**,
 vì liên quan tới khoá bí mật hoặc tài khoản người thật.
 
-## 1. Bật AI thật — dán khoá OpenAI (2 phút)
+## 1. Bật AI thật: dán khoá OpenAI (2 phút)
 
 1. Vào Supabase Dashboard → dự án → **Edge Functions** → **Secrets** (hoặc *Project Settings → Edge Functions*).
 2. Thêm secret:
@@ -55,7 +55,7 @@ Workspace `hcmut-pilot` bắt buộc đăng nhập. Mỗi người thử nghiệ
 
    ```sql
    insert into public.members (workspace_id, user_id, display_name, tier, units)
-   select 'hcmut-pilot', id, 'Nguyễn Văn A — Trưởng phòng Đào tạo', 2,
+   select 'hcmut-pilot', id, 'Nguyễn Văn A, Trưởng phòng Đào tạo', 2,
           array['Phòng Đào tạo', 'Cổng thông tin sinh viên']
    from auth.users where email = 'a@hcmut.edu.vn';
    ```
@@ -63,7 +63,7 @@ Workspace `hcmut-pilot` bắt buộc đăng nhập. Mỗi người thử nghiệ
    - `tier`: 1 = chuyên viên, 2 = trưởng đơn vị, 3 = Hiệu trưởng / Hội đồng Trường.
    - `units`: tên đơn vị **trùng khớp** với cột `owner` của tài liệu/quy định (xem màn hình Kho tài liệu);
      `array['*']` = toàn trường.
-   - Đổi quyền: `update public.members set tier = ..., units = ... where ...;` — xoá: `delete from public.members where ...;`
+   - Đổi quyền: `update public.members set tier = ..., units = ... where ...;`. Xoá: `delete from public.members where ...;`
 
 4. Người dùng mở ứng dụng → **Đăng nhập (thí điểm)** ở thanh bên → sau khi đăng nhập bấm **Mở workspace thí điểm**.
 

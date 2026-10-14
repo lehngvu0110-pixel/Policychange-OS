@@ -1,4 +1,4 @@
-# Báo cáo kiểm thử PolicyChange OS — bản đã sửa
+# Báo cáo kiểm thử PolicyChange OS (bản đã sửa)
 
 Báo cáo gốc: kiểm thử độc lập ngày 02/10/2026 tại commit `60b419e`, chạy trên Windows. Bản này giữ nguyên các phát hiện
 và ghi thêm cách đã sửa, test chứng minh và kết quả chạy lại. Nhánh sửa: `claude/fix-bao-cao-kiem-thu`, 3 commit
@@ -23,7 +23,7 @@ hiện thêm khi rà soát mã").
 
 ## Từng lỗi
 
-### F01 · P1 · Rà soát lại thất bại làm mất yêu cầu người duyệt — ĐÃ SỬA
+### F01 · P1 · Rà soát lại thất bại làm mất yêu cầu người duyệt: ĐÃ SỬA
 
 - `js/semantic-discovery.js`: các lượt rà không thành (không có AI, hết giờ, lỗi mạng, bằng chứng bị loại) giữ nguyên
   từng đề xuất. Trước đây chúng xoá bằng chứng và đặt `semanticHold:false`.
@@ -36,7 +36,7 @@ hiện thêm khi rà soát mã").
   - Test thứ hai cho trường hợp lượt rà tự động ngay trước Ban hành bị lỗi.
   - `semantic-discovery.test.cjs` kiểm cả 4 kiểu thất bại.
 
-### F02 · P1 · Câu mới bị từ chối nhưng còn kết quả cũ và nút Ban hành — ĐÃ SỬA
+### F02 · P1 · Câu mới bị từ chối nhưng còn kết quả cũ và nút Ban hành: ĐÃ SỬA
 
 - Mỗi phân tích lưu dấu vân tay của biểu mẫu: quy định, giá trị mới, cấp, câu yêu cầu. `commit()` từ chối nếu biểu mẫu
   hiện tại khác dấu này.
@@ -48,7 +48,7 @@ hiện thêm khi rà soát mã").
 - **Test:** `F02: biểu mẫu khác với phân tích → không ban hành` (controller). E2E `F02: câu mới bị từ chối…` đúng kịch bản
   demo 2 → demo 3 của báo cáo. E2E `F02: sửa câu yêu cầu sau khi phân tích → khoá Ban hành`.
 
-### F03 · P2 · AI thật ghi đè dữ liệu mẫu trong minh hoạ giữ lại — ĐÃ SỬA
+### F03 · P2 · AI thật ghi đè dữ liệu mẫu trong minh hoạ giữ lại: ĐÃ SỬA
 
 - Mỗi lượt rà có mã lượt. Chỉ lượt bắt đầu sau cùng được ghi vào phân tích; lượt cũ về muộn bị bỏ.
 - Minh hoạ 1 và 2 không tự gọi AI song song nữa:
@@ -56,7 +56,7 @@ hiện thêm khi rà soát mã").
   - minh hoạ 1 rà ngay lúc Ban hành và báo đúng khi AI giữ lại dòng.
 - **Test:** `F03: kết quả của lượt rà cũ về muộn bị bỏ, không ghi đè lượt mới hơn`.
 
-### F04 · P2 · Thoát minh hoạ làm hàng đợi dùng chung trống — ĐÃ SỬA
+### F04 · P2 · Thoát minh hoạ làm hàng đợi dùng chung trống: ĐÃ SỬA
 
 - Lúc vào minh hoạ, ảnh chụp trạng thái lưu thêm `openChanges`, `decisions`, người đăng nhập và cờ dữ liệu cũ. Thoát ra
   thì khôi phục, rồi kiểm tra máy chủ xem có ai vừa ghi không.
@@ -68,7 +68,7 @@ hiện thêm khi rà soát mã").
   - `phân tích có lượt rà đang chạy khi vào minh hoạ: thoát ra không kẹt`;
   - E2E `ghé minh hoạ giữa chừng rồi thoát…`: sau khi chạy minh hoạ 2 và 3, quyết định U1 còn và vẫn ban hành được 6 dòng.
 
-### F05 · P2 · Tải lại trang trở về workspace Trình diễn — ĐÃ SỬA
+### F05 · P2 · Tải lại trang trở về workspace Trình diễn: ĐÃ SỬA
 
 - Trình duyệt nhớ workspace đã mở. Nếu chưa nhớ gì mà còn phiên đăng nhập thì mở thẳng `hcmut-pilot`.
 - Khi không có quyền đọc workspace đã nhớ, ví dụ vì phiên đã hết hạn, hệ thống lùi về Trình diễn và báo rõ. Lựa chọn lùi
@@ -78,7 +78,7 @@ hiện thêm khi rà soát mã").
 - **Test:** `F05: khởi động mở lại workspace đã chọn…`, `F05: lỗi máy chủ tạm thời không đổi workspace…`, E2E `F05: tải
   lại trang giữ lựa chọn nguồn dữ liệu`.
 
-### F06 · P2 · Câu "từ 7 xuống 5 ngày" không hiểu được — ĐÃ SỬA
+### F06 · P2 · Câu "từ 7 xuống 5 ngày" không hiểu được: ĐÃ SỬA
 
 - Nguyên nhân đã tách được, nằm ở **cả hai lớp**:
   - bộ phân tích tiền định bóc ra "7" không có đơn vị;
@@ -91,7 +91,7 @@ hiện thêm khi rà soát mã").
   khi phân tích.
 - **Test:** 2 test ở `policy-ai.test.cjs` (validator AI và luồng đầy đủ), 1 test ở `policy-engine.test.cjs`, E2E `F06`.
 
-### F07 · P3 · Thông báo trạng thái gây hiểu nhầm — ĐÃ SỬA (cả 4 ý)
+### F07 · P3 · Thông báo trạng thái gây hiểu nhầm: ĐÃ SỬA (cả 4 ý)
 
 - **Cảnh báo dữ liệu cũ:** sau chính lần ban hành của mình, trang không còn cảnh báo "kho đã thay đổi". Ở chế độ dùng
   chung, hệ thống chỉ coi là "của mình" khi sổ trên máy chủ dài thêm đúng số bản ghi vừa ghi. Có người khác ghi xen vào
@@ -108,7 +108,7 @@ hiện thêm khi rà soát mã").
 - **Test:** `F07: sau chính lần Ban hành của mình…` (controller và E2E), `F07: ca Verify TC-04 từ chối đúng vì giá trị
   ngoài sổ`.
 
-### F08 · P3 · Test đồng bộ holdout không ổn định trên Windows — ĐÃ SỬA
+### F08 · P3 · Test đồng bộ holdout không ổn định trên Windows: ĐÃ SỬA
 
 - Thêm `.gitattributes`: tệp văn bản dùng LF. Riêng `bench/blind.csv` được đánh dấu `-text`, nên git giữ nguyên từng
   byte.
