@@ -330,7 +330,7 @@
     const ai = $('#aiPill');
     ai.className = 'pill ai ' + (S.ai.status === 'ready' ? 'ai-ready' : '');
     ai.innerHTML = '<span class="dot" aria-hidden="true"></span><span class="t">' +
-      esc(S.ai.status === 'ready' ? 'AI · ' + (S.ai.model || 'OpenAI') : S.ai.status === 'checking' ? 'AI · đang kiểm tra…' : 'AI · tắt (tiền định)') + '</span>';
+      esc(S.ai.status === 'ready' ? 'AI · ' + (S.ai.model || 'Gemini') : S.ai.status === 'checking' ? 'AI · đang kiểm tra…' : 'AI · tắt (tiền định)') + '</span>';
     ai.title = S.ai.reason || '';
 
     const live = src === 'remote' && S.workspace.mode === 'live';
@@ -432,7 +432,7 @@
         btn('demo-safe', 'Xem minh hoạ 3 phút', { icon: 'spark' }) + btn('open-help', 'Cách dùng trong 1 phút', { cls: 'ghost', icon: 'help' }) + '</div>' +
       '</div><div class="hero-status small" aria-label="Trạng thái">' +
         '<div class="row"><span class="muted">Dữ liệu</span><b>' + esc(S.source === 'remote' ? 'Dùng chung · ' + S.workspace.name : S.source === 'sandbox' ? 'Minh hoạ' : 'Trên máy này') + '</b></div>' +
-        '<div class="row"><span class="muted">AI</span><b>' + esc(S.ai.status === 'ready' ? 'Bật · ' + (S.ai.model || 'OpenAI') : 'Tắt, dùng động cơ tiền định') + '</b></div>' +
+        '<div class="row"><span class="muted">AI</span><b>' + esc(S.ai.status === 'ready' ? 'Bật · ' + (S.ai.model || 'Gemini') : 'Tắt, dùng động cơ tiền định') + '</b></div>' +
         '<div class="row"><span class="muted">Vai trò</span><b>' + esc(m ? m.displayName + ' · cấp ' + m.tier : 'Chưa xác định') + '</b></div>' +
         '<div class="row"><span class="muted">Sổ kiểm toán</span>' + (chainOk ? '<span class="tag auto">✓ Chuỗi SHA-256 hợp lệ</span>' : '<span class="tag U3">✗ Chuỗi hỏng</span>') + '</div>' +
       '</div></section>' +

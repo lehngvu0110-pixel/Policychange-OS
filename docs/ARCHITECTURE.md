@@ -92,7 +92,7 @@ bắt buộc đăng nhập, cấp và đơn vị lấy từ bảng `members` do 
 - Bảng chỉ có policy **SELECT** cho `anon/authenticated`; không vai trò client nào INSERT/UPDATE/DELETE được.
 - `apply_change`, `reset_demo_workspace`, `consume_ai_quota` chỉ cấp cho `service_role`. Hàm hỗ trợ RLS nằm ở schema
   `private` (không phơi qua `/rest/v1/rpc`). Supabase security advisor: không còn cảnh báo.
-- `OPENAI_API_KEY` chỉ nằm trong Secrets của Edge Function. Khoá `anon` trong `js/config.js` là khoá công khai theo
+- Khoá AI (`AI_API_KEY` cho Gemini, hoặc `OPENAI_API_KEY`) chỉ nằm trong Secrets của Edge Function. Khoá `anon` trong `js/config.js` là khoá công khai theo
   thiết kế của Supabase.
 - Mọi chuỗi từ dữ liệu được thoát HTML trước khi chèn vào giao diện (`esc`). Nội dung tài liệu và câu yêu cầu được
   đánh dấu là dữ liệu trong prompt; mô hình được dặn bỏ qua mệnh lệnh nằm trong đó, và dù có làm theo thì đầu ra vẫn

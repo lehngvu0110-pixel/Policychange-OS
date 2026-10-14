@@ -1,27 +1,12 @@
-# Cài đặt backend (Supabase + OpenAI)
+# Cài đặt backend (Supabase + Gemini)
 
 Dự án Supabase `rsenhrsrzylubjavkqxs` đã có sẵn schema, dữ liệu mẫu và ba Edge Function (`policy-api`,
 `ai-extract`, `ai-discover`). Ứng dụng tự kết nối qua `js/config.js`. Phần dưới là những việc **nhóm tự làm**,
 vì liên quan tới khoá bí mật hoặc tài khoản người thật.
 
-## 1. Bật AI thật: dán khoá OpenAI (2 phút)
+## 1. Bật AI thật: Google Gemini, gói miễn phí (2 phút)
 
-1. Vào Supabase Dashboard → dự án → **Edge Functions** → **Secrets** (hoặc *Project Settings → Edge Functions*).
-2. Thêm secret:
-
-   | Tên | Giá trị | Bắt buộc |
-   |---|---|---|
-   | `OPENAI_API_KEY` | khoá `sk-...` của nhóm | có |
-   | `OPENAI_MODEL` | ví dụ `gpt-4o-mini` (mặc định) hoặc model khác hỗ trợ Structured Outputs | không |
-   | `AI_DAILY_LIMIT` | số lượt gọi AI tối đa mỗi ngày cho cả hệ thống, mặc định `300` | không |
-   | `AI_CLIENT_LIMIT` | số lượt tối đa mỗi ngày cho một máy khách (theo IP đã băm), mặc định `40` | không |
-
-3. Mở ứng dụng, tải lại trang: ô **AI** trên thanh trên cùng chuyển thành “AI · gpt-4o-mini”.
-   Nút **Hiểu yêu cầu bằng AI** và **Rà soát ngữ nghĩa bằng AI** bắt đầu gọi mô hình thật.
-
-### Không có tiền? Dùng gói miễn phí của Google Gemini
-
-Hệ thống gọi mô hình qua API chuẩn OpenAI, nên đổi nhà cung cấp chỉ cần đổi Secrets, không cần sửa mã:
+Nhóm đang dùng cách này. Hệ thống gọi mô hình qua API chuẩn OpenAI, nên đổi nhà cung cấp chỉ cần đổi Secrets, không cần sửa mã:
 
 1. Vào https://aistudio.google.com/apikey (đăng nhập Gmail) → **Create API key** → copy khoá.
 2. Trong Supabase → Edge Functions → Secrets, thêm:
@@ -32,13 +17,33 @@ Hệ thống gọi mô hình qua API chuẩn OpenAI, nên đổi nhà cung cấp
    | `AI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai` |
    | `AI_MODEL` | `gemini-3.5-flash-lite` (không bắt buộc; mặc định khi trỏ tới Gemini) |
 
-3. Xoá secret `OPENAI_API_KEY` cũ nếu không dùng nữa (`AI_API_KEY` được ưu tiên nếu có cả hai).
+3. Mở ứng dụng, tải lại trang: ô **AI** trên thanh trên cùng hiện tên mô hình Gemini. Nếu còn secret `OPENAI_API_KEY` cũ thì xoá đi (`AI_API_KEY` được ưu tiên nếu có cả hai).
 
 Lưu ý: ở gói miễn phí, Google có thể dùng nội dung gửi lên để cải thiện sản phẩm. Dữ liệu demo là dữ liệu tổng hợp nên
 không sao; khi thí điểm với văn bản thật của trường thì cân nhắc gói trả phí hoặc chỉ gửi văn bản đã công khai.
 
+Hạn mức gọi AI (dùng cho cả hai cách, đều không bắt buộc):
+
+| Tên | Giá trị |
+|---|---|
+| `AI_DAILY_LIMIT` | số lượt gọi AI tối đa mỗi ngày cho cả hệ thống, mặc định `300` |
+| `AI_CLIENT_LIMIT` | số lượt tối đa mỗi ngày cho một máy khách (theo IP đã băm), mặc định `40` |
+
+### Phương án thay thế: dùng khoá OpenAI
+
+1. Vào Supabase Dashboard → dự án → **Edge Functions** → **Secrets** (hoặc *Project Settings → Edge Functions*).
+2. Thêm secret:
+
+   | Tên | Giá trị | Bắt buộc |
+   |---|---|---|
+   | `OPENAI_API_KEY` | khoá `sk-...` của nhóm | có |
+   | `OPENAI_MODEL` | ví dụ `gpt-4o-mini` (mặc định) hoặc model khác hỗ trợ Structured Outputs | không |
+
+3. Mở ứng dụng, tải lại trang: ô **AI** trên thanh trên cùng chuyển thành “AI · gpt-4o-mini”.
+   Nút **Hiểu yêu cầu bằng AI** và **Rà soát ngữ nghĩa bằng AI** bắt đầu gọi mô hình thật.
+
 Khoá chỉ nằm ở máy chủ; trình duyệt không bao giờ nhận được. **Không** dán khoá vào `js/config.js` hay commit lên
-GitHub. Nếu lỡ lộ khoá, thu hồi ngay trên trang OpenAI rồi dán khoá mới vào Secrets.
+GitHub. Nếu lỡ lộ khoá, thu hồi ngay trên trang của nhà cung cấp (Google AI Studio hoặc OpenAI) rồi dán khoá mới vào Secrets.
 
 Kiểm tra nhanh chi phí: mỗi lần “Hiểu yêu cầu” là 1 lượt; mỗi lần “Rà soát ngữ nghĩa” là 1 lượt cho cả tập vị trí.
 Hạn mức ngày được đếm trong bảng `ai_usage` (toàn hệ thống) và `ai_usage_clients` (theo máy khách).

@@ -32,8 +32,8 @@ E2E “tải lại vẫn còn” trong `tests/e2e/flow.spec.mjs`; kiểm thử S
 **Đúng.** Sprint 1 chỉ có khe adapter và parser tiền định.
 
 **Đã làm:**
-- `ai-extract` (hiểu câu yêu cầu) và `ai-discover` (rà soát ngữ nghĩa) gọi **OpenAI Chat Completions với Structured
-  Outputs** (`json_schema`, `strict`). Khoá chỉ nằm trong Secrets của Edge Function.
+- `ai-extract` (hiểu câu yêu cầu) và `ai-discover` (rà soát ngữ nghĩa) gọi mô hình qua **API Chat Completions chuẩn OpenAI với Structured
+  Outputs** (`json_schema`, `strict`); nhóm đang dùng **Google Gemini 3.5 Flash-Lite** qua endpoint tương thích. Khoá chỉ nằm trong Secrets của Edge Function.
 - Thiết kế chống ảo giác: mô hình chỉ được trả **trích dẫn nguyên văn**; mã tự tìm vị trí. Đầu ra đi qua đúng
   validator đã có ở Sprint 1 (`policy-ai.js#validateOutput`, `semantic-discovery.js#validateCandidates`).
 - AI không có quyền phân loại hay ban hành: chỉ có thể giữ một AUTO_PATCH lại cho người duyệt.

@@ -25,18 +25,24 @@ chắc chắn, hoặc **dừng lại và hỏi đúng một câu, cho đúng ng�
 | **U2** · ngoài phạm vi | Dòng đang nói về một quy định **khác** cùng giá trị | Trưởng đơn vị sở hữu quy định bị đụng |
 | **U3** · vượt thẩm quyền | Tài liệu do cấp cao hơn cấp ra thay đổi ban hành | Người đủ cấp của đơn vị ban hành tài liệu |
 
-Quy trình mà phần mềm thi hành được viết thành văn bản quy định **QT-KSTL-01 v2.0** (`docs/QT-KSTL-01_Quy-trinh-kiem-soat-tai-lieu.md`);
-`npm run verify` kiểm từng điều của nó. Động cơ tiền định là nơi duy nhất quyết định tự sửa hay chuyển người, và chỉ tự
-sửa khi dòng có **cả neo chủ đề lẫn neo đại lượng**. Một bộ **prover** độc lập kiểm 14 điều kiện trước mỗi bản vá tự động. **AI (OpenAI)** chỉ làm hai việc: hiểu câu yêu cầu tiếng Việt và **tự động** rà soát ngữ nghĩa
-mọi vị trí động cơ định tự sửa trước khi ban hành; AI chỉ được trả **trích dẫn nguyên văn** và chỉ có thể làm kết quả **thận trọng
-hơn**, không bao giờ biến một ca chuyển tiếp thành tự sửa. Mọi thay đổi ghi vào **sổ kiểm toán SHA-256** chỉ
-ghi thêm và hoàn tác được.
+Quy trình mà phần mềm thi hành được viết thành văn bản **QT-KSTL-01 v2.0** (`docs/QT-KSTL-01_Quy-trinh-kiem-soat-tai-lieu.md`).
+Lệnh `npm run verify` kiểm từng điều của văn bản này.
+
+- **Động cơ tiền định** là nơi duy nhất quyết định tự sửa hay hỏi người. Máy chỉ tự sửa khi dòng có **neo chủ đề**
+  (dòng nói về việc gì) và **neo đại lượng** (con số đo cái gì), hoặc khi neo chủ đề đứng ngay trước thời hạn hay hạn
+  mức đó, như “phúc khảo trong 7 ngày”.
+- Một bộ **prover** độc lập kiểm 14 điều kiện trước mỗi lần máy tự sửa; thiếu một điều kiện là chặn.
+- **AI (Google Gemini 3.5 Flash-Lite)** chỉ làm hai việc: hiểu câu yêu cầu tiếng Việt, và rà lại mọi dòng máy định tự
+  sửa trước khi ban hành. AI chỉ được trả **trích dẫn nguyên văn** và chỉ có thể giữ một dòng lại cho người xem, không
+  bao giờ tự sửa thay người. Khi không có AI (chạy ngoại tuyến), hệ thống dùng bộ phân tích tiếng Việt tiền định.
+- Mọi thay đổi ghi vào **sổ kiểm toán SHA-256** chỉ ghi thêm. Người đủ quyền hoàn tác được, và mỗi lần hoàn tác cũng là
+  một bản ghi mới.
 
 ## Đã sửa theo phản hồi doanh nghiệp (Sprint 1)
 
 | Phản hồi | Đã làm | Bằng chứng |
 |---|---|---|
-| **Rào cản bắt buộc:** phân loại chỉ dùng regex, trượt cách diễn đạt mới | Tự sửa chỉ khi có neo chủ đề **và** neo đại lượng; nhận ra số viết bằng chữ / quy đổi tuần / không dấu nhưng luôn hỏi người; mô hình thật (OpenAI, schema ràng buộc) tự rà mọi dòng tự sửa, prover tất định vẫn là lớp kiểm | Tập **mù** 40 ca: tự sửa sai **3 → 0**, bỏ sót **8/23 → 0/23** |
+| **Rào cản bắt buộc:** phân loại chỉ dùng regex, trượt cách diễn đạt mới | Tự sửa chỉ khi có neo chủ đề **và** neo đại lượng; nhận ra số viết bằng chữ / quy đổi tuần / không dấu nhưng luôn hỏi người; mô hình thật (Gemini, schema ràng buộc) tự rà mọi dòng tự sửa, prover tất định vẫn là lớp kiểm | Tập **mù** 40 ca: tự sửa sai **3 → 0**, bỏ sót **8/23 → 0/23** |
 | Bộ dữ liệu thử ≥ 15 ca, diễn đạt cố tình đa dạng | Tập mù 40 ca do tác tử **không xem mã** viết, đóng băng bằng SHA-256 trước khi sửa động cơ; giữ tập 48 ca làm tập phát triển | `bench/blind.csv`, `bench/BLIND-PROVENANCE.md` |
 | Đo tỷ lệ báo lên sai | Báo cáo bỏ sót, **tự sửa sai**, **báo lên thừa**, ma trận nhầm lẫn, ca bẫy | `npm run eval:blind`; màn hình Đánh giá |
 | Policy doc *Partial* | QT-KSTL-01 v2.0: mỗi điều có mã, bảng truy vết điều → mã → kiểm thử | Phụ lục A của QT-KSTL-01 |
@@ -50,7 +56,7 @@ ghi thêm và hoàn tác được.
 | Nhận xét của BTC ở Sprint 1 | Đã làm |
 |---|---|
 | Không có backend, tải lại trang là mất dữ liệu | **Supabase** (Postgres + RLS + Edge Functions): nhiều người dùng chung một kho; mọi thao tác ghi đi qua máy chủ, chạy lại động cơ + prover và ghi trong **một giao dịch** có khoá. Mất mạng thì tự lùi về **IndexedDB** trên máy. |
-| Chưa nối LLM thật | `ai-extract` và `ai-discover` gọi **OpenAI Structured Outputs** qua máy chủ (khoá không bao giờ tới trình duyệt), có hạn mức gọi trong ngày (toàn hệ thống và theo từng máy khách). |
+| Chưa nối LLM thật | `ai-extract` và `ai-discover` gọi **Gemini 3.5 Flash-Lite** với JSON schema ràng buộc (qua endpoint tương thích OpenAI) từ máy chủ (khoá không bao giờ tới trình duyệt), có hạn mức gọi trong ngày (toàn hệ thống và theo từng máy khách). |
 | Chưa phân quyền | Cấp (1–3) × đơn vị phụ trách: *chuyên viên chỉ duyệt văn bản thuộc phạm vi của mình*. Giao diện khoá nút kèm lý do; máy chủ chặn thật. |
 | Nhiều người dùng thật sự cùng làm | **Hàng đợi duyệt dùng chung**: người ban hành áp phần chắc chắn ngay, các vị trí U1/U2/U3 thành *hồ sơ* `CR-n` lưu trên máy chủ; mỗi người có thẩm quyền mở máy của mình và quyết phần của mình: áp dụng và ghi sổ ngay, ghi đúng tên người quyết. Hoàn tác đòi cấp ≥ cấp ban hành của thay đổi. |
 | TypeScript + Vite | Giữ JavaScript thuần để vẫn mở được bằng `file://`, nhưng kiểm kiểu bằng **JSDoc + `tsc --noEmit`** trong CI. Lý do: `docs/PHAN-HOI-BTC-SPRINT-1.md`. |
@@ -132,11 +138,11 @@ Trình duyệt (HTML/JS thuần, chạy cả file://)
         │  đọc (RLS, chỉ đọc)                     │ ghi: ý định (quy định, giá trị, cấp, quyết định A/B)
         ▼                                         ▼
   Supabase PostgREST              Edge Function policy-api ─ chạy lại CÙNG các module ─► SQL apply_change
-                                  Edge Function ai-extract / ai-discover ─► OpenAI (khoá ở máy chủ)
+                                  Edge Function ai-extract / ai-discover ─► Gemini (khoá ở máy chủ)
   Mất mạng ─► IndexedDB trên máy (chế độ Ngoại tuyến)
 ```
 
-Chi tiết: `docs/ARCHITECTURE.md`. Cài backend, khoá OpenAI và cấp tài khoản thí điểm: `docs/SETUP-BACKEND.md`.
+Chi tiết: `docs/ARCHITECTURE.md`. Cài backend, khoá AI (Gemini) và cấp tài khoản thí điểm: `docs/SETUP-BACKEND.md`.
 
 ## Giới hạn đã biết
 
