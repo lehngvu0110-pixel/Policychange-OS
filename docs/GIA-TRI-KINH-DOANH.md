@@ -4,7 +4,7 @@ Phản hồi doanh nghiệp Sprint 1 viết: *"quy định chỉ đổi vài l�
 việc tránh sai sót… Hãy đi tìm con số đó."* Tài liệu này làm đúng việc đó. Mục 1 là bằng chứng công khai, có nguồn.
 Mục 2 là mô hình chi phí có giả định ghi rõ. Mục 3 là kế hoạch lấy số thật của trường trong buổi thử nghiệm.
 
-## 1. Một con số sai trong tài liệu vệ tinh tốn tiền thật — bằng chứng công khai
+## 1. Một con số sai trong tài liệu vệ tinh tốn tiền thật: bằng chứng công khai
 
 | Sự việc | Chuyện gì đã xảy ra | Bài học cho PolicyChange OS |
 |---|---|---|
@@ -76,9 +76,9 @@ Khi có số thật, thay vào Mục 2 và ghi nguồn là "phỏng vấn [phòn
 
 ## Nguồn
 
-- CBS News, "Air Canada chatbot costs airline discount it wrongly offered customer", 02/2024 — https://www.cbsnews.com/news/aircanada-chatbot-discount-customer/
-- Nghị định 04/2021/NĐ-CP, Thư viện Pháp luật — https://thuvienphapluat.vn/van-ban/Vi-pham-hanh-chinh/Nghi-dinh-04-2021-ND-CP-xu-phat-vi-pham-hanh-chinh-trong-linh-vuc-giao-duc-450564.aspx
-- Tuổi Trẻ, "Sinh viên sắp tốt nghiệp phải đóng thêm học phí do sơ suất của nhà trường", 15/05/2024 — https://tuoitre.vn/sinh-vien-sap-tot-nghiep-phai-dong-them-hoc-phi-do-so-suat-cua-nha-truong-20240515141223743.htm
-- Báo Chính phủ, "Chính thức tăng lương cơ sở lên 2.530.000 đồng/tháng từ 01/7/2026" — https://baochinhphu.vn/chinh-thuc-tang-luong-co-so-len-2530000-dong-thang-tu-01-7-2026-102260516214238878.htm
-- LuatVietnam, "Bảng lương cán bộ, công chức, viên chức năm 2026" (hệ số A1 bậc 1 = 2,34) — https://luatvietnam.vn/can-bo-cong-chuc/bang-luong-can-bo-cong-chuc-vien-chuc-nam-2026-566-107608-article.html
-- Gartner, "Data Quality: Why It Matters and How to Achieve It" — https://www.gartner.com/en/data-analytics/topics/data-quality
+- CBS News, "Air Canada chatbot costs airline discount it wrongly offered customer", 02/2024: https://www.cbsnews.com/news/aircanada-chatbot-discount-customer/
+- Nghị định 04/2021/NĐ-CP, Thư viện Pháp luật: https://thuvienphapluat.vn/van-ban/Vi-pham-hanh-chinh/Nghi-dinh-04-2021-ND-CP-xu-phat-vi-pham-hanh-chinh-trong-linh-vuc-giao-duc-450564.aspx
+- Tuổi Trẻ, "Sinh viên sắp tốt nghiệp phải đóng thêm học phí do sơ suất của nhà trường", 15/05/2024: https://tuoitre.vn/sinh-vien-sap-tot-nghiep-phai-dong-them-hoc-phi-do-so-suat-cua-nha-truong-20240515141223743.htm
+- Báo Chính phủ, "Chính thức tăng lương cơ sở lên 2.530.000 đồng/tháng từ 01/7/2026": https://baochinhphu.vn/chinh-thuc-tang-luong-co-so-len-2530000-dong-thang-tu-01-7-2026-102260516214238878.htm
+- LuatVietnam, "Bảng lương cán bộ, công chức, viên chức năm 2026" (hệ số A1 bậc 1 = 2,34): https://luatvietnam.vn/can-bo-cong-chuc/bang-luong-can-bo-cong-chuc-vien-chuc-nam-2026-566-107608-article.html
+- Gartner, "Data Quality: Why It Matters and How to Achieve It": https://www.gartner.com/en/data-analytics/topics/data-quality

@@ -8,7 +8,7 @@ ra từ phản hồi của họ** (có commit). Mỗi buổi 15 phút. Kết qu�
 Gửi hàng loạt đường dẫn **https://lehngvu0110-pixel.github.io/Policychange-OS/thu-nghiem.html**. Phiếu tự hướng dẫn
 mở ứng dụng, giao ba việc, hỏi hai câu chấm điểm và ba câu hỏi mở. Người thử bấm **Gửi phiếu** là câu trả lời vào thẳng
 bảng `user_test_responses` trên Supabase (ai cũng gửi được, không ai đọc được qua API công khai; nhóm đọc bằng SQL trong
-Supabase). Nếu họ đồng ý, phiếu gửi kèm số đo thời gian trả lời câu hỏi đã đo trên trình duyệt của họ — không cần tải CSV.
+Supabase). Nếu họ đồng ý, phiếu gửi kèm số đo thời gian trả lời câu hỏi đã đo trên trình duyệt của họ, không cần tải CSV.
 Mạng lỗi thì nút **Sao chép câu trả lời** cho phép dán gửi qua Zalo.
 
 Đọc kết quả (SQL Editor của Supabase):
@@ -42,7 +42,7 @@ trong BCH Đoàn – Hội khoa hay CLB đang ra thông báo, kế hoạch, bi�
 | # | Nhiệm vụ đọc cho người thử | Quan sát và ghi |
 |---|---|---|
 | N1 | "Bạn là Trưởng phòng Đào tạo. Hạn nộp đơn phúc khảo đổi từ 7 xuống 5 ngày. Hãy cho hệ thống biết và xem nó định sửa những gì." | Có tìm ra mục Thay đổi quy định? Đọc câu tóm tắt có hiểu không? Mất bao lâu? |
-| N2 | "Chỗ nào máy không chắc? Vì sao nó hỏi?" | Người thử giải thích U1 / U2 / U3 bằng lời của họ — ghi nguyên văn |
+| N2 | "Chỗ nào máy không chắc? Vì sao nó hỏi?" | Người thử giải thích U1 / U2 / U3 bằng lời của họ, ghi nguyên văn |
 | N3 | "Đổi vai trò thành Chuyên viên Phòng Đào tạo và trả lời câu hỏi của bạn." | Trả lời trong bao lâu? Có chọn đúng ý mình không? |
 | N4 | "Thử ban hành với vai trò Chuyên viên." | Có hiểu vì sao bị khoá? |
 | N5 | "Quay lại Trưởng phòng, ban hành, rồi tìm xem ai đã sửa gì." | Có tìm ra Sổ kiểm toán? Có tin sổ này không? |

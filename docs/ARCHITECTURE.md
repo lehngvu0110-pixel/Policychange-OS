@@ -11,7 +11,7 @@
 3. **Client chỉ gửi ý định.** Trình duyệt gửi “quy định nào, giá trị mới, cấp khai, người đã chọn A hay B ở dòng
    nào”. Máy chủ tự nạp dữ liệu, chạy lại động cơ + prover, kiểm quyền, rồi mới ghi.
 4. **Tự sửa cần hai tín hiệu.** Một dòng chỉ được tự sửa khi có *neo chủ đề* (đang nói về việc gì) **và** *neo đại
-   lượng* (con số đo cái gì) — hoặc neo chủ đề chi phối trực tiếp con số. Giá trị viết bằng chữ, quy đổi tuần hay gõ
+   lượng* (con số đo cái gì), hoặc neo chủ đề chi phối trực tiếp con số. Giá trị viết bằng chữ, quy đổi tuần hay gõ
    không dấu được nhận ra nhưng luôn chuyển người. Prover kiểm lại độc lập 14 điều kiện (QT-KSTL-01 §5.3–5.4).
 5. **Có khoá AI thì AI luôn rà trước khi ban hành.** `app.ensureSemanticReview()` chạy tự động khi phân tích xong và
    trước khi gửi lệnh ban hành.
@@ -80,7 +80,7 @@ Trình duyệt kiểm đuôi sổ mỗi 20 giây để thấy thay đổi của 
 | Quyết vị trí U1 (ngay hoặc trong hồ sơ `CR-n`) | phụ trách đơn vị sở hữu tài liệu (cấp ≥ 1) |
 | Quyết hồ sơ U2 | cấp ≥ 2 **và** phụ trách đơn vị sở hữu quy định bị đụng |
 | Quyết hồ sơ U3, rà soát bằng chứng AI | cấp ≥ cấp tài liệu **và** phụ trách đơn vị ban hành tài liệu |
-| Hoàn tác | cấp ≥ max(cấp tài liệu, cấp ban hành ghi trong căn cứ) **và** phụ trách tài liệu — chuyên viên không hoàn tác được thay đổi do trưởng phòng ban hành |
+| Hoàn tác | cấp ≥ max(cấp tài liệu, cấp ban hành ghi trong căn cứ) **và** phụ trách tài liệu; chuyên viên không hoàn tác được thay đổi do trưởng phòng ban hành |
 | Thêm cụm từ neo | cấp ≥ 2 **và** phụ trách đơn vị sở hữu quy định |
 | Cập nhật giá trị gốc trong sổ đăng ký | thay đổi được ban hành ở cấp ≥ cấp của quy định |
 
@@ -98,7 +98,7 @@ bắt buộc đăng nhập, cấp và đơn vị lấy từ bảng `members` do 
   đánh dấu là dữ liệu trong prompt; mô hình được dặn bỏ qua mệnh lệnh nằm trong đó, và dù có làm theo thì đầu ra vẫn
   phải qua validator.
 - Hạn mức AI theo ngày: toàn hệ thống (`AI_DAILY_LIMIT`, mặc định 300) và theo từng máy khách (`AI_CLIENT_LIMIT`,
-  mặc định 40, đếm theo SHA-256 của IP — không lưu IP gốc) để một người không tiêu hết hạn mức của cả nhóm.
+  mặc định 40, đếm theo SHA-256 của IP, không lưu IP gốc) để một người không tiêu hết hạn mức của cả nhóm.
 
 ## Vì sao không chuyển sang TypeScript + Vite
 

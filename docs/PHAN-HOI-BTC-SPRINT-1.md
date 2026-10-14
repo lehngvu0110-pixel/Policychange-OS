@@ -51,7 +51,7 @@ validator từ chối; lệnh chèn trong câu yêu cầu chỉ nằm trong ph�
 - Cùng một tệp JS được chạy ở **ba môi trường**: trình duyệt (kể cả mở bằng `file://` khi không có mạng ở phòng
   chấm), Node (test, benchmark) và Deno (Edge Function). Máy chủ tái lập được đúng quyết định của giao diện là nhờ
   dùng chung một mã nguồn không qua biên dịch.
-- Vite thêm bước build và phụ thuộc, trong khi lợi ích chính của TypeScript — kiểm kiểu — có thể đạt được bằng
+- Vite thêm bước build và phụ thuộc, trong khi lợi ích chính của TypeScript (kiểm kiểu) có thể đạt được bằng
   **JSDoc + `// @ts-check`**. Tất cả module mới của Sprint 2 đều có chú thích kiểu và được kiểm bằng
   `tsc --noEmit` ở chế độ `strict` trong CI (`npm run typecheck`).
 - Nếu sau Demo Day cần mở rộng giao diện nhiều hơn, việc chuyển các tệp này sang `.ts` là cơ học vì kiểu đã có sẵn.

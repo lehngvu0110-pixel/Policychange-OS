@@ -1,7 +1,7 @@
 # PolicyChange OS
 
 **Trọng tài kiểm soát tài liệu khi quy định thay đổi.**
-MLAI Hackathon 2026 · Bảng 1 OrganizationAI · **Đề A — The Escalation Referee**
+MLAI Hackathon 2026 · Bảng 1 OrganizationAI · **Đề A · The Escalation Referee**
 
 Bản chạy trực tuyến: https://lehngvu0110-pixel.github.io/Policychange-OS/
 
@@ -52,14 +52,14 @@ ghi thêm và hoàn tác được.
 | Không có backend, tải lại trang là mất dữ liệu | **Supabase** (Postgres + RLS + Edge Functions): nhiều người dùng chung một kho; mọi thao tác ghi đi qua máy chủ, chạy lại động cơ + prover và ghi trong **một giao dịch** có khoá. Mất mạng thì tự lùi về **IndexedDB** trên máy. |
 | Chưa nối LLM thật | `ai-extract` và `ai-discover` gọi **OpenAI Structured Outputs** qua máy chủ (khoá không bao giờ tới trình duyệt), có hạn mức gọi trong ngày (toàn hệ thống và theo từng máy khách). |
 | Chưa phân quyền | Cấp (1–3) × đơn vị phụ trách: *chuyên viên chỉ duyệt văn bản thuộc phạm vi của mình*. Giao diện khoá nút kèm lý do; máy chủ chặn thật. |
-| Nhiều người dùng thật sự cùng làm | **Hàng đợi duyệt dùng chung**: người ban hành áp phần chắc chắn ngay, các vị trí U1/U2/U3 thành *hồ sơ* `CR-n` lưu trên máy chủ; mỗi người có thẩm quyền mở máy của mình và quyết phần của mình — áp dụng và ghi sổ ngay, ghi đúng tên người quyết. Hoàn tác đòi cấp ≥ cấp ban hành của thay đổi. |
+| Nhiều người dùng thật sự cùng làm | **Hàng đợi duyệt dùng chung**: người ban hành áp phần chắc chắn ngay, các vị trí U1/U2/U3 thành *hồ sơ* `CR-n` lưu trên máy chủ; mỗi người có thẩm quyền mở máy của mình và quyết phần của mình: áp dụng và ghi sổ ngay, ghi đúng tên người quyết. Hoàn tác đòi cấp ≥ cấp ban hành của thay đổi. |
 | TypeScript + Vite | Giữ JavaScript thuần để vẫn mở được bằng `file://`, nhưng kiểm kiểu bằng **JSDoc + `tsc --noEmit`** trong CI. Lý do: `docs/PHAN-HOI-BTC-SPRINT-1.md`. |
 | Chưa có E2E, chưa có kiểm thử tải | **Playwright** (luồng chính, phân quyền, 390 px sáng/tối) và `bench/load.cjs`. |
 | Yêu cầu nâng cao của Đề A | **Học từ phản hồi** (đề xuất cụm từ neo mới từ các câu trả lời U1, người duyệt rồi mới áp dụng) và **báo cáo độ chính xác** trên tập độc lập 48 ca (tỉ lệ bỏ sót, chuyển tiếp thừa, ma trận nhầm lẫn). |
 | Chứng minh vòng học chạy thật | **Minh hoạ 5** trọn vòng: hỏi → trả lời "Có" → đề xuất neo → duyệt (ghi sổ) → dòng mới tự sửa. **Thí nghiệm học neo** trên màn hình Đánh giá: học trên một tập, đo trên tập khác, công bố cả các cách chia không giảm. |
 | Người được hỏi biết bằng cách nào? | Câu tóm tắt và Hàng đợi duyệt gom câu hỏi theo người cần trả lời, kèm **Sao chép lời nhắn** / **Soạn email** có đường dẫn tới Hàng đợi (không tự gửi). |
 | Người duyệt bị hỏi lặp | **Gộp câu hỏi trùng**: cùng loại hồ sơ, cùng người có thẩm quyền, cùng mệnh đề chứa con số → một câu hỏi, trả lời một lần áp cho mọi vị trí; sổ vẫn ghi từng dòng, vòng học chỉ nhận một phản hồi. Minh hoạ 4 trên Tổng quan. |
-| Chưa có số đo chi phí người duyệt | **Đo thời gian quyết định** ngay trong ứng dụng (trung vị, mức 90 %, tải CSV) — số liệu cho buổi thử nghiệm và `docs/GIA-TRI-KINH-DOANH.md`. |
+| Chưa có số đo chi phí người duyệt | **Đo thời gian quyết định** ngay trong ứng dụng (trung vị, mức 90 %, tải CSV), làm số liệu cho buổi thử nghiệm và `docs/GIA-TRI-KINH-DOANH.md`. |
 | Giám khảo muốn thử tài liệu của mình | **Nạp tài liệu từ tệp .docx / .txt / .md**, đọc ngay trên trình duyệt, không gửi tệp đi đâu; hàng bảng thành một dòng "ô \| ô". |
 | Giao diện | Làm lại thành ứng dụng 7 màn hình: Tổng quan · Thay đổi quy định · Hàng đợi duyệt · Sổ kiểm toán · Kho tài liệu · Sổ đăng ký & học · Đánh giá; đồ thị tác động SVG; chế độ tối; dùng tốt trên điện thoại. |
 | Người mới nhìn vào phải hiểu ngay | **Giao diện bằng lời thường** (13/10): kết quả mở đầu bằng một câu tóm tắt ("Máy tự sửa 6 chỗ chắc chắn. Còn 3 câu hỏi cần người trả lời.") kèm danh sách *ai cần trả lời câu nào*; thanh tiến trình 4 bước; việc cần người xếp lên đầu, căn cứ kỹ thuật thu gọn; mỗi câu hỏi có "Vì sao phải hỏi"; bảng giải thích Tự sửa / U1 / U2 / U3 và hộp **Hướng dẫn & thuật ngữ**; Tổng quan tính lại độ chính xác trên cả hai tập mù. |
@@ -85,7 +85,7 @@ Mở thẳng `index.html` bằng trình duyệt cũng chạy được.
 
 ```bash
 npm install                       # chỉ cần cho Playwright và TypeScript
-npm run verify                    # kiểm từng điều của QT-KSTL-01 v2.0 — bảng ĐẠT/TRƯỢT (không cần npm install)
+npm run verify                    # kiểm từng điều của QT-KSTL-01 v2.0, in bảng ĐẠT/TRƯỢT (không cần npm install)
 npm test                          # 261 unit test: động cơ, sổ, phân quyền, máy chủ, học, đánh giá, bộ điều khiển
 npm run eval:blind                # tập mù 40 ca (đóng băng, do tác tử độc lập viết)
 npm run eval:blind2               # tập mù số 2, 36 ca (đóng băng 04/10)
@@ -105,12 +105,12 @@ npx playwright install chromium && npm run e2e
 - **Tập mù 40 ca** (tác tử độc lập viết, không xem mã; đóng băng trước khi sửa), *chỉ động cơ tiền định*:
   **tự sửa sai 0/5**, **bỏ sót 0/23** (KTC 95 %: 0–14,3 %), báo lên thừa 9/17 (52,9 %), đúng 29/40.
   Trước đợt sửa: sửa sai 3, bỏ sót 8/23. Báo lên thừa còn cao vì từ đồng nghĩa chưa có trong sổ (“phúc tra”,
-  “ứng trước”, “ghi danh”…) — máy hỏi thêm thay vì đoán; vòng học neo và lớp AI nhắm vào đây.
+  “ứng trước”, “ghi danh”…): máy hỏi thêm thay vì đoán; vòng học neo và lớp AI nhắm vào đây.
 - **Tập mù số 2, 36 ca** (04/10; lập sau khi động cơ đã đóng băng; tác tử đóng vai 3 cán bộ viết, một tác tử khác kiểm
   nhãn): **tự sửa sai 0/8**, **bỏ sót 0/21**, báo lên thừa 4/15 (26,7 %). Lần chạy đầu phát hiện một dòng máy không
   thấy ("24TC"); đã sửa để luôn hỏi người. `npm run eval:blind2`.
 - **Tập phát triển 48 ca** (nhóm gắn nhãn, đã dùng để thiết kế): sửa sai 5 → 2, bỏ sót 22,2 % → 7,4 %. Hai ca còn
-  sai (H40, H47) được giữ lại làm bằng chứng giới hạn của lớp tiền định — cần lớp AI.
+  sai (H40, H47) được giữ lại làm bằng chứng giới hạn của lớp tiền định, cần lớp AI.
 - **Lớp AI (đo thật, Gemini 3.5 Flash-Lite miễn phí):** trên 24 dòng động cơ muốn tự sửa, AI giữ lại đúng 2 ca lớp tiền
   định bỏ sót (H40, H47) và không giữ oan dòng đúng nào → tập phát triển còn **0 sửa sai, 0 bỏ sót**. `npm run eval:ai`.
 - **Học neo, đo trung thực** (13/10): học trên một tập, đo trên tập khác không tham gia học; câu trả lời của người ở
@@ -142,11 +142,11 @@ Chi tiết: `docs/ARCHITECTURE.md`. Cài backend, khoá OpenAI và cấp tài kh
 
 1. Chỉ xử lý thay đổi dạng **thay giá trị**; thêm mới hoặc bãi bỏ điều khoản nằm ngoài phạm vi.
 2. Chất lượng phân loại phụ thuộc độ đầy đủ của neo chủ đề và neo đại lượng. Thiếu neo làm tăng U1 (hỏi nhiều hơn
-   cần) — hướng lệch có chủ đích; cơ chế học neo thu hẹp dần khoảng này.
+   cần). Đây là hướng lệch có chủ đích; cơ chế học neo thu hẹp dần khoảng này.
 3. Dòng có đủ neo nhưng con số đo việc khác (“giấy xác nhận vay vốn được cấp trong 3 ngày”) vẫn có thể bị tự sửa
    nếu tắt AI; lớp AI ngữ nghĩa (tự chạy khi có khoá) đã bắt được các ca này trong lần đo thật.
 4. Chưa đọc tài liệu ảnh quét hay PDF không có lớp văn bản; chưa nối Google Drive / SharePoint.
-5. Workspace **trình diễn** cho phép ai có đường dẫn cũng thao tác với vai trò giả lập và khôi phục dữ liệu mẫu —
+5. Workspace **trình diễn** cho phép ai có đường dẫn cũng thao tác với vai trò giả lập và khôi phục dữ liệu mẫu,
    có chủ đích cho buổi chấm. Workspace **thí điểm** bắt buộc đăng nhập và được cấp quyền.
 6. Sổ kiểm toán chống sửa lén qua ứng dụng, nhưng chưa có chữ ký số hay mốc băm độc lập bên ngoài CSDL.
 7. Số dùng định dạng Việt Nam: `10,5 triệu` và `10.500.000 đồng` hợp lệ; `10.5 triệu` bị từ chối.

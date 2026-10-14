@@ -70,16 +70,16 @@ Chi tiết: `docs/PHUONG-PHAP-KIEM-CHUNG.md`.
 
 | Tiêu chí | Sprint 1 | Đã làm |
 |---|---|---|
-| **Nó chạy (40 %)** — Tốt | — | Vẫn mở được tức thì, không cần cài, kể cả mở thẳng `index.html`. Có thêm bản dùng chung trên máy chủ. |
-| **Ranh giới con người (20 %)** — Một phần | — | Phân quyền **cấp × đơn vị** chặn thật ở máy chủ (403). Hàng đợi dùng chung: mỗi người quyết phần của mình trên máy mình, sổ ghi đúng tên người quyết. Hoàn tác đòi đủ cấp ban hành. Mỗi câu hỏi nêu đủ tài liệu, dòng, trích dẫn và giá trị cũ → mới (§6.1, nay được kiểm tự động). |
-| **Khớp yêu cầu đề bài (20 %)** — Một phần | — | Mục 4 bên dưới. |
-| **Phương pháp kiểm chứng (20 %)** — Thiếu | — | `npm run verify` kiểm 14 điều. Tập mù có quy trình đóng băng. Tài liệu phương pháp nêu rõ chỉ số, khoảng tin cậy và mối đe doạ đối với kết luận. CI chạy cả hai. |
+| **Nó chạy (40 %)**: Tốt | — | Vẫn mở được tức thì, không cần cài, kể cả mở thẳng `index.html`. Có thêm bản dùng chung trên máy chủ. |
+| **Ranh giới con người (20 %)**: Một phần | — | Phân quyền **cấp × đơn vị** chặn thật ở máy chủ (403). Hàng đợi dùng chung: mỗi người quyết phần của mình trên máy mình, sổ ghi đúng tên người quyết. Hoàn tác đòi đủ cấp ban hành. Mỗi câu hỏi nêu đủ tài liệu, dòng, trích dẫn và giá trị cũ → mới (§6.1, nay được kiểm tự động). |
+| **Khớp yêu cầu đề bài (20 %)**: Một phần | — | Mục 4 bên dưới. |
+| **Phương pháp kiểm chứng (20 %)**: Thiếu | — | `npm run verify` kiểm 14 điều. Tập mù có quy trình đóng băng. Tài liệu phương pháp nêu rõ chỉ số, khoảng tin cậy và mối đe doạ đối với kết luận. CI chạy cả hai. |
 
 ## 4. Đối chiếu tiêu chuẩn kỹ thuật đề bài
 
 | Tiêu chí | Sprint 1 | Hiện tại | Bằng chứng |
 |---|---|---|---|
-| Tài liệu quy định (Policy doc) | Một phần — *"sổ bộ chưa hẳn là tài liệu quy định"* | QT-KSTL-01 **v2.0** là văn bản quy trình mà phần mềm thi hành, mỗi điều có mã. Sổ đăng ký chỉ là dữ liệu đầu vào. Phụ lục A truy vết điều → mã → kiểm thử | `docs/QT-KSTL-01_Quy-trinh-kiem-soat-tai-lieu.md` |
+| Tài liệu quy định (Policy doc) | Một phần: *"sổ bộ chưa hẳn là tài liệu quy định"* | QT-KSTL-01 **v2.0** là văn bản quy trình mà phần mềm thi hành, mỗi điều có mã. Sổ đăng ký chỉ là dữ liệu đầu vào. Phụ lục A truy vết điều → mã → kiểm thử | `docs/QT-KSTL-01_Quy-trinh-kiem-soat-tai-lieu.md` |
 | Bộ dữ liệu thử nội bộ (Test set) | Một phần | Tập mù 40 ca + tập phát triển 48 ca; giám khảo tải được CSV riêng | `bench/` |
 | Ba kiểu dừng riêng biệt | Đạt | Giữ nguyên. U1 nay rõ hơn với 3 nhánh con a/b/c | verify §5.1–5.4, §5.3.* |
 | Câu hỏi báo lên cụ thể | Đạt | Câu hỏi U2/U3 được bổ sung trích dẫn nguyên văn và giá trị cũ → mới | verify §6 |

@@ -1,7 +1,7 @@
 # Kết quả thử nghiệm người dùng
 
 Cách làm: `docs/THU-NGHIEM-NGUOI-DUNG.md`. Mọi ô dưới đây do nhóm điền sau buổi thử thật. Chưa có buổi nào thì bảng để
-trống — không điền số giả định vào đây.
+trống, không điền số giả định vào đây.
 
 ## 1. Người thử
 

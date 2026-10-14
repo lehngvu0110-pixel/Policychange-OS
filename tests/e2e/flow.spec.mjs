@@ -41,7 +41,7 @@ test('phân tích → quyết định đúng thẩm quyền → ban hành → t�
   await persona(page, 'cv-dt');
   const u1 = page.locator('#prop-P6');
   await u1.getByRole('button', { name: /^B · Không/ }).click();
-  await expect(u1).toContainText('Không — giữ nguyên');
+  await expect(u1).toContainText('Không, giữ nguyên');
   await expect(page.getByRole('button', { name: 'Ban hành' })).toBeDisabled();
   await expect(page.locator('.commitbar')).toContainText('không được ban hành');
 
@@ -196,7 +196,7 @@ test('ghé minh hoạ giữa chừng rồi thoát: phân tích, quyết định 
   }
   await page.goto(APP + '#/thay-doi');
   await expect(page.locator('#reqText')).toHaveValue(REQUEST);
-  await expect(page.locator('#prop-P6')).toContainText('Không — giữ nguyên');
+  await expect(page.locator('#prop-P6')).toContainText('Không, giữ nguyên');
   await expect(page.locator('[data-form-guard]')).toBeHidden();
   await persona(page, 'tp-dt');
   await page.getByRole('button', { name: 'Ban hành' }).click();
