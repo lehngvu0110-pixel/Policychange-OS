@@ -67,7 +67,8 @@ Lệnh `npm run verify` kiểm từng điều của văn bản này.
 | Người duyệt bị hỏi lặp | **Gộp câu hỏi trùng**: cùng loại hồ sơ, cùng người có thẩm quyền, cùng mệnh đề chứa con số → một câu hỏi, trả lời một lần áp cho mọi vị trí; sổ vẫn ghi từng dòng, vòng học chỉ nhận một phản hồi. Minh hoạ 4 trên Tổng quan. |
 | Chưa có số đo chi phí người duyệt | **Đo thời gian quyết định** ngay trong ứng dụng (trung vị, mức 90 %, tải CSV), làm số liệu cho buổi thử nghiệm và `docs/GIA-TRI-KINH-DOANH.md`. |
 | Giám khảo muốn thử tài liệu của mình | **Nạp tài liệu từ tệp .docx / .txt / .md**, đọc ngay trên trình duyệt, không gửi tệp đi đâu; hàng bảng thành một dòng "ô \| ô". |
-| Giao diện | Làm lại thành ứng dụng 7 màn hình: Tổng quan · Thay đổi quy định · Hàng đợi duyệt · Sổ kiểm toán · Kho tài liệu · Sổ đăng ký & học · Đánh giá; đồ thị tác động SVG; chế độ tối; dùng tốt trên điện thoại. |
+| Giao diện | Làm lại thành ứng dụng 7 màn hình (nay thêm màn hình Hướng dẫn): Tổng quan · Thay đổi quy định · Hàng đợi duyệt · Sổ kiểm toán · Kho tài liệu · Sổ đăng ký & học · Đánh giá; đồ thị tác động SVG; chế độ tối; dùng tốt trên điện thoại. |
+| Phản hồi thử nghiệm 14/10: nhiều chữ, trưởng phòng lớn tuổi khó dùng; gõ câu rồi bấm Phân tích thì không thấy 5 ngày | Màn hình **Hướng dẫn** đứng đầu: 4 bước bằng lời thường, mỗi bước một nút đưa tới đúng chỗ, giải thích khái niệm, câu hỏi thường gặp. Nút **Aa · Chữ lớn** phóng to toàn bộ giao diện. **Phân tích tác động** tự đọc câu tiếng Việt nếu chưa bấm Hiểu yêu cầu. |
 | Người mới nhìn vào phải hiểu ngay | **Giao diện bằng lời thường** (13/10): kết quả mở đầu bằng một câu tóm tắt ("Máy tự sửa 6 chỗ chắc chắn. Còn 3 câu hỏi cần người trả lời.") kèm danh sách *ai cần trả lời câu nào*; thanh tiến trình 4 bước; việc cần người xếp lên đầu, căn cứ kỹ thuật thu gọn; mỗi câu hỏi có "Vì sao phải hỏi"; bảng giải thích Tự sửa / U1 / U2 / U3 và hộp **Hướng dẫn & thuật ngữ**; Tổng quan tính lại độ chính xác trên cả hai tập mù. |
 
 ## Chạy thử
@@ -128,7 +129,7 @@ npx playwright install chromium && npm run e2e
 
 Toàn bộ dữ liệu là **dữ liệu tổng hợp** do nhóm tự soạn; các con số trên không phải tỉ lệ lỗi trên văn bản thật.
 
-**Thử nghiệm người dùng:** cách làm ở `docs/THU-NGHIEM-NGUOI-DUNG.md`; kết quả ghi ở `docs/KET-QUA-THU-NGHIEM.md` (đang thực hiện 13–15/10, chỉ điền số đo và lời nói thật).
+**Thử nghiệm người dùng (đợt 1, 14/10):** 3 người thật qua phiếu trực tuyến, cả ba là sinh viên (một người trong BCH Đoàn khoa), chưa có chuyên viên hay trưởng phòng thật. 8/9 việc hoàn thành; điểm "hiểu vì sao máy hỏi" 3,7/5, "sẽ dùng" 4/5. Một người vướng ở việc 1 và góp ý giao diện nhiều chữ, khó cho trưởng phòng lớn tuổi; nhóm đã sửa theo góp ý này (xem bảng Sprint 2). Chi tiết và bất cập còn lại: `docs/KET-QUA-THU-NGHIEM.md`; cách làm: `docs/THU-NGHIEM-NGUOI-DUNG.md`.
 
 ## Kiến trúc tóm tắt
 

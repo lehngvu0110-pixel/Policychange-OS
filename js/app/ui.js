@@ -146,7 +146,64 @@
         '<li><b>Trả lời câu hỏi.</b> Mỗi chỗ không chắc là đúng một câu hỏi, hai lựa chọn A / B, cho đúng người có thẩm quyền. Đổi <b>Vai trò</b> ở thanh trên để thử với người khác.</li>' +
         '<li><b>Ban hành.</b> Phần chắc chắn được áp ngay và ghi sổ; mọi bản ghi hoàn tác được.</li>' +
       '</ol>' + kindsGuide() +
-      '<h3>Thuật ngữ</h3><dl class="glossary">' + GLOSSARY.map(([t, d]) => '<div><dt>' + esc(t) + '</dt><dd>' + esc(d) + '</dd></div>').join('') + '</dl>';
+      '<h3>Thuật ngữ</h3><dl class="glossary">' + GLOSSARY.map(([t, d]) => '<div><dt>' + esc(t) + '</dt><dd>' + esc(d) + '</dd></div>').join('') + '</dl>' +
+      '<p><a class="btn" href="#/huong-dan" data-action="close-help">Mở hướng dẫn đầy đủ, chữ lớn</a></p>';
+  }
+
+  // ---------- Màn hình: Hướng dẫn ----------
+  // Phản hồi thử nghiệm P1 (14/10): giao diện nhiều chữ, một trưởng phòng lớn tuổi sẽ khó dùng. Màn hình này nói
+  // bằng lời thường, mỗi bước một nút đưa tới đúng chỗ; kèm nút chữ lớn.
+  const SAMPLE_REQUEST = 'Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành.';
+  const GUIDE_STEPS = [
+    { title: 'Cho máy biết bạn là ai', you: 'Ở ô “Vai trò” trên cùng, chọn đúng chức vụ của bạn.',
+      machine: 'Máy chỉ mở những nút thuộc thẩm quyền của bạn. Việc của người khác, máy chuyển cho họ.',
+      act: () => btn('guide-persona', 'Chỉ cho tôi ô Vai trò', { cls: 'lg' }) },
+    { title: 'Báo một thay đổi', you: 'Gõ một câu như khi nhắn tin: quy định nào đổi, đổi thành bao nhiêu, ai ban hành. Rồi bấm “Phân tích tác động”.',
+      machine: 'Máy tìm mọi văn bản đang ghi giá trị cũ và cho bạn xem trước. Lúc này chưa sửa gì cả.',
+      act: () => btn('guide-sample', 'Thử với câu mẫu', { cls: 'lg primary', busyKey: 'understand' }) },
+    { title: 'Trả lời câu hỏi của máy', you: 'Chỗ nào máy không chắc, máy hỏi một câu với hai nút A và B. Bạn chỉ cần chọn một.',
+      machine: 'Câu hỏi được gửi đúng người có thẩm quyền. Câu giống nhau ở nhiều nơi chỉ hỏi một lần.',
+      act: () => '<a class="btn lg" href="#/hang-doi">Mở Hàng đợi duyệt</a>' },
+    { title: 'Ban hành và xem lại', you: 'Bấm “Ban hành”. Muốn biết ai đã sửa gì, mở Sổ kiểm toán.',
+      machine: 'Mọi lần sửa được ghi lại và không xoá được. Bấm nhầm thì bấm “Hoàn tác”.',
+      act: () => '<a class="btn lg" href="#/so-kiem-toan">Mở Sổ kiểm toán</a>' }
+  ];
+  const GUIDE_TERMS = [
+    ['Vai trò', 'Bạn đang thao tác với tư cách ai (chuyên viên, trưởng phòng, Hiệu trưởng).'],
+    ['Cấp ban hành', 'Cấp 1 là chuyên viên, cấp 2 là trưởng phòng, cấp 3 là Hiệu trưởng. Cấp thấp không sửa được văn bản của cấp cao.'],
+    ['Ban hành', 'Bấm để áp thay đổi thật vào văn bản. Trước khi bấm, mọi thứ chỉ là xem trước.'],
+    ['Hàng đợi duyệt', 'Danh sách câu hỏi đang chờ người trả lời, xếp theo người cần trả lời.'],
+    ['Sổ kiểm toán', 'Nhật ký ghi ai sửa gì, lúc nào. Chỉ ghi thêm, không xoá được.'],
+    ['Hoàn tác', 'Trả một dòng về như cũ. Việc hoàn tác cũng được ghi vào sổ.'],
+    ['Neo', 'Cụm từ giúp máy nhận ra dòng đang nói về quy định nào (ví dụ “phúc khảo”). Máy chỉ tự sửa khi thấy đủ neo.'],
+    ['AI giữ lại', 'AI đọc lại các dòng máy định tự sửa. AI chỉ được giữ lại để người xem, không bao giờ tự sửa.'],
+    ['Minh hoạ', 'Chạy thử trên bản sao tạm. Không ảnh hưởng dữ liệu thật.']
+  ];
+  const GUIDE_FAQ = [
+    ['Máy có tự ý sửa sai không?', 'Máy chỉ tự sửa khi chắc chắn và đúng thẩm quyền. Chỗ nào không chắc, máy dừng lại hỏi người. Trên các bộ ca thử của nhóm (dữ liệu tự soạn), máy chưa tự sửa sai lần nào.'],
+    ['Tôi bấm nhầm thì sao?', 'Vào Sổ kiểm toán, tìm dòng đó và bấm “Hoàn tác”. Người có đủ cấp mới hoàn tác được.'],
+    ['Vì sao nút “Ban hành” bị mờ?', 'Vai trò đang chọn chưa đủ cấp cho thay đổi này. Lý do luôn được ghi ngay cạnh nút.'],
+    ['Chữ nhỏ quá?', 'Bấm nút “Chữ lớn” ở đầu trang này hoặc nút Aa trên thanh trên cùng.']
+  ];
+  function viewGuide() {
+    const big = largeText();
+    return '<div class="page-head"><div><div class="eyebrow">Dành cho người mới</div><h1>Hướng dẫn từng bước</h1>' +
+      '<p class="lead">Bốn bước, mỗi bước một nút đưa bạn tới đúng chỗ. Không cần đọc hết các màn hình khác.</p></div>' +
+      '<div class="row">' + btn('toggle-size', big ? 'Chữ lớn: đang bật' : 'Bật chữ lớn', { cls: 'lg' + (big ? ' on' : ''), pressed: big }) + '</div></div>' +
+      '<ol class="guide-steps">' + GUIDE_STEPS.map((g, i) => '<li class="gstep"><span class="gnum" aria-hidden="true">' + (i + 1) + '</span><div class="gbody">' +
+        '<h2>' + esc(g.title) + '</h2><p><b>Bạn làm:</b> ' + esc(g.you) + '</p><p class="muted"><b>Máy làm:</b> ' + esc(g.machine) + '</p>' +
+        '<div class="row">' + g.act() + '</div></div></li>').join('') + '</ol>' +
+      '<section class="card"><div class="card-head"><h2>Bốn kết quả máy có thể đưa ra</h2><p>Mỗi dòng văn bản rơi vào đúng một nhóm.</p></div><div class="card-body">' + kindsGuide() + '</div></section>' +
+      '<section class="card"><div class="card-head"><h2>Giải thích các khái niệm</h2></div><div class="card-body"><dl class="glossary big">' +
+        GUIDE_TERMS.map(([t, d]) => '<div><dt>' + esc(t) + '</dt><dd>' + esc(d) + '</dd></div>').join('') + '</dl></div></section>' +
+      '<section class="card"><div class="card-head"><h2>Câu hỏi thường gặp</h2></div><div class="card-body stack faq">' +
+        GUIDE_FAQ.map(([q, a]) => '<details><summary>' + esc(q) + '</summary><p>' + esc(a) + '</p></details>').join('') + '</div></section>';
+  }
+  const SIZE_KEY = 'policychange-os:size';
+  const largeText = () => document.documentElement.getAttribute('data-size') === 'lg';
+  function setLargeText(on) {
+    if (on) document.documentElement.setAttribute('data-size', 'lg'); else document.documentElement.removeAttribute('data-size');
+    try { localStorage.setItem(SIZE_KEY, on ? 'lg' : ''); } catch (_) { /* bỏ qua */ }
   }
   /** Tiến trình một thay đổi trên màn hình Thay đổi quy định: 1 mô tả · 2 xem · 3 trả lời · 4 ban hành. */
   function stepper() {
@@ -235,7 +292,7 @@
     const busy = ui.busy === (o.busyKey || action);
     const attrs = Object.entries(o.data || {}).map(([k, v]) => ' data-' + k + '="' + esc(v) + '"').join('');
     return '<button type="button" class="btn ' + (o.cls || '') + '" data-action="' + esc(action) + '"' + attrs +
-      (o.disabled || busy ? ' disabled' : '') + (o.title ? ' title="' + esc(o.title) + '"' : '') + (o.aria ? ' aria-label="' + esc(o.aria) + '"' : '') + '>' +
+      (o.disabled || busy ? ' disabled' : '') + (o.title ? ' title="' + esc(o.title) + '"' : '') + (o.aria ? ' aria-label="' + esc(o.aria) + '"' : '') + (o.pressed !== undefined ? ' aria-pressed="' + (o.pressed ? 'true' : 'false') + '"' : '') + '>' +
       (busy ? '<span class="spin" aria-hidden="true"></span>' : (o.icon ? icon(o.icon, 16) : '')) + '<span>' + esc(label) + '</span></button>';
   }
 
@@ -290,6 +347,7 @@
 
   // ---------- Định tuyến ----------
   const ROUTES = [
+    { id: 'huong-dan', label: 'Hướng dẫn', icon: 'help', title: 'Hướng dẫn từng bước', view: viewGuide },
     { id: 'tong-quan', label: 'Tổng quan', icon: 'home', title: 'Tổng quan', view: viewOverview },
     { id: 'thay-doi', label: 'Thay đổi quy định', icon: 'change', title: 'Thay đổi quy định', view: viewChange },
     { id: 'hang-doi', label: 'Hàng đợi duyệt', icon: 'queue', title: 'Hàng đợi duyệt', view: viewQueue, count: () => queueEntries().filter(e => e.right.ok).length, hot: true },
@@ -348,7 +406,7 @@
 
     $('#nav').innerHTML = '<div class="nav-label">Điều hành</div>' + ROUTES.map((r, i) => {
       const c = r.count ? r.count() : '';
-      return (i === 4 ? '<div class="nav-label">Dữ liệu &amp; chất lượng</div>' : '') +
+      return (i === 5 ? '<div class="nav-label">Dữ liệu &amp; chất lượng</div>' : '') +
         '<a href="#/' + r.id + '"' + (ui.route === r.id ? ' aria-current="page"' : '') + '>' + icon(r.icon) + '<span>' + esc(r.label) + '</span>' +
         (c !== '' && c !== 0 ? '<span class="count' + (r.hot ? ' hot' : '') + '">' + esc(c) + '</span>' : '') + '</a>';
     }).join('');
@@ -368,6 +426,8 @@
       btn('open-help', 'Hướng dẫn & thuật ngữ', { cls: 'sm ghost', icon: 'help' }) +
       '<a class="btn sm ghost" href="./thu-nghiem.html" target="_blank" rel="noopener">Phiếu góp ý dùng thử</a>';
 
+    const sizeBtn = $('#sizeBtn');
+    if (sizeBtn) { sizeBtn.setAttribute('aria-pressed', String(largeText())); sizeBtn.title = largeText() ? 'Tắt chữ lớn' : 'Bật chữ lớn'; }
     const themeBtn = $('#themeBtn');
     const dark = document.documentElement.getAttribute('data-theme') === 'dark' ||
       (!document.documentElement.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches);
@@ -424,12 +484,13 @@
     const evs = ui.overviewEval;
     const recent = S.ledger.slice(-6).reverse();
     return '' +
+      '<div class="guide-cta"><div class="grow"><b>Lần đầu dùng?</b> Xem 4 bước hướng dẫn bằng lời thường, có nút bật chữ lớn.</div><a class="btn primary lg" href="#/huong-dan">' + icon('help', 18) + '<span>Xem hướng dẫn</span></a></div>' +
       '<section class="hero" aria-labelledby="heroTitle"><div>' +
         '<div class="eyebrow">MLAI Hackathon 2026 · Đề A · Escalation Referee</div>' +
-        '<h1 id="heroTitle">Quy định đổi một chỗ — mọi văn bản nhắc lại nó được cập nhật đúng chỗ, đúng thẩm quyền.</h1>' +
+        '<h1 id="heroTitle">Quy định đổi một chỗ, mọi văn bản nhắc lại nó được cập nhật đúng chỗ, đúng thẩm quyền.</h1>' +
         '<p>Khi một quy định đổi, PolicyChange OS tìm mọi văn bản đang nhắc lại nó (quy trình, biểu mẫu, hỏi đáp, chatbot, mẫu email), <b>tự sửa chỗ chắc chắn</b> và <b>hỏi đúng người ở chỗ không chắc</b>. Mọi thay đổi có bằng chứng, có tên người chịu trách nhiệm và hoàn tác được.</p>' +
         '<div class="row"><a class="btn primary" href="#/thay-doi">' + icon('change', 16) + '<span>Tạo thay đổi</span></a>' +
-        btn('demo-safe', 'Xem minh hoạ 3 phút', { icon: 'spark' }) + btn('open-help', 'Cách dùng trong 1 phút', { cls: 'ghost', icon: 'help' }) + '</div>' +
+        btn('demo-safe', 'Xem minh hoạ 3 phút', { icon: 'spark' }) + '<a class="btn ghost" href="#/huong-dan">' + icon('help', 16) + '<span>Hướng dẫn từng bước</span></a>' + '</div>' +
       '</div><div class="hero-status small" aria-label="Trạng thái">' +
         '<div class="row"><span class="muted">Dữ liệu</span><b>' + esc(S.source === 'remote' ? 'Dùng chung · ' + S.workspace.name : S.source === 'sandbox' ? 'Minh hoạ' : 'Trên máy này') + '</b></div>' +
         '<div class="row"><span class="muted">AI</span><b>' + esc(S.ai.status === 'ready' ? 'Bật · ' + (S.ai.model || 'Gemini') : 'Tắt, dùng động cơ tiền định') + '</b></div>' +
@@ -496,7 +557,7 @@
       '<div class="page-head"><div><div class="eyebrow">Bước 1</div><h1>Thay đổi quy định</h1><p>Mô tả thay đổi bằng một câu tiếng Việt, hoặc chọn trực tiếp. Hệ thống xem trước tác động lên toàn bộ kho, chưa sửa gì cho tới khi bạn bấm Ban hành.</p></div></div>' +
       stepper() +
       '<section class="card"><div class="card-body stack">' +
-        '<label class="field" for="reqText">Câu mô tả thay đổi <span class="hint">Ví dụ: “Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành.” · Ctrl/⌘ + Enter để gửi</span></label>' +
+        '<label class="field" for="reqText">Câu mô tả thay đổi <span class="hint">Gõ một câu như khi nhắn tin, rồi bấm “Phân tích tác động”. Máy tự đọc câu và điền các ô bên dưới.</span></label>' +
         '<textarea id="reqText" name="requestText" data-bind="form.text" placeholder="Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành…">' + esc(f.text) + '</textarea>' +
         '<div class="row">' + btn('understand', S.ai.status === 'ready' ? 'Hiểu yêu cầu bằng AI' : 'Hiểu yêu cầu', { icon: 'spark' }) +
           '<span class="xs muted">' + esc(S.ai.status === 'ready' ? 'Mô hình AI chỉ được trả trích dẫn nguyên văn; kết quả được kiểm lại với sổ đăng ký.' : 'AI đang tắt, dùng bộ phân tích tiếng Việt tiền định.') + '</span></div>' +
@@ -730,7 +791,7 @@
     }
     if (!groups.size) return '';
     const total = [...groups.values()].reduce((s, g) => s + g.n, 0);
-    return '<details class="kinds-help others"><summary>' + esc(nf.format(total) + ' câu hỏi đang chờ người khác — báo cho họ') + '</summary><ul class="who">' +
+    return '<details class="kinds-help others"><summary>' + esc(nf.format(total) + ' câu hỏi đang chờ người khác: báo cho họ') + '</summary><ul class="who">' +
       [...groups.values()].map(g => '<li><span><b>' + esc(nf.format(g.n) + ' câu') + '</b> cho ' + esc(g.label) + ' · <span class="muted">' + esc(g.what) + '</span></span>' + nudgeButtons(g.n, g.label, g.what, g.local) + '</li>').join('') +
       '</ul>' + nudgeNote() + '</details>';
   }
@@ -754,7 +815,7 @@
     return sandboxBanner() +
       '<div class="page-head"><div><div class="eyebrow">Bước 4</div><h1>Sổ kiểm toán</h1><p>Chỉ ghi thêm. Mỗi bản ghi băm SHA-256 trên nội dung của nó nối với bản ghi trước, nên sửa lén một dòng là gãy cả chuỗi. Hoàn tác tạo bản ghi mới, không xoá vết.</p></div>' +
       '<div class="row">' + btn('export-json', 'Tải JSON', { cls: 'sm' }) + btn('export-csv', 'Tải CSV', { cls: 'sm' }) + '</div></div>' +
-      '<div class="notice ' + (ok ? 'ok' : 'error') + '"><div class="grow small">' + (ok ? '✓ Chuỗi hợp lệ · ' + nf.format(S.ledger.length) + ' bản ghi · đuôi <code>' + esc(tail.hash.slice(0, 16)) + '…</code>' : '✗ Chuỗi không hợp lệ — đã khoá ban hành và hoàn tác.') +
+      '<div class="notice ' + (ok ? 'ok' : 'error') + '"><div class="grow small">' + (ok ? '✓ Chuỗi hợp lệ · ' + nf.format(S.ledger.length) + ' bản ghi · đuôi <code>' + esc(tail.hash.slice(0, 16)) + '…</code>' : '✗ Chuỗi không hợp lệ. Đã khoá ban hành và hoàn tác.') +
       (S.source === 'remote' ? ' · Máy chủ kiểm lại chuỗi trước mỗi lần ghi.' : '') + '</div></div>' +
       '<label class="field" for="ledgerSearch" style="max-width:420px">Tìm trong sổ<input id="ledgerSearch" type="search" name="ledgerSearch" autocomplete="off" data-bind="ledgerQuery" placeholder="Mã tài liệu, người thực hiện, hành động…" value="' + esc(ui.ledgerQuery) + '"></label>' +
       (rows.length ? '<div class="tablewrap"><table><thead><tr><th scope="col">#</th><th scope="col">Thời điểm</th><th scope="col">Người / hệ thống</th><th scope="col">Tài liệu</th><th scope="col">Hành động</th><th scope="col">Căn cứ &amp; nội dung</th><th scope="col">Băm</th><th scope="col"><span class="sr-only">Thao tác</span></th></tr></thead><tbody>' +
@@ -878,7 +939,7 @@
           '<td class="r num nowrap">' + frac(r.before.overEscalations, r.before.notEscalatable, r.before.overEscalationRate) + ' → <b class="' + (r.after.overEscalations < r.before.overEscalations ? 'good' : '') + '">' + frac(r.after.overEscalations, r.after.notEscalatable, r.after.overEscalationRate).replace(' (', '<br>(') + '</b></td>' +
           '<td class="r num"><b class="' + (r.after.wrongEdits || r.after.misses ? 'bad' : 'good') + '">' + esc(nf.format(r.after.wrongEdits) + ' · ' + nf.format(r.after.misses)) + '</b></td></tr>').join('') +
         '</tbody></table></div>' +
-        '<p class="xs muted"><b>Đọc kết quả:</b> ' + (rows.every(({ r }) => !r.after.wrongEdits && !r.after.misses) ? 'ở mọi cách chia, học neo không làm phát sinh sửa sai hay bỏ sót. ' : 'có cách chia làm phát sinh sửa sai hoặc bỏ sót — xem cột cuối. ') + 'Nhưng nó chỉ giúp khi một từ đồng nghĩa lặp lại ở nhiều câu trả lời; ở những cách chia ghi “không có”, chưa cụm từ nào lặp lại đủ 2 câu “Có” nên máy chưa đề xuất neo. Đây là giới hạn đang công bố, không phải kết quả đã chứng minh trên dữ liệu thật.</p>'
+        '<p class="xs muted"><b>Đọc kết quả:</b> ' + (rows.every(({ r }) => !r.after.wrongEdits && !r.after.misses) ? 'ở mọi cách chia, học neo không làm phát sinh sửa sai hay bỏ sót. ' : 'có cách chia làm phát sinh sửa sai hoặc bỏ sót (xem cột cuối). ') + 'Nhưng nó chỉ giúp khi một từ đồng nghĩa lặp lại ở nhiều câu trả lời; ở những cách chia ghi “không có”, chưa cụm từ nào lặp lại đủ 2 câu “Có” nên máy chưa đề xuất neo. Đây là giới hạn đang công bố, không phải kết quả đã chứng minh trên dữ liệu thật.</p>'
         : '<div class="empty">Chưa chạy. Bấm “Chạy thí nghiệm học neo”. Thí nghiệm chạy ngay trên trình duyệt, không gọi AI.</div>') +
       '</div></section>';
   }
@@ -913,7 +974,7 @@
 
   async function understand(text) {
     const r = await app.resolveRequest(text);
-    ui.understanding = r;
+    ui.understanding = Object.assign({}, r, { text });
     if (r.status === 'ai_candidate' || r.status === 'deterministic_fallback') syncFormFromChange(r.change);
     else if (!hasUnissuedHumanWork()) {
       // Câu mới bị từ chối / cần làm rõ: không để lại phân tích và giá trị của câu trước, kẻo người dùng tưởng
@@ -1061,7 +1122,17 @@
 
   const actions = {
     'understand': () => withBusy('understand', () => understand(ui.form.text)),
-    'analyze': () => { analyzeFromForm(); render(); },
+    'analyze': () => {
+      // Phản hồi thử nghiệm P1 (14/10): gõ câu rồi bấm thẳng "Phân tích tác động" thì không thấy giá trị mới (5 ngày),
+      // vì phải bấm "Hiểu yêu cầu" trước. Nay câu chưa được đọc thì máy tự đọc rồi phân tích luôn, một nút là đủ.
+      if (ui.form.text.trim() && (!ui.understanding || ui.understanding.text !== ui.form.text)) {
+        return withBusy('understand', async () => {
+          const r = await understand(ui.form.text);
+          if (r.status === 'ai_candidate' || r.status === 'deterministic_fallback') analyzeFromForm();
+        });
+      }
+      analyzeFromForm(); render();
+    },
     'clear-analysis': () => app.clearAnalysis(),
     'semantic': () => withBusy('semantic', () => app.discoverSemantics()),
     'decide': el => { const r = app.decide(el.dataset.p, el.dataset.act); if (r.ok) timed(el); },
@@ -1091,7 +1162,14 @@
     'queue-tab': el => { setQuery('tab', el.dataset.value); render(); },
     'reload': () => withBusy('reload', () => app.reload()),
     'open-help': () => { const d = $('#helpDlg'); $('#helpBody').innerHTML = helpHtml(); if (!d.open) d.showModal(); const c = d.querySelector('[data-action="close-help"]'); if (c) c.focus(); },
-    'close-help': () => { const d = $('#helpDlg'); if (d.open) d.close(); },
+    'close-help': el => { const d = $('#helpDlg'); if (d.open) d.close(); if (el && el.getAttribute && el.getAttribute('href')) location.hash = el.getAttribute('href'); },
+    'toggle-size': () => { setLargeText(!largeText()); render(); },
+    'guide-sample': () => { ui.form.text = SAMPLE_REQUEST; go('thay-doi'); actions.analyze(); },
+    'guide-persona': () => {
+      const sel = $('#personaSel');
+      if (!sel) { toast('Bạn đang đăng nhập; vai trò lấy theo tài khoản được cấp.', 'info'); return; }
+      sel.focus(); sel.classList.add('flash'); setTimeout(() => sel.classList.remove('flash'), 2400);
+    },
     'exit-sandbox': () => { app.exitSandbox(); ui.demoStatus = null; },
     'go-online': () => withBusy('go-online', () => app.switchSource('remote', 'demo')),
     'go-offline': () => withBusy('go-offline', async () => { const res = await app.switchSource('local'); writeWorkspace('local'); return res; }),
@@ -1187,7 +1265,7 @@
       }
     });
     document.addEventListener('keydown', ev => {
-      if (ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey) && ev.target.id === 'reqText') { ev.preventDefault(); actions.understand(); }
+      if (ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey) && ev.target.id === 'reqText') { ev.preventDefault(); actions.analyze(); }
       if (ev.key === 'Enter' && ev.target.id === 'newVal') { ev.preventDefault(); actions.analyze(); }
       if (ev.key === 'Enter' && ev.target.dataset && String(ev.target.dataset.bind || '').startsWith('anchorDraft.')) {
         ev.preventDefault(); actions['add-anchor']({ dataset: { rule: ev.target.dataset.bind.split('.')[1] } });

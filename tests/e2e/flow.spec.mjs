@@ -360,6 +360,43 @@ test('báo người cần trả lời: lời nhắn có đúng người, đúng 
   await expect(page.locator('.verdict')).toContainText('Đang ngoại tuyến');
   // Hàng đợi: gom các câu hỏi đang chờ người khác.
   await page.goto(APP + '#/hang-doi');
-  await page.getByText('câu hỏi đang chờ người khác — báo cho họ').click();
+  await page.getByText('câu hỏi đang chờ người khác: báo cho họ').click();
   await expect(page.locator('.others .who li')).toHaveCount(2);
+});
+
+// Phản hồi thử nghiệm P1 (14/10): gõ câu rồi bấm thẳng "Phân tích tác động" thì không thấy 5 ngày.
+test('P1: gõ câu rồi bấm thẳng Phân tích tác động, máy tự đọc câu và phân tích 7 → 5 ngày', async ({ page }) => {
+  const errors = await open(page, 'thay-doi');
+  await page.fill('#reqText', REQUEST);
+  await page.getByRole('button', { name: 'Phân tích tác động' }).click();
+  await expect(page.getByRole('heading', { name: /Kết quả phân xử · R-PK-01 7 ngày → 5 ngày/ })).toBeVisible();
+  await expect(page.locator('#newVal')).toHaveValue('5 ngày');
+  // Câu bị từ chối: không phân tích, không để lại kết quả cũ.
+  await page.fill('#reqText', 'Đổi tất cả các thời hạn 7 ngày thành 5 ngày.');
+  await page.getByRole('button', { name: 'Phân tích lại' }).first().click();
+  await expect(page.locator('.notice.error')).toContainText('Từ chối');
+  await expect(page.getByRole('heading', { name: /Kết quả phân xử/ })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('Hướng dẫn từng bước: đứng đầu thanh bên, nút câu mẫu dẫn tới kết quả, chữ lớn được nhớ', async ({ page }) => {
+  const errors = await open(page);
+  await expect(page.locator('#nav a').first()).toHaveText(/Hướng dẫn/);
+  await page.getByRole('link', { name: 'Xem hướng dẫn' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Hướng dẫn từng bước' })).toBeVisible();
+  await expect(page.locator('.gstep')).toHaveCount(4);
+  await expect(page.locator('.glossary.big dt').getByText('Ban hành', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Bật chữ lớn' }).click();
+  await expect(page.locator('#sizeBtn')).toHaveAttribute('aria-pressed', 'true');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-size', 'lg');
+  await page.getByRole('button', { name: 'Chữ lớn: đang bật' }).click();
+  await expect(page.locator('html')).not.toHaveAttribute('data-size', 'lg');
+  await page.getByRole('button', { name: 'Thử với câu mẫu' }).click();
+  await expect(page.getByRole('heading', { name: /Kết quả phân xử · R-PK-01 7 ngày → 5 ngày/ })).toBeVisible();
+  await expect(page.locator('#reqText')).toHaveValue(REQUEST);
+  await page.goto(APP + '#/huong-dan');
+  await page.getByRole('button', { name: 'Chỉ cho tôi ô Vai trò' }).click();
+  await expect(page.locator('#personaSel')).toBeFocused();
+  expect(errors).toEqual([]);
 });

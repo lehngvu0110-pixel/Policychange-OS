@@ -136,8 +136,8 @@ main{min-width:0;padding:24px clamp(16px,3vw,36px) 120px;padding-bottom:calc(120
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .stack{display:flex;flex-direction:column;gap:10px}
 .muted{color:var(--muted)}
-.small{font-size:13px}
-.xs{font-size:12px}
+.small{font-size:13.5px}
+.xs{font-size:12.5px}
 .hr{height:1px;background:var(--line);margin:4px 0}
 
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 15px;border-radius:10px;border:1px solid var(--line-2);
@@ -432,3 +432,35 @@ table.mini .chip{height:auto;min-height:24px;white-space:normal;margin:2px 0;lin
 .others>.xs{padding:0 12px 12px}
 .verdict .xs.muted{margin-top:-4px}
 @media (max-width:640px){.nudge{margin-left:0}}
+
+/* ---------- Hướng dẫn từng bước và chữ lớn (theo phản hồi thử nghiệm P1, 14/10) ---------- */
+html[data-size="lg"] body{zoom:1.18}
+.iconbtn.txt{width:auto;min-width:38px;padding:0 10px;font:700 14px/1 var(--sans)}
+.iconbtn[aria-pressed="true"],.btn.on{background:var(--brand-soft);color:var(--brand);border-color:var(--brand-line)}
+.btn.lg{min-height:48px;padding:0 20px;font-size:16px;border-radius:12px}
+.page-head .lead{font-size:17px;color:var(--ink-2)}
+.guide-steps{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.gstep{display:grid;grid-template-columns:56px minmax(0,1fr);gap:18px;padding:22px 24px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);box-shadow:var(--shadow-1)}
+.gnum{width:52px;height:52px;border-radius:50%;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;font-size:24px;font-weight:800}
+.gstep h2{font-size:20px;margin:6px 0 10px}
+.gstep p{font-size:16px;line-height:1.65;margin:0 0 6px;max-width:68ch}
+.gstep p.muted{color:var(--ink-2)}
+.gstep .row{margin-top:12px}
+.glossary.big dt{font-size:16px}
+.glossary.big dd{font-size:15.5px;line-height:1.6}
+.faq details{border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel-2)}
+.faq summary{cursor:pointer;padding:12px 16px;font-weight:600;font-size:16px;min-height:48px;display:flex;align-items:center}
+.faq details[open] summary{border-bottom:1px solid var(--line)}
+.faq details p{margin:0;padding:12px 16px 14px;font-size:15.5px;line-height:1.6}
+select.flash{outline:3px solid var(--u1);outline-offset:2px;animation:flash .8s ease 3}
+@keyframes flash{50%{outline-color:transparent}}
+.guide-cta{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:14px 18px;border:1px solid var(--brand-line);background:var(--brand-soft);border-radius:var(--r);font-size:15.5px}
+.guide-cta .grow{flex:1;min-width:220px}
+@media (max-width:640px){
+  .gstep{grid-template-columns:minmax(0,1fr);gap:10px;padding:16px}
+  .gnum{width:40px;height:40px;font-size:18px}
+  .glossary.big{grid-template-columns:minmax(0,1fr)}
+  .iconbtn.txt{padding:0 8px}
+}
+.topbar .brand{flex-shrink:0}
+@media (max-width:1500px){html[data-size="lg"] .pill.ai{display:none}}

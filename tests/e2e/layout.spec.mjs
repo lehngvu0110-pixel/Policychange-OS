@@ -6,7 +6,7 @@ for (const scheme of ['light', 'dark']) {
     await page.emulateMedia({ colorScheme: scheme });
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
-    for (const route of ['tong-quan', 'thay-doi', 'hang-doi', 'so-kiem-toan', 'kho-tai-lieu', 'so-dang-ky', 'danh-gia']) {
+    for (const route of ['huong-dan', 'tong-quan', 'thay-doi', 'hang-doi', 'so-kiem-toan', 'kho-tai-lieu', 'so-dang-ky', 'danh-gia']) {
       await page.goto('/index.html?offline=1#/' + route);
       await expect(page.locator('main h1')).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -32,11 +32,25 @@ test('menu điều hướng trên màn hình hẹp', async ({ page }) => {
 
 test('hướng dẫn mở được trên màn hình hẹp và không tràn ngang', async ({ page }) => {
   await page.goto('/index.html?offline=1#/tong-quan');
-  await page.getByRole('button', { name: 'Cách dùng trong 1 phút' }).click();
+  const top = page.getByRole('button', { name: 'Hướng dẫn và thuật ngữ' });
+  if (await top.isVisible()) await top.click();
+  else { await page.getByRole('button', { name: 'Mở menu điều hướng' }).click(); await page.getByRole('button', { name: 'Hướng dẫn & thuật ngữ' }).click(); }
   const dlg = page.getByRole('dialog', { name: 'Cách dùng PolicyChange OS' });
   await expect(dlg).toBeVisible();
   const overflow = await dlg.evaluate(d => d.scrollWidth - d.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
   await dlg.getByRole('button', { name: 'Đóng hướng dẫn' }).click();
   await expect(dlg).toBeHidden();
+});
+
+test('chữ lớn: không tràn ngang ở màn hình Hướng dẫn và Thay đổi quy định', async ({ page }) => {
+  await page.goto('/index.html?offline=1#/huong-dan');
+  await page.getByRole('button', { name: 'Bật chữ lớn' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-size', 'lg');
+  for (const route of ['huong-dan', 'thay-doi', 'tong-quan']) {
+    await page.goto('/index.html?offline=1#/' + route);
+    await expect(page.locator('main h1')).toBeVisible();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow, route).toBeLessThanOrEqual(0);
+  }
 });

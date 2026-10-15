@@ -14,6 +14,7 @@
 <script>
   // Áp giao diện đã chọn trước khi vẽ để tránh nháy màu.
   try { var t = localStorage.getItem('policychange-os:theme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+  try { if (localStorage.getItem('policychange-os:size') === 'lg') document.documentElement.setAttribute('data-size', 'lg'); } catch (e) {}
 </script>
 </head>
 <body>
@@ -33,6 +34,7 @@
   <span class="pill ai" id="aiPill"><span class="dot" aria-hidden="true"></span><span class="t">AI</span></span>
   <span class="spacer"></span>
   <div class="persona" id="personaBox"></div>
+  <button class="iconbtn txt" id="sizeBtn" type="button" data-action="toggle-size" aria-pressed="false" aria-label="Chữ lớn" title="Bật chữ lớn"><span aria-hidden="true">Aa</span></button>
   <button class="iconbtn" id="helpBtn" type="button" data-action="open-help" aria-label="Hướng dẫn và thuật ngữ" title="Hướng dẫn và thuật ngữ"></button>
   <button class="iconbtn" id="themeBtn" type="button" aria-label="Đổi giao diện sáng / tối"></button>
 </header>

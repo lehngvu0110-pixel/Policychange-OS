@@ -25,7 +25,7 @@ test('dùng chung: trưởng phòng ban hành, vị trí U2 thành hồ sơ; tr�
   await page.goto('/index.html#/hang-doi');
   await expect(page.getByRole('button', { name: /Việc của tôi · 1/ })).toBeVisible();
   // Hồ sơ đã ban hành: lời nhắn có đường dẫn kèm workspace.
-  await page.getByText('câu hỏi đang chờ người khác — báo cho họ').click();
+  await page.getByText('câu hỏi đang chờ người khác: báo cho họ').click();
   await expect(page.locator('.others').getByRole('link', { name: 'Soạn email' }).first()).toHaveAttribute('href', /workspace%3Ddemo/);
   const card = page.locator('article.prop').filter({ hasText: 'QT-07' });
   await expect(card.locator('.tag.done')).toHaveText('CR-1');
