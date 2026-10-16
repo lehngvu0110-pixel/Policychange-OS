@@ -1,0 +1,75 @@
+/* Survey patterns reuse the application tokens; the guide and answers form one reading flow. */
+.form-page{max-width:1120px;margin:0 auto;padding:var(--space-6) var(--space-5) 80px;display:flex;flex-direction:column;gap:var(--space-5)}
+.form-page h1{font-size:clamp(22px,4vw,32px);max-width:28ch}
+.form-page .topline{display:flex;align-items:center;gap:var(--space-3)}
+.form-page .brand-name{display:inline}
+.survey-intro{max-width:var(--reading-width);gap:var(--space-3)}
+.survey-intro .eyebrow{margin:0}
+.survey-intro p{color:var(--ink-2)}
+.survey-workspace{display:grid;grid-template-columns:280px minmax(0,1fr);gap:var(--space-5);align-items:start}
+.survey-guide{position:sticky;top:var(--space-5);display:grid;gap:var(--space-4)}
+.survey-guide .steps{margin:0;padding-left:var(--space-5);display:grid;gap:var(--space-3);font-size:var(--text-caption);color:var(--ink-2)}
+.survey-guide .steps li::marker{color:var(--brand);font-weight:700}
+.survey-nav{display:grid;gap:var(--space-1);padding-inline:var(--space-2)}
+.survey-nav a{display:flex;align-items:center;min-height:var(--touch-target);padding-inline:var(--space-3);border-radius:var(--r-xs);color:var(--ink-2);font-size:var(--text-caption);text-decoration:none}
+.survey-nav a:hover{background:var(--brand-soft);color:var(--brand)}
+.survey-answers,#f{display:flex;flex-direction:column;gap:var(--space-4);min-width:0}
+.survey-progress{padding:var(--space-4);border:1px solid var(--brand-line);border-radius:var(--r);background:var(--brand-soft);display:grid;gap:var(--space-2)}
+.survey-progress .row{justify-content:space-between}
+.survey-progress b{font-size:var(--text-caption)}
+.survey-progress progress{display:block;appearance:none;width:100%;height:var(--space-2);border:0;border-radius:var(--r-xs);overflow:hidden;background:var(--line)}
+.survey-progress progress::-webkit-progress-bar{background:var(--line)}
+.survey-progress progress::-webkit-progress-value{background:var(--brand);border-radius:var(--r-xs)}
+.survey-progress progress::-moz-progress-bar{background:var(--brand);border-radius:var(--r-xs)}
+.form-page .card-head{padding-block:var(--space-4);align-items:center}
+.form-page .card-head h2{display:flex;align-items:center;gap:var(--space-2)}
+.section-number{display:inline-grid;place-items:center;width:28px;height:28px;flex:none;border-radius:50%;background:var(--brand-soft);color:var(--brand);font-size:var(--text-caption)}
+.form-page fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;gap:var(--space-3)}
+.form-page legend{font-weight:650;font-size:var(--text-body);padding:0;margin-bottom:var(--space-3);color:var(--ink);line-height:1.6}
+.q{display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-5) 0;border-bottom:1px solid var(--line)}
+.q:first-child{padding-top:var(--space-2)}
+.q:last-child{border-bottom:0;padding-bottom:var(--space-2)}
+.q .hint{font-size:var(--text-caption);color:var(--muted);font-weight:400}
+.q textarea{resize:vertical;min-height:88px;line-height:1.65}
+.opts{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.opt{position:relative;display:block;min-width:0;cursor:pointer}
+.opt input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.opt span{display:flex;align-items:center;justify-content:center;min-height:var(--touch-target);min-width:var(--touch-target);padding:var(--space-2) var(--space-4);border-radius:var(--r-sm);border:1px solid var(--line-2);background:var(--panel);font-weight:600;font-size:var(--text-caption);color:var(--ink-2);line-height:1.5;text-align:center}
+.opt:hover span{border-color:var(--brand);background:var(--brand-soft)}
+.opt input:checked+span{background:var(--brand);border-color:var(--brand);color:var(--brand-ink);box-shadow:inset 0 0 0 1px var(--brand-ink)}
+.opt input:focus-visible+span{outline:2.5px solid var(--brand);outline-offset:2px}
+.opt input:disabled+span{cursor:wait;opacity:.7}
+.scale{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--space-2)}
+.scale .opt span{font-size:var(--text-body);padding-inline:var(--space-2)}
+.scale .end{font-size:var(--text-caption);color:var(--muted);grid-column:1 / -1}
+.scale .end:last-child{text-align:right}
+.task-text{font-size:var(--text-body);color:var(--ink-2);line-height:1.7;max-width:var(--reading-width)}
+.q.missing legend,.q.missing label.field,.req,.field-error{color:var(--del)}
+.q.missing .opt span,.q.missing input,.q.missing textarea{border-color:var(--del)}
+.field-error{font-size:var(--text-caption);margin:0}
+#msg{scroll-margin-block:var(--space-5);color:var(--ink-2)}
+#msg:empty{display:none}
+#gui-phieu>.card-body>.row .btn{min-height:var(--touch-target)}
+#copyFallback textarea{font-family:var(--sans);font-size:var(--text-caption)}
+.form-page #thanks{max-width:var(--reading-width);width:100%;align-self:center}
+.done{padding:var(--space-6);text-align:center;display:grid;justify-items:center;gap:var(--space-4)}
+.done h2{font-size:24px}
+.success-mark{width:48px;height:48px;display:grid;place-items:center;background:var(--auto-soft);color:var(--auto);border-radius:50%;font-size:24px}
+.form-page :is(section,fieldset){scroll-margin-top:var(--space-5)}
+@media(max-width:900px){
+  .survey-workspace{grid-template-columns:minmax(0,1fr)}
+  .survey-guide{position:static}
+  .survey-nav{display:none}
+  .survey-guide .card-body{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:var(--space-3) var(--space-5)}
+  .survey-guide h2,.survey-guide .steps{grid-column:1 / -1}
+  .survey-guide .btn{grid-column:2;grid-row:3}
+}
+@media(max-width:640px){
+  .form-page{padding:var(--space-5) var(--space-4) 64px;gap:var(--space-5)}
+  .survey-guide .card-body{display:flex;flex-direction:column;align-items:stretch}
+  .form-page .card-head{gap:var(--space-2)}
+  .q .opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  [data-required="vanBan"] .opts,[data-required="ghiTen"] .opts{grid-template-columns:minmax(0,1fr)}
+  #gui-phieu>.card-body>.row{align-items:stretch;flex-direction:column}
+  .survey-progress .row{gap:var(--space-1)}
+}
