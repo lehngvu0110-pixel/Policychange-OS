@@ -1,4 +1,22 @@
 import { test, expect } from '@playwright/test';
+import { createFakeBackend } from './fake-backend.mjs';
+
+test('email đăng nhập dài được rút gọn và sidebar không tràn ngang', async ({ page }) => {
+  const email = 'tai-khoan-thu-nghiem-voi-ten-dang-nhap-rat-dai@example.edu.vn';
+  await createFakeBackend().attach(page);
+  await page.addInitScript(email => localStorage.setItem('policychange-os:session', JSON.stringify({
+    email, access_token: 'test-token', refresh_token: 'test-refresh', expires_at: Math.floor(Date.now() / 1000) + 3600
+  })), email);
+  await page.goto('/index.html#/tong-quan');
+  const menu = page.getByRole('button', { name: 'Mở menu điều hướng' });
+  if (await menu.isVisible()) await menu.click();
+  const account = page.locator('.account-email');
+  await expect(account).toBeVisible();
+  await expect(account).toHaveAttribute('title', email);
+  expect(await account.evaluate(el => getComputedStyle(el).textOverflow)).toBe('ellipsis');
+  expect(await account.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
+  expect(await page.locator('#sidebar').evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+});
 
 // Không có thanh cuộn ngang ở màn hình hẹp, sáng và tối; menu điều hướng mở/đóng được.
 for (const scheme of ['light', 'dark']) {

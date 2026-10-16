@@ -104,7 +104,7 @@ code,.mono{font-family:var(--mono);font-size:.9em;overflow-wrap:anywhere}
 .menu-btn{display:none}
 
 .layout{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);min-height:calc(100vh - var(--topbar))}
-.sidebar{position:sticky;top:var(--topbar);height:calc(100vh - var(--topbar));overflow:auto;border-right:1px solid var(--line);
+.sidebar{position:sticky;top:var(--topbar);height:calc(100vh - var(--topbar));overflow-y:auto;overflow-x:hidden;min-width:0;border-right:1px solid var(--line);
   background:var(--panel-2);padding:14px 12px 20px;display:flex;flex-direction:column;gap:14px;overscroll-behavior:contain}
 .nav{display:flex;flex-direction:column;gap:2px}
 .nav-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding:8px 10px 4px}
@@ -115,9 +115,10 @@ code,.mono{font-family:var(--mono);font-size:.9em;overflow-wrap:anywhere}
 .nav a[aria-current="page"] svg{color:var(--brand)}
 .nav .count{margin-left:auto;min-width:22px;height:20px;padding:0 6px;border-radius:999px;background:var(--bg-2);color:var(--ink-2);font-size:12px;font-weight:650;display:grid;place-items:center;font-variant-numeric:tabular-nums}
 .nav .count.hot{background:var(--u3);color:#fff}
-.side-card{margin-top:auto;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel);padding:12px;font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:8px}
+.side-card{margin-top:auto;min-width:0;flex-shrink:0;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--panel);padding:12px;font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:8px}
 .side-card b{color:var(--ink)}
 .side-card .row{gap:6px}
+.side-card .account-email{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 main{min-width:0;padding:24px clamp(16px,3vw,36px) 120px;padding-bottom:calc(120px + env(safe-area-inset-bottom))}
 .page{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px}

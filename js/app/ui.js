@@ -422,7 +422,7 @@
       (src === 'sandbox' ? btn('exit-sandbox', 'Thoát minh hoạ', { cls: 'sm primary' }) :
         '<div class="row">' + (remote && app.state.source !== 'remote' ? btn('go-online', 'Dùng chung', { cls: 'sm' }) : '') +
         (src === 'remote' ? btn('go-offline', 'Làm ngoại tuyến', { cls: 'sm' }) : '') + '</div>') +
-      (remote ? (session ? '<div class="xs">Đăng nhập: <b>' + esc(session.email) + '</b></div><div class="row">' +
+      (remote ? (session ? '<div class="xs">Đăng nhập: <b class="account-email" title="' + esc(session.email) + '">' + esc(session.email) + '</b></div><div class="row">' +
           (S.workspace.id !== 'hcmut-pilot' ? btn('open-pilot', 'Mở workspace thí điểm', { cls: 'sm' }) : btn('open-demo', 'Về workspace trình diễn', { cls: 'sm' })) +
           btn('sign-out', 'Đăng xuất', { cls: 'sm ghost' }) + '</div>'
         : btn('open-login', 'Đăng nhập (thí điểm)', { cls: 'sm ghost' })) : '') +
