@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { createFakeBackend } from './fake-backend.mjs';
 
-test('email đăng nhập dài được rút gọn và sidebar không tràn ngang', async ({ page }) => {
+test('email đăng nhập dài được rút gọn và sidebar không tràn ngang', async ({ page }, testInfo) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
   const email = 'tai-khoan-thu-nghiem-voi-ten-dang-nhap-rat-dai@example.edu.vn';
   await createFakeBackend().attach(page);
   await page.addInitScript(email => localStorage.setItem('policychange-os:session', JSON.stringify({
@@ -16,6 +17,8 @@ test('email đăng nhập dài được rút gọn và sidebar không tràn ngan
   expect(await account.evaluate(el => getComputedStyle(el).textOverflow)).toBe('ellipsis');
   expect(await account.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
   expect(await page.locator('#sidebar').evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+  expect(await page.locator('#sidebar').evaluate(el => getComputedStyle(el).scrollbarWidth)).toBe('thin');
+  await page.locator('#sidebar').screenshot({ path: testInfo.outputPath('sidebar.png'), scale: 'css' });
 });
 
 // Không có thanh cuộn ngang ở màn hình hẹp, sáng và tối; menu điều hướng mở/đóng được.

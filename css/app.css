@@ -62,6 +62,11 @@
 
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-padding-top:calc(var(--topbar) + 16px)}
+html,.sidebar{scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+html::-webkit-scrollbar,.sidebar::-webkit-scrollbar{width:8px}
+html::-webkit-scrollbar-track,.sidebar::-webkit-scrollbar-track{background:transparent}
+html::-webkit-scrollbar-thumb,.sidebar::-webkit-scrollbar-thumb{background:var(--line-2);border:2px solid var(--panel);border-radius:var(--r)}
+html::-webkit-scrollbar-thumb:hover,.sidebar::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans);-webkit-font-smoothing:antialiased;
   touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-height:100vh}
 h1,h2,h3{line-height:1.25;margin:0;letter-spacing:-.015em;text-wrap:balance}
