@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
 
 const APP = '/index.html?offline=1';
 const REQUEST = 'Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành.';
@@ -35,6 +36,8 @@ test('phân tích → quyết định đúng thẩm quyền → ban hành → t�
   await open(page);
   await analyze(page);
   await expect(page.locator('.stat').filter({ hasText: 'Vị trí bị ảnh hưởng' })).toContainText('9');
+  await expect(page.locator('#impactMap')).not.toHaveAttribute('open', '');
+  await page.locator('#impactMap > summary').click();
   await expect(page.locator('.graph svg')).toBeVisible();
 
   // Chuyên viên quyết được U1 thuộc Cổng thông tin sinh viên, nhưng không được ban hành thay đổi cấp 2.
@@ -42,6 +45,13 @@ test('phân tích → quyết định đúng thẩm quyền → ban hành → t�
   const u1 = page.locator('#prop-P6');
   await u1.getByRole('button', { name: /^B · Không/ }).click();
   await expect(u1).toContainText('Không, giữ nguyên');
+  await expect(u1.locator('.diff > div').last()).toContainText('7 ngày');
+  await expect(u1.locator('.diff > div').last()).not.toContainText('5 ngày');
+  await expect(u1.locator('.diff .old, .diff .new')).toHaveCount(0);
+  await expect(page.locator('#impactMap')).toHaveAttribute('open', '');
+  await page.getByRole('button', { name: 'Cần người · 2', exact: true }).click();
+  await expect(page.locator('#prop-P6')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Tất cả 9', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Ban hành' })).toBeDisabled();
   await expect(page.locator('.commitbar')).toContainText('không được ban hành');
 
@@ -50,6 +60,7 @@ test('phân tích → quyết định đúng thẩm quyền → ban hành → t�
   await expect(u2.locator('.lock')).toContainText('Phòng Thanh tra');
 
   await persona(page, 'tp-dt');
+  await expect(page.locator('.partial-notice')).toContainText('quy định gốc chưa đổi');
   await page.getByRole('button', { name: 'Ban hành' }).click();
   await expect(page.locator('.toast').last()).toContainText('Đã ban hành 6 thay đổi');
 
@@ -241,7 +252,7 @@ test('đo thời gian quyết định hiện trên Hàng đợi và tải đư�
 test('nạp tài liệu từ tệp .docx: điền sẵn biểu mẫu, nạp vào kho rồi phân tích được', async ({ page }) => {
   await open(page, 'kho-tai-lieu');
   await persona(page, 'tp-dt');
-  await page.setInputFiles('#ndFile', new URL('./mau-phuc-khao.docx', import.meta.url).pathname);
+  await page.setInputFiles('#ndFile', fileURLToPath(new URL('./mau-phuc-khao.docx', import.meta.url)));
   await expect(page.getByText(/Đã đọc 4 dòng từ “mau-phuc-khao.docx”/)).toBeVisible();
   await expect(page.locator('#ndTitle')).toHaveValue('mau-phuc-khao');
   await expect(page.locator('#ndBody')).toHaveValue(/Tạm ứng \| 10 triệu đồng/);

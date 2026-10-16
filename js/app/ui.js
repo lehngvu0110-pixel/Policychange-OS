@@ -53,7 +53,8 @@
     'Deterministic parser returned an unknown policy.': 'Quy định không có trong sổ đăng ký.',
     'Candidate policy is not in the registry.': 'AI đề xuất một quy định không có trong sổ đăng ký.',
     'Issuer tier is not supported by request evidence.': 'AI nêu cấp ban hành nhưng không trích được căn cứ trong câu.',
-    'AI extraction timed out.': 'AI hết thời gian chờ.'
+    'AI extraction timed out.': 'AI hết thời gian chờ. Bạn có thể tiếp tục bằng kết quả phân tích tiếng Việt.',
+    'Old-value evidence does not match the registered current value.': 'AI chưa xác nhận đúng giá trị hiện hành trong sổ đăng ký.'
   };
   const vi = s => VI_REASONS[s] || s || '';
 
@@ -90,12 +91,13 @@
   }
 
   function diffHtml(p, change) {
+    const kept = G.PolicyChangeImpactSvg.stateOf(p).key === 'kept';
     const re = Engine.valueRegex(change.oldValue);
     const fmt = (cls, transform) => {
       let html = '', cursor = 0, m;
       re.lastIndex = 0;
       while ((m = re.exec(p.line)) !== null) {
-        if (!Engine.isStructuredNumericOccurrence(p.line, m.index, m[0])) {
+        if (!kept && !Engine.isStructuredNumericOccurrence(p.line, m.index, m[0])) {
           html += esc(p.line.slice(cursor, m.index)) + '<span class="' + cls + '">' + esc(transform(m[0])) + '</span>';
           cursor = m.index + m[0].length;
         }
@@ -104,7 +106,8 @@
       return html + esc(p.line.slice(cursor));
     };
     return '<div class="diff" aria-label="So sánh trước và sau"><div><span class="ln">Trước</span><span>' + fmt('old', x => x) + '</span></div>' +
-      '<div><span class="ln">Sau</span><span>' + fmt('new', x => Engine.renderValue(x, change.newValue)) + '</span></div></div>';
+      '<div><span class="ln">Sau</span><span>' + fmt('new', x => Engine.renderValue(x, change.newValue)) + '</span></div>' +
+      (kept ? '<p class="diff-note">Giữ nguyên nội dung theo quyết định của người duyệt.</p>' : '') + '</div>';
   }
 
   // ---------- Giải thích bằng lời thường ----------
@@ -246,7 +249,8 @@
       (who.size ? '<ul class="who">' + [...who.values()].map(w => '<li><span class="row" style="gap:4px">' + [...w.cats].map(c => '<span class="tag ' + esc(c) + '">' + esc(c === 'hold' ? 'AI giữ lại' : c) + '</span>').join('') + '</span>' +
         '<span><b>' + esc(nf.format(w.n) + ' câu') + '</b> cho ' + esc(w.label) + '</span>' + (w.ok ? '<span class="you">bạn trả lời được</span>' : nudgeButtons(w.n, w.label, changeLabel(cur.change), true)) + '</li>').join('') + '</ul>' +
         ([...who.values()].some(w => !w.ok) ? nudgeNote() : '') : '') +
-      '</section>';
+      '<div class="row">' + (entries.some(e => e.right.ok) ? '<a class="btn primary sm" href="#/hang-doi?tab=mine">Trả lời việc của tôi</a>' : '') +
+      (applied ? '<a class="btn sm" href="#/so-kiem-toan">Xem sổ kiểm toán</a>' : '') + '</div></section>';
   }
   // ---------- Báo cho người cần trả lời (không tự gửi: người dùng tự dán hoặc tự bấm gửi email) ----------
   function queueLink() {
@@ -293,7 +297,7 @@
     const attrs = Object.entries(o.data || {}).map(([k, v]) => ' data-' + k + '="' + esc(v) + '"').join('');
     return '<button type="button" class="btn ' + (o.cls || '') + '" data-action="' + esc(action) + '"' + attrs +
       (o.disabled || busy ? ' disabled' : '') + (o.title ? ' title="' + esc(o.title) + '"' : '') + (o.aria ? ' aria-label="' + esc(o.aria) + '"' : '') + (o.pressed !== undefined ? ' aria-pressed="' + (o.pressed ? 'true' : 'false') + '"' : '') + '>' +
-      (busy ? '<span class="spin" aria-hidden="true"></span>' : (o.icon ? icon(o.icon, 16) : '')) + '<span>' + esc(label) + '</span></button>';
+      (busy ? '<span class="spin" aria-hidden="true"></span>' : (o.icon ? icon(o.icon, 16) : '')) + '<span>' + esc(busy && o.busyLabel ? o.busyLabel : label) + '</span></button>';
   }
 
   function pending() {
@@ -445,7 +449,9 @@
     const focusId = active && main.contains(active) ? active.id : null;
     const sel = focusId && 'selectionStart' in active ? [active.selectionStart, active.selectionEnd] : null;
     const route = ROUTES.find(r => r.id === ui.route);
+    const expandedMap = main.querySelector('#impactMap[open]');
     main.innerHTML = '<div class="page">' + route.view() + '</div>';
+    if (expandedMap) { const map = main.querySelector('#impactMap'); if (map) map.setAttribute('open', ''); }
     if (focusId) {
       const el = document.getElementById(focusId);
       if (el) { el.focus({ preventScroll: true }); if (sel && el.setSelectionRange) try { el.setSelectionRange(sel[0], sel[1]); } catch (_) { /* bỏ qua */ } }
@@ -556,14 +562,14 @@
     return sandboxBanner() + staleBanner() +
       '<div class="page-head"><div><div class="eyebrow">Bước 1</div><h1>Thay đổi quy định</h1><p>Mô tả thay đổi bằng một câu tiếng Việt, hoặc chọn trực tiếp. Hệ thống xem trước tác động lên toàn bộ kho, chưa sửa gì cho tới khi bạn bấm Ban hành.</p></div></div>' +
       stepper() +
-      '<section class="card"><div class="card-body stack">' +
+      '<section class="card request-card"><div class="card-head"><h2>Nội dung thay đổi</h2><span class="xs muted">Chỉ xem trước, chưa sửa tài liệu</span></div><div class="card-body stack">' +
         '<label class="field" for="reqText">Câu mô tả thay đổi <span class="hint">Gõ một câu như khi nhắn tin, rồi bấm “Phân tích tác động”. Máy tự đọc câu và điền các ô bên dưới.</span></label>' +
         '<textarea id="reqText" name="requestText" data-bind="form.text" placeholder="Rút thời hạn nộp đơn phúc khảo từ 7 ngày xuống 5 ngày, do Trưởng phòng Đào tạo ban hành…">' + esc(f.text) + '</textarea>' +
         '<div class="row">' + btn('understand', S.ai.status === 'ready' ? 'Hiểu yêu cầu bằng AI' : 'Hiểu yêu cầu', { icon: 'spark' }) +
           '<span class="xs muted">' + esc(S.ai.status === 'ready' ? 'Mô hình AI chỉ được trả trích dẫn nguyên văn; kết quả được kiểm lại với sổ đăng ký.' : 'AI đang tắt, dùng bộ phân tích tiếng Việt tiền định.') + '</span></div>' +
         understandingBox() +
         '<div class="hr"></div>' +
-        '<div class="grid g4">' +
+        '<div class="grid request-fields">' +
           '<label class="field" for="ruleSel">Quy định<select id="ruleSel" name="ruleId" data-bind="form.ruleId">' +
             S.registry.map(r => '<option value="' + esc(r.id) + '"' + (r.id === f.ruleId ? ' selected' : '') + '>' + esc(r.id + ': ' + r.name) + '</option>').join('') + '</select></label>' +
           '<label class="field" for="oldVal">Giá trị hiện hành<input id="oldVal" type="text" readonly value="' + esc(rule ? rule.value : '') + '"></label>' +
@@ -573,7 +579,8 @@
         '</div>' +
         (rule ? '<p class="xs muted">' + esc(rule.id + ' do ' + rule.owner + ' quản lý · ' + tierLabel(rule.tier) + ' · ' + rule.source) + '</p>' : '') +
         (!issue.ok ? '<div class="notice warn">' + icon('lock', 16) + '<div class="grow small">' + esc(issue.reason) + ' Bạn vẫn xem trước được tác động, nhưng chỉ người đủ thẩm quyền mới ban hành.</div></div>' : '') +
-        '<div class="row">' + btn('analyze', 'Phân tích tác động', { cls: 'primary' }) + (S.current ? btn('clear-analysis', 'Xoá kết quả', { cls: 'ghost' }) : '') + '</div>' +
+        '<div class="row">' + btn('analyze', 'Phân tích tác động', { cls: 'primary', busyKey: 'understand', busyLabel: 'Đang đọc yêu cầu…' }) + (S.current ? btn('clear-analysis', 'Xoá kết quả', { cls: 'ghost', disabled: !!ui.busy }) : '') + '</div>' +
+        (ui.busy === 'understand' ? '<p class="small muted" role="status">Đang đọc câu mô tả và đối chiếu quy định. Kết quả sẽ hiện ngay bên dưới.</p>' : '') +
       '</div></section>' + resultsSection();
   }
 
@@ -600,7 +607,8 @@
     const props = cur.props;
     const count = fn => props.filter(fn).length;
     const filter = ui.query.get('loc') || 'all';
-    const shown = props.filter(p => filter === 'all' ? true : filter === 'auto' ? p.outcome === 'AUTO_PATCH' && !p.semanticHold : !(p.outcome === 'AUTO_PATCH' && !p.semanticHold))
+    const needsAnswer = new Set(pending().map(p => p.id));
+    const shown = props.filter(p => filter === 'all' ? true : filter === 'auto' ? p.outcome === 'AUTO_PATCH' && !p.semanticHold : needsAnswer.has(p.id))
       .map((p, i) => ({ p, i })).sort((x, y) => propRank(x.p) - propRank(y.p) || x.i - y.i).map(x => x.p);
     const sem = cur.semanticStatus;
     const groups = localGroups();
@@ -611,7 +619,7 @@
       '<div class="row">' + btn('semantic', S.ai.status === 'ready' ? 'Rà soát ngữ nghĩa bằng AI' : 'Rà soát ngữ nghĩa (AI đang tắt)', { icon: 'spark', disabled: sem === 'pending' }) + '</div></div>' +
       verdictHtml(cur) +
       '<details class="kinds-help"><summary>U1 / U2 / U3 nghĩa là gì?</summary>' + kindsGuide() + '</details>' +
-      (sem && sem !== 'pending' ? '<div class="notice ' + (sem === 'complete' ? 'info' : '') + ' small">' + esc(semanticLabel(cur)) + '</div>' : '') +
+      (sem ? '<div class="notice ' + (sem === 'complete' ? 'info' : '') + ' small" role="status">' + esc(semanticLabel(cur)) + '</div>' : '') +
       '<div class="grid g4" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">' +
         stat('', nf.format(props.length), 'Vị trí bị ảnh hưởng', 'mang giá trị “' + cur.change.oldValue + '”') +
         stat('auto', nf.format(count(p => p.outcome === 'AUTO_PATCH' && !p.semanticHold)), 'Tự sửa', 'có neo, đúng thẩm quyền') +
@@ -620,12 +628,12 @@
         stat('U3', nf.format(count(p => p.category === 'U3')), 'U3 · vượt cấp', 'hỏi cấp ban hành văn bản') +
         (count(p => p.semanticHold) ? stat('hold', nf.format(count(p => p.semanticHold)), 'AI giữ lại', 'chờ người rà soát') : '') +
       '</div>' +
-      (props.length ? '<section class="card"><div class="card-head"><h2>Đồ thị tác động</h2><div class="legend" aria-hidden="true">' +
+      (props.length ? '<details class="card impact-map" id="impactMap"><summary>Đồ thị tác động <span class="xs muted">' + props.length + ' vị trí trong ' + new Set(props.map(p => p.docId)).size + ' tài liệu</span></summary><div class="card-body"><div class="legend" aria-hidden="true">' +
         [['var(--auto)', 'Tự sửa'], ['var(--u1)', 'U1'], ['var(--u2)', 'U2'], ['var(--u3)', 'U3'], ['var(--hold)', 'AI giữ lại'], ['var(--brand)', 'Đã ban hành'], ['var(--muted)', 'Giữ nguyên']]
-          .map(([c, l]) => '<span><i style="background:' + c + '"></i>' + l + '</span>').join('') + '</div></div>' +
-        '<div class="card-body graph graph-wrap">' + G.PolicyChangeImpactSvg.render(cur) + '</div></section>' : '') +
+          .map(([c, l]) => '<span><i style="background:' + c + '"></i>' + l + '</span>').join('') + '</div>' +
+        '<div class="graph graph-wrap">' + G.PolicyChangeImpactSvg.render(cur) + '</div></div></details>' : '') +
       (props.length ? '<div class="row" style="justify-content:space-between"><div class="filters" role="group" aria-label="Lọc vị trí">' +
-        [['all', 'Tất cả ' + props.length], ['human', 'Cần người · ' + count(p => !(p.outcome === 'AUTO_PATCH' && !p.semanticHold))], ['auto', 'Tự sửa · ' + count(p => p.outcome === 'AUTO_PATCH' && !p.semanticHold)]].map(([k, l]) => '<button type="button" data-action="filter-loc" data-value="' + k + '" aria-pressed="' + (filter === k) + '">' + esc(l) + '</button>').join('') +
+        [['all', 'Tất cả ' + props.length], ['human', 'Cần người · ' + needsAnswer.size], ['auto', 'Tự sửa · ' + count(p => p.outcome === 'AUTO_PATCH' && !p.semanticHold)]].map(([k, l]) => '<button type="button" data-action="filter-loc" data-value="' + k + '" aria-pressed="' + (filter === k) + '">' + esc(l) + '</button>').join('') +
         '</div><a class="btn sm ghost" href="#/hang-doi">Mở hàng đợi duyệt →</a></div>' : '') +
       '<div class="stack">' + (shown.map(p => { const g = groups.get(p.id); return propCard(p, true, g ? (g[0].id === p.id ? { members: g } : { follower: g[0] }) : {}); }).join('') || (props.length ? '<div class="empty">Không có vị trí nào trong bộ lọc này.</div>' : '<div class="empty"><b>Không có vị trí nào cần sửa</b>Giá trị “' + esc(cur.change.oldValue) + '” không xuất hiện trong kho.</div>')) + '</div>' +
       commitBar();
@@ -634,7 +642,8 @@
   function semanticLabel(cur) {
     const holds = cur.props.filter(p => p.semanticHold).length;
     const src = cur.semanticSource === 'fixture_mock' ? 'Bằng chứng mẫu (mock, không phải mô hình thật): ' : cur.semanticSource === 'openai' ? 'AI · ' + (S.ai.model || 'mô hình') + ': ' : '';
-    const m = { complete: src + 'đã rà ' + cur.props.length + ' vị trí; ' + holds + ' vị trí được giữ lại cho người duyệt.',
+    const m = { pending: 'AI đang rà soát các đề xuất. Bạn có thể đọc tài liệu và trả lời câu hỏi trong lúc chờ; ban hành sẽ mở sau khi rà soát kết thúc.',
+      complete: src + 'đã rà ' + cur.props.length + ' vị trí; ' + holds + ' vị trí được giữ lại cho người duyệt.',
       unavailable: 'AI ngữ nghĩa không khả dụng; giữ nguyên kết quả động cơ tiền định.', timeout: 'AI hết thời gian chờ; giữ nguyên kết quả tiền định.',
       provider_failure: 'AI gặp lỗi; giữ nguyên kết quả tiền định.', rejected: 'Bằng chứng AI không qua bộ kiểm tra; giữ nguyên kết quả tiền định.', no_candidates: 'Không có vị trí để rà soát.' };
     return m[cur.semanticStatus] || '';
@@ -718,17 +727,23 @@
     const formMatches = formStillMatches();
     const cases = shared ? app.caseItems().length : 0;
     const qAsked = questionsOf(pending());
+    const reviewing = cur.semanticStatus === 'pending';
+    const applied = cur.props.filter(p => p.applied).length;
+    const partial = rule && cur.change.issuerTier < rule.tier && n > 0;
     const asked = qAsked < open ? ' (gộp còn ' + qAsked + ' câu hỏi)' : '';
-    const waiting = open ? open + ' vị trí của phân tích này' + asked + ' còn chờ người quyết; ' + (shared ? 'khi ban hành, các vị trí này được chuyển thành hồ sơ dùng chung để đúng người quyết trên máy của họ.' : 'có thể ban hành phần đã sẵn sàng trước.')
+    const waiting = open ? open + ' vị trí' + asked + ' còn chờ người quyết.' + (shared ? ' Ban hành sẽ chuyển các vị trí này vào hồ sơ dùng chung.' : '')
       : 'Phân tích này không còn vị trí chờ.';
     return '<div class="notice warn" role="status" data-form-guard' + (formMatches ? ' hidden' : '') + '><div class="grow small">Biểu mẫu ở trên đã khác với phân tích đang hiện (' + esc(cur.change.rule.id + ' ' + cur.change.oldValue + ' → ' + cur.change.newValue + ', cấp ' + cur.change.issuerTier) + '). Bấm “Phân tích tác động” lại trước khi ban hành.</div>' + btn('analyze', 'Phân tích lại', { cls: 'sm' }) + '</div>' +
-      '<div class="commitbar" role="region" aria-label="Ban hành">' +
-      '<div class="grow"><b>' + nf.format(n) + ' thay đổi sẵn sàng ban hành</b>' + (rejections ? ' · ' + nf.format(rejections) + ' quyết định giữ nguyên sẽ được ghi sổ' : '') +
+      (partial ? '<div class="notice warn partial-notice" role="status"><div class="grow small"><b>Ban hành một phần: quy định gốc chưa đổi</b><p>' + esc(rule.id + ' vẫn có giá trị ' + rule.value + ' và cần cấp ' + rule.tier + ' quyết định. Lần ban hành này chỉ áp dụng các dòng đã sẵn sàng; hãy kiểm tra sự thống nhất trước khi sử dụng tài liệu.') + '</p></div></div>' : '') +
+      '<div class="commitbar" role="region" aria-label="Ban hành" aria-busy="' + (ui.busy === 'commit') + '">' +
+      '<div class="grow"><b>' + nf.format(n) + ' thay đổi sẵn sàng ban hành</b>' + (rejections ? ' · ' + nf.format(rejections) + ' quyết định giữ nguyên' : '') +
       '<div class="xs muted">' + esc(waiting) + (cases ? ' ' + esc('Hàng đợi dùng chung còn ' + cases + ' vị trí ở các hồ sơ đã ban hành trước.') : '') +
       (!issue.ok ? ' ' + esc(issue.reason) : '') + '</div></div>' +
       (canRatify ? '<label class="check small"><input type="checkbox" id="ratifyChk" name="ratify" data-bind="ratify"' + (ui.ratify ? ' checked' : '') + '> Cập nhật luôn giá trị gốc ' + esc(rule.id) + ' trong sổ đăng ký</label>'
-        : (rule && cur.change.issuerTier < rule.tier ? '<span class="xs muted hide-sm" style="max-width:260px">' + esc(rule.id + ' là quy định cấp ' + rule.tier + '; giá trị gốc chỉ đổi khi cấp ' + rule.tier + ' ban hành.') + '</span>' : '')) +
-      btn('commit', 'Ban hành', { cls: 'primary', disabled: nothing || !issue.ok || S.busy || !formMatches, data: { base: nothing || !issue.ok || S.busy ? 'off' : 'on' } }) + '</div>';
+        : (rule && cur.change.issuerTier < rule.tier ? '<span class="commit-scope small">' + esc('Quy định gốc vẫn ' + rule.value + '; cần cấp ' + rule.tier + ' duyệt.') + '</span>' : '')) +
+      (reviewing || ui.busy === 'commit' ? '<p class="commit-status small" role="status">' + (ui.busy === 'commit' ? 'Đang kiểm tra và ghi sổ. Vui lòng chờ xác nhận hoàn tất.' : 'Đang chờ AI rà soát xong trước khi ban hành.') + '</p>' : '') +
+      (applied ? '<a class="btn sm" href="#/so-kiem-toan">Xem sổ kiểm toán</a>' : '') +
+      btn('commit', 'Ban hành', { cls: 'primary', busyLabel: 'Đang ban hành…', disabled: nothing || !issue.ok || S.busy || reviewing || !formMatches, data: { base: nothing || !issue.ok || S.busy || reviewing ? 'off' : 'on' } }) + '</div>';
   }
 
   function refreshFormGuard() {
@@ -813,7 +828,7 @@
     const rows = S.ledger.filter(e => !q || [e.docId, e.actor, e.action, e.basis].some(x => String(x || '').toLowerCase().includes(q))).slice().reverse();
     const tail = Ledger.tailOf(S.ledger);
     return sandboxBanner() +
-      '<div class="page-head"><div><div class="eyebrow">Bước 4</div><h1>Sổ kiểm toán</h1><p>Chỉ ghi thêm. Mỗi bản ghi băm SHA-256 trên nội dung của nó nối với bản ghi trước, nên sửa lén một dòng là gãy cả chuỗi. Hoàn tác tạo bản ghi mới, không xoá vết.</p></div>' +
+      '<div class="page-head"><div><div class="eyebrow">Bước 4</div><h1>Sổ kiểm toán</h1><p>Xem ai đã sửa gì và vì sao. Hoàn tác khôi phục nội dung cũ và ghi thêm một bản ghi mới để giữ lịch sử.</p></div>' +
       '<div class="row">' + btn('export-json', 'Tải JSON', { cls: 'sm' }) + btn('export-csv', 'Tải CSV', { cls: 'sm' }) + '</div></div>' +
       '<div class="notice ' + (ok ? 'ok' : 'error') + '"><div class="grow small">' + (ok ? '✓ Chuỗi hợp lệ · ' + nf.format(S.ledger.length) + ' bản ghi · đuôi <code>' + esc(tail.hash.slice(0, 16)) + '…</code>' : '✗ Chuỗi không hợp lệ. Đã khoá ban hành và hoàn tác.') +
       (S.source === 'remote' ? ' · Máy chủ kiểm lại chuỗi trước mỗi lần ghi.' : '') + '</div></div>' +
@@ -824,7 +839,7 @@
           const undoable = String(e.action).startsWith('PATCH') && !Ledger.isReverted(S.ledger, e.seq);
           return '<tr><td class="num">' + esc(e.seq) + '</td><td class="num small" style="white-space:nowrap">' + fmtTime(e.ts) + '</td><td class="small">' + esc(e.actor) + '</td><td><span class="docid">' + esc(e.docId) + '</span></td>' +
             '<td class="small">' + esc(e.action) + (Ledger.isReverted(S.ledger, e.seq) ? ' <span class="tag neutral">đã hoàn tác</span>' : '') + '</td>' +
-            '<td class="small" style="min-width:260px"><div class="clamp">' + esc(e.basis) + '</div>' + (e.from !== e.to ? '<details><summary class="xs muted" style="cursor:pointer">Trước / sau</summary><div class="diff"><div><span class="ln">Trước</span><span>' + esc(e.from) + '</span></div><div><span class="ln">Sau</span><span>' + esc(e.to) + '</span></div></div></details>' : '') + '</td>' +
+            '<td class="small ledger-basis"><p>' + esc(e.basis.split(' · deterministic proof ')[0]) + '</p><details class="more"><summary>Đầy đủ căn cứ</summary><p class="xs muted">' + esc(e.basis) + '</p></details>' + (e.from !== e.to ? '<details><summary class="xs muted" style="cursor:pointer">Trước / sau</summary><div class="diff"><div><span class="ln">Trước</span><span>' + esc(e.from) + '</span></div><div><span class="ln">Sau</span><span>' + esc(e.to) + '</span></div></div></details>' : '') + '</td>' +
             '<td class="hash" title="' + esc(e.hash) + '">' + esc(e.hash.slice(0, 10)) + '…</td><td>' +
             (undoable ? btn('undo', 'Hoàn tác', { cls: 'sm danger', data: { seq: e.seq }, disabled: !u.ok || !ok, title: u.ok ? 'Khôi phục dòng và ghi thêm bản ghi hoàn tác' : (u.reason || '') }) : '') + '</td></tr>';
         }).join('') + '</tbody></table></div>'
