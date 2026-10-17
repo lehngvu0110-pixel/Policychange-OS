@@ -850,9 +850,17 @@
         rows.map(e => {
           const u = app.canUndo(e.seq);
           const undoable = String(e.action).startsWith('PATCH') && !Ledger.isReverted(S.ledger, e.seq);
+          const basisParts = e.basis.split(' · ');
+          const technicalParts = basisParts.filter(part => /^(deterministic proof |checks )/.test(part));
+          const readableBasis = basisParts.filter(part => !/^(deterministic proof |checks )/.test(part)).map((part, index) => {
+            const tier = part.match(/^cấp ban hành (\d)$/);
+            if (tier) return '<p><b>Cấp ban hành:</b> ' + esc(Engine.TIER_APPROVER[Number(tier[1])] || tier[1]) + '</p>';
+            if (part.startsWith('khởi tạo bởi ')) return '<p><b>Người khởi tạo:</b> ' + esc(part.slice('khởi tạo bởi '.length)) + '</p>';
+            return '<p><b>' + (index === 0 ? 'Căn cứ' : 'Thông tin xử lý') + ':</b> ' + esc(part === 'tự động, trong thẩm quyền' ? 'Hệ thống tự động cập nhật trong phạm vi thẩm quyền.' : part) + '</p>';
+          }).join('');
           return '<tr><td class="num">' + esc(e.seq) + '</td><td class="num small" style="white-space:nowrap">' + fmtTime(e.ts) + '</td><td class="small">' + esc(e.actor) + '</td><td><span class="docid">' + esc(e.docId) + '</span></td>' +
             '<td class="small">' + esc(e.action) + (Ledger.isReverted(S.ledger, e.seq) ? ' <span class="tag neutral">đã hoàn tác</span>' : '') + '</td>' +
-            '<td class="small ledger-basis"><p>' + esc(e.basis.split(' · deterministic proof ')[0]) + '</p><details class="more"><summary>Đầy đủ căn cứ</summary><p class="xs muted">' + esc(e.basis) + '</p></details>' + (e.from !== e.to ? '<details><summary class="xs muted" style="cursor:pointer">Trước / sau</summary><div class="diff"><div><span class="ln">Trước</span><span>' + esc(e.from) + '</span></div><div><span class="ln">Sau</span><span>' + esc(e.to) + '</span></div></div></details>' : '') + '</td>' +
+            '<td class="small ledger-basis">' + readableBasis + (e.from !== e.to ? '<details open><summary class="xs muted">Nội dung thay đổi</summary><div class="diff"><div><span class="ln">Trước</span><span>' + esc(e.from) + '</span></div><div><span class="ln">Sau</span><span>' + esc(e.to) + '</span></div></div></details>' : '') + (technicalParts.length ? '<details class="more ledger-technical"><summary>Chi tiết kỹ thuật</summary><p class="xs muted">Dữ liệu kiểm tra tự động dùng để đối chiếu khi kiểm toán.</p><p class="xs muted">' + esc(technicalParts.join(' · ')) + '</p></details>' : '') + '</td>' +
             '<td class="hash" title="' + esc(e.hash) + '">' + esc(e.hash.slice(0, 10)) + '…</td><td>' +
             (undoable ? btn('undo', 'Hoàn tác', { cls: 'sm danger', data: { seq: e.seq }, disabled: !u.ok || !ok, title: u.ok ? 'Khôi phục dòng và ghi thêm bản ghi hoàn tác' : (u.reason || '') }) : '') + '</td></tr>';
         }).join('') + '</tbody></table></div>'

@@ -25,9 +25,12 @@ test('quyết định giữ nguyên, cảnh báo ban hành và bố cục có d�
   await page.locator('.commitbar').getByRole('link', { name: 'Xem sổ kiểm toán' }).click();
   await expect(page.locator('.notice.ok')).toContainText('7 bản ghi');
   const patch = page.locator('tbody tr').filter({ hasText: 'PATCH' }).first();
-  await expect(patch.locator('.ledger-basis > p')).not.toContainText('well_formed_input');
-  await patch.getByText('Đầy đủ căn cứ', { exact: true }).click();
-  await expect(patch.locator('.ledger-basis details[open]')).toContainText('well_formed_input');
+  await expect(patch.locator('.ledger-basis > p').first()).not.toContainText('well_formed_input');
+  await expect(patch.locator('.ledger-basis')).toContainText('Cấp ban hành: Trưởng đơn vị chủ quản');
+  await expect(patch.locator('.ledger-technical')).not.toHaveAttribute('open');
+  await expect(patch.locator('.diff')).toBeVisible();
+  await patch.getByText('Chi tiết kỹ thuật', { exact: true }).click();
+  await expect(patch.locator('.ledger-technical[open]')).toContainText('well_formed_input');
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: testInfo.outputPath('ledger.png'), fullPage: true, scale: 'css' });
 });
