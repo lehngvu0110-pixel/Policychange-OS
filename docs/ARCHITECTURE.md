@@ -112,9 +112,12 @@ Xem `docs/PHAN-HOI-BTC-SPRINT-1.md`, mục 3.
   - `legal-status`: hiệu lực tại một ngày;
   - `legal-page`: đọc trang nguồn;
   - `legal-fetch`: tải an toàn;
+  - `legal-research`: dựng lại kết quả trên máy chủ từ cache có bằng chứng, tính trạng thái và băm độc lập với client;
   - `doc-history`: phiên bản dựng từ sổ kiểm toán.
 - **Edge Function `legal-discover`** là nơi duy nhất gọi ra mạng ngoài. Nó chỉ gọi host trong allowlist và giữ khoá nhà cung cấp tìm kiếm.
 - Không mô-đun nào ở đây thay đổi động cơ, prover hay sổ kiểm toán. Cảnh báo hiệu lực chỉ chặn nút Ban hành tới khi người ban hành xác nhận đã xem.
+- Lưu nghiên cứu không nhận đồ thị hoặc kết luận do client gửi. `legal-discover` kiểm membership đúng workspace rồi tự dựng lại từ bằng chứng máy chủ; RLS vẫn giữ nguyên.
+- Khôi phục dùng `policy-api` → `Server.planRestore()` → một RPC `apply_change` hiện có. Máy chủ kiểm phiên bản/đuôi sổ, dựng đích từ lịch sử, kiểm quyền mọi hoàn tác rồi ghi các dòng và sự kiện trong cùng giao dịch. Không sửa/xoá sự kiện cũ.
 
 Chi tiết: `docs/LEGAL-INTELLIGENCE.md`.
 

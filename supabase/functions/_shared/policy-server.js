@@ -14,15 +14,15 @@
     // @ts-ignore
     Engine: require('./policy-engine.js'), Ledger: require('./policy-ledger.js'), Workflow: require('./policy-workflow.js'),
     // @ts-ignore
-    Authz: require('./policy-authz.js')
-  } : { Engine: g.PolicyChangeEngine, Ledger: g.PolicyChangeLedger, Workflow: g.PolicyChangeWorkflow, Authz: g.PolicyChangeAuthz };
+    Authz: require('./policy-authz.js'), History: require('./doc-history.js')
+  } : { Engine: g.PolicyChangeEngine, Ledger: g.PolicyChangeLedger, Workflow: g.PolicyChangeWorkflow, Authz: g.PolicyChangeAuthz, History: g.PolicyChangeDocHistory };
   const api = factory(deps);
   // @ts-ignore
   if (isNode) module.exports = api;
   if (root) root.PolicyChangeServer = api;
 })(typeof globalThis === 'object' ? globalThis : this, function createPolicyServer(/** @type {any} */ deps) {
   'use strict';
-  const { Engine, Ledger, Workflow, Authz } = deps;
+  const { Engine, Ledger, Workflow, Authz, History } = deps;
 
   /**
    * @typedef {{ id:string, displayName:string, tier:number, units:string[], userId?:string|null }} Member
@@ -365,6 +365,47 @@
         p_records: records.map(r => toRpcRecord(r, ctx.member.userId)), p_feedback: [] } };
   }
 
+  /** Reconstruct and authorize the entire restoration before one transactional write. @param {ServerContext} ctx @param {any} request @returns {Plan} */
+  function planRestore(ctx, request) {
+    const problem = chainProblem(ctx);
+    if (problem) return problem;
+    const req = request || {};
+    if (!Number.isInteger(req.targetRevision) || req.targetRevision < 0) return fail(400, 'invalid_version', 'Phiên bản đích không hợp lệ.');
+    const doc = ctx.docs.find(d => d.id === req.docId);
+    if (!doc) return fail(404, 'not_found', 'Không có tài liệu trong workspace này.');
+    if (req.expectedSeq !== ctx.workspace.ledger_seq || req.expectedTail !== ctx.workspace.ledger_tail || req.expectedVersion !== doc.version) {
+      return fail(409, 'ledger_conflict', 'Workspace hoặc tài liệu đã thay đổi; hãy tải lại trước khi khôi phục.');
+    }
+    const history = History.build(doc, ctx.ledger, { chainOk: true });
+    const restore = History.restorePlan(history, req.targetRevision);
+    if (!restore.ok) return fail(409, 'restore_refused', restore.reason);
+    for (const seq of restore.undoSeqs) {
+      const entry = ctx.ledger.find(e => e.seq === seq);
+      const allowed = Authz.canUndo(ctx.member, doc, entry);
+      if (!allowed.ok) return fail(403, 'forbidden_restore', allowed.reason || 'Không đủ thẩm quyền khôi phục.');
+    }
+    const state = stateOf(ctx);
+    const target = history.revisions[req.targetRevision];
+    const metadata = 'khôi phục bản ' + req.targetRevision + ' · từ bản ' + (history.revisions.length - 1) + ' · phiên bản trước ' + doc.version +
+      ' · đích seq ' + (target.seq ?? 0) + ' hash ' + (target.hash || Ledger.GENESIS) + ' · nguồn ledger ' + ctx.workspace.ledger_tail;
+    const stamp = ctx.now ? ctx.now() : new Date().toISOString();
+    for (const seq of restore.undoSeqs) {
+      const undone = Workflow.undo(state, seq, { now: () => stamp, humanActor: () => actorLabel(ctx.member) });
+      if (!undone.ok) return fail(409, 'restore_refused', undone.message);
+      const record = state.ledger[state.ledger.length - 1];
+      record.basis += ' · ' + metadata;
+      record.hash = Ledger.hashOf(record);
+    }
+    const after = state.docs.find((/** @type {any} */ d) => d.id === doc.id);
+    if (JSON.stringify(after.lines) !== JSON.stringify(target.lines)) return fail(409, 'restore_refused', 'Kết quả khôi phục không khớp phiên bản trong sổ.');
+    const records = state.ledger.slice(ctx.ledger.length);
+    return { ok: true, status: 200, body: { message: 'Đã khôi phục ' + doc.id + ' về bản ' + req.targetRevision + ' trong một giao dịch.', records,
+      restored: { docId: doc.id, sourceRevision: history.revisions.length - 1, targetRevision: req.targetRevision, targetSeq: target.seq, version: after.version } },
+      rpc: { p_workspace: ctx.workspace.id, p_expected_seq: ctx.workspace.ledger_seq, p_expected_tail: ctx.workspace.ledger_tail,
+        p_doc_updates: docUpdatesFrom(records, state.docs), p_policy_updates: [], p_new_documents: [],
+        p_records: records.map(r => toRpcRecord(r, ctx.member.userId)), p_feedback: [] } };
+  }
+
   /** @param {ServerContext} ctx @param {any} request @returns {Plan} */
   function planAnchor(ctx, request) {
     const problem = chainProblem(ctx);
@@ -405,5 +446,5 @@
   }
 
   return Object.freeze({ fromDbPolicy, fromDbDocument, fromDbRecord, fromDbOpenChange, fromDbDecision, toRpcRecord, demoMember, actorLabel,
-    issueSuffix, analyzeOpenChange, planCommit, planDecide, planUndo, planAnchor, planAddDocument });
+    issueSuffix, analyzeOpenChange, planCommit, planDecide, planUndo, planRestore, planAnchor, planAddDocument });
 });

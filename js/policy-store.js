@@ -58,8 +58,11 @@
     const tx = async (mode, run) => {
       const db = await open();
       return new Promise((resolve, reject) => {
-        const request = run(db.transaction('kv', mode).objectStore('kv'));
-        request.onsuccess = () => resolve(request.result);
+        const transaction = db.transaction('kv', mode);
+        const request = run(transaction.objectStore('kv'));
+        transaction.oncomplete = () => resolve(request.result);
+        transaction.onabort = () => reject(transaction.error || new Error('storage_aborted'));
+        transaction.onerror = () => reject(transaction.error || new Error('storage_failed'));
         request.onerror = () => reject(request.error);
       });
     };

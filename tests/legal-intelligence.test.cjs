@@ -53,7 +53,7 @@ test('allowlist nguồn chặn SSRF: chỉ https, không IP, không localhost, k
 test('khám phá văn bản mẫu: trực tiếp và đệ quy, metadata ngược, dừng ở giới hạn độ sâu và báo dang dở', async () => {
   const g = await run();
   assert.equal(g.state, 'partial');
-  assert.deepEqual(g.stopReasons, ['depth']);
+  assert.deepEqual(g.stopReasons, ['depth', 'unresolved']);
   assert.equal(node(g, '08/2021/TT-BMP').depth, 1);
   assert.equal(node(g, '08/2021/TT-BMP').direct, true);
   assert.equal(node(g, '10/2016/TT-BMP').depth, 2);
@@ -68,11 +68,12 @@ test('khám phá văn bản mẫu: trực tiếp và đệ quy, metadata ngượ
   assert.ok(g.unresolved.some(u => u.id === '120/QD-TMP'));
 });
 
-test('tiếp tục từ chỗ dừng: không tải lại văn bản đã có, hoàn tất khi hết frontier', async () => {
+test('tiếp tục không tải lại văn bản đã có; tham chiếu không tìm được vẫn làm kết quả dang dở', async () => {
   const first = await run();
   const adapter = Fixtures.createFixtureAdapter();
   const next = await Discovery.continueDiscovery(first, { adapter });
-  assert.equal(next.state, 'complete');
+  assert.equal(next.state, 'partial');
+  assert.deepEqual(next.stopReasons, ['unresolved']);
   assert.deepEqual(adapter.calls, ['01/2005/TT-BMP']);
   assert.equal(node(next, '01/2005/TT-BMP').resolution, 'found');
   assert.equal(next.limits.maxDepth, 4);
@@ -115,11 +116,12 @@ test('nguồn quá thời gian, lỗi, ném ngoại lệ: ghi lỗi có thể th
 
 test('nguồn trả về văn bản khác số hiệu hoặc không rõ số hiệu: không nhận', async () => {
   const g = await run({ adapter: { failures: { '08/2021/TT-BMP': 'wrong_doc' } } });
-  assert.equal(node(g, '08/2021/TT-BMP').resolution, 'not_found');
+  assert.equal(node(g, '08/2021/TT-BMP').resolution, 'error');
+  assert.equal(node(g, '08/2021/TT-BMP').code, 'identity_unverified');
   assert.match(node(g, '08/2021/TT-BMP').reason, /khác số hiệu/);
   const blank = { name: 'b', live: false, resolve: async () => ({ status: 'found', doc: { title: 'x', text: '' } }) };
   const b = await Discovery.discover({ start: { id: 'X', title: 'x', text: 'Căn cứ Thông tư 01/2020/TT-BMP.' }, adapter: blank });
-  assert.equal(b.nodes[1].resolution, 'not_found');
+  assert.equal(b.nodes[1].resolution, 'error');
 });
 
 test('câu chèn lệnh trong văn bản tải về chỉ là dữ liệu: không tạo quan hệ, không đổi kết luận', async () => {
@@ -142,7 +144,9 @@ test('văn bản quá lớn bị cắt ở 300.000 ký tự; trường lạ củ
 
 // ---------------- Hiệu lực ----------------
 test('hiệu lực theo ngày: đủ sáu trạng thái trên kho mô phỏng', async () => {
-  const g = await run({ maxDepth: 5 });
+  // Closed synthetic corpus: remove the deliberately unresolved reference for positive status tests.
+  const g = await run({ maxDepth: 5, start: { ...START, text: START.text.replace(/^Căn cứ Quyết định 120[^\n]*\n/m, '') } });
+  assert.equal(g.state, 'complete');
   const at = (id, d) => Status.assess(Refs.canonicalId(id), g, d);
   assert.equal(at('11/2012/QH99', '2026-10-17').state, 'IN_FORCE');
   assert.equal(at('10/2016/TT-BMP', '2026-10-17').state, 'EXPIRED');
@@ -360,6 +364,7 @@ test('migration: bảng mới bật RLS, kết quả tra cứu đọc theo quy�
   assert.doesNotMatch(sql, /for (insert|update|delete|all) to (anon|authenticated)/);
   assert.match(sql, /revoke all on function public\.consume_legal_fetch_quota\(integer, text, integer\) from public, anon, authenticated/);
   const fn = read('supabase/functions/legal-discover/index.ts');
-  assert.match(fn, /run\.live !== true/, 'không lưu kết quả mô phỏng vào CSDL');
+  assert.match(fn, /Research\.validateRun\(run\)/, 'máy chủ chỉ nhận phạm vi, không nhận chứng nhận từ client');
+  assert.match(fn, /Research\.rebuildRun\(run/, 'máy chủ tự dựng đồ thị và kết luận từ cache đã xác minh');
   assert.match(fn, /from\("members"\)[\s\S]*eq\("workspace_id", ws\.id\)/, 'lưu kết quả chỉ khi là thành viên đúng workspace');
 });

@@ -900,7 +900,7 @@
     const L = ui.legal;
     if (!L.result) return null;
     const key = L.asOf + '|' + L.result.finishedAt + '|' + L.result.nodes.length;
-    if (!L.assess || L.assessKey !== key) { L.assess = Legal.Status.assessAll(L.result, /^\d{4}-\d{2}-\d{2}$/.test(L.asOf) ? L.asOf : todayIso()); L.assessKey = key; }
+    if (!L.assess || L.assessKey !== key) { L.assess = Legal.Status.assessAll(L.result, L.asOf); L.assessKey = key; }
     return L.assess;
   }
   function legalStartInput() {
@@ -942,6 +942,7 @@
         (n.via && n.via.length ? ' · đi tới từ ' + n.via.slice(0, 4).map(v => esc(v.from === r.startId ? 'văn bản đầu vào' : v.from)).join(', ') : '') + '</p>' : '') +
       (n.resolution === 'found' ? '<div class="grid g3 small"><div><span class="muted">Ban hành</span><br>' + esc(vnDate(d.issueDate) || 'không rõ') + '</div><div><span class="muted">Có hiệu lực từ</span><br>' + esc(vnDate(d.effectiveFrom) || 'không rõ') + '</div><div><span class="muted">Hết hiệu lực</span><br>' + esc(vnDate(d.expiresOn) || 'không ghi') + '</div></div>' : '') +
       (n.reason ? '<div class="notice warn"><div class="grow small">' + esc(n.reason) + '</div></div>' : '') +
+      ((d.retrievalFailures || n.failures || []).length ? '<div><b class="small">Trang ứng viên chưa xác minh</b><ul class="small">' + (d.retrievalFailures || n.failures).map(f => '<li>' + legalSourceLink({ url: f.url, sourceName: f.code || 'Trang ứng viên' }) + ': ' + esc(f.reason) + '</li>').join('') + '</ul></div>' : '') +
       (a && n.resolution !== 'start' ? '<div><b class="small">Vì sao kết luận như vậy (tính đến ' + esc(vnDate(a.asOf)) + ')</b><ul class="small">' + a.reasons.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></div>' : '') +
       (a && (a.amendments.length || a.pending.length || a.causedBy.length) ? '<div><b class="small">Chuỗi sửa đổi, thay thế</b><ul class="small">' +
         a.causedBy.map(x => '<li>Chịu tác động của ' + esc(x) + '</li>').join('') +
@@ -981,7 +982,7 @@
         (L.mode === 'live' && !sample ? '<div class="notice ' + (L.live && L.live.configured ? 'ok' : 'warn') + '"><div class="grow small">' + esc(L.live ? (L.live.configured ? 'Máy chủ đã cấu hình nhà cung cấp tìm kiếm (' + (L.live.provider || '') + '). Chỉ tải từ vbpl.vn, vanban.chinhphu.vn, congbao.chinhphu.vn, chinhphu.vn, moet.gov.vn; trang thứ cấp chỉ để đối chiếu.' : (L.live.reason || 'Máy chủ chưa cấu hình tra cứu trực tuyến.')) : 'Chưa kiểm tra máy chủ tra cứu.') + '</div>' + btn('legal-check', 'Kiểm tra máy chủ', { cls: 'sm' }) + '</div>' : '') +
         '<div class="grid g3">' +
           '<label class="field" for="lgDepth">Độ sâu tối đa<input id="lgDepth" type="number" min="1" max="8" name="lgDepth" data-bind="legal.maxDepth" value="' + esc(L.maxDepth) + '"></label>' +
-          '<label class="field" for="lgMax">Số văn bản tối đa<input id="lgMax" type="number" min="1" max="200" name="lgMax" data-bind="legal.maxDocs" value="' + esc(L.maxDocs) + '"></label>' +
+          '<label class="field" for="lgMax">Số lượt tra cứu tối đa<input id="lgMax" type="number" min="1" max="200" name="lgMax" data-bind="legal.maxDocs" value="' + esc(L.maxDocs) + '"></label>' +
           '<div class="field"><span>&nbsp;</span><div class="row">' + btn('legal-run', 'Khám phá văn bản liên quan', { cls: 'primary', busyLabel: 'Đang tra cứu…', disabled: running }) + '</div></div>' +
         '</div>' +
         (running && L.progress ? '<p class="small muted" role="status">Đang tra ' + esc(L.progress.id) + ' (tầng ' + esc(L.progress.depth) + ') · đã xử lý ' + esc(L.progress.done) + ' · còn chờ ' + esc(L.progress.queued) + '</p>' : '') +
@@ -990,12 +991,12 @@
         (r.unavailable ? '<div class="notice warn"><div class="grow small"><b>Không tra cứu trực tuyến được:</b> ' + esc(r.unavailable) + ' Các văn bản dưới đây được đánh dấu lỗi nguồn, không phải “không tồn tại”.</div></div>' : '') +
         (r.state === 'partial'
           ? '<div class="notice warn" role="status"><div class="grow small"><b>Kết quả chưa đầy đủ.</b> ' + esc(r.stopReasons.map(Legal.Discovery.stopReasonLabel).join('; ')) + '. Còn ' + nf.format(r.frontier.length) + ' văn bản chưa tra' + (r.errors.length ? ', ' + nf.format(r.errors.length) + ' văn bản lỗi nguồn' : '') + '.</div>' +
-            btn('legal-continue', 'Tiếp tục khám phá', { cls: 'sm', busyLabel: 'Đang tra tiếp…', disabled: running, title: 'Thêm 1 tầng và 10 văn bản, thử lại các nguồn lỗi tạm thời' }) + '</div>'
+            btn('legal-continue', 'Tiếp tục khám phá', { cls: 'sm', busyLabel: 'Đang tra tiếp…', disabled: running || (!r.frontier.length && !r.errors.some(e => e.retryable)), title: 'Thêm 1 tầng và 10 lượt tra cứu, thử lại các nguồn lỗi tạm thời' }) + '</div>'
           : '<div class="notice ok" role="status"><div class="grow small">Đã duyệt hết các quan hệ tìm được trong phạm vi tra cứu (độ sâu ' + esc(r.limits.maxDepth) + ', tối đa ' + esc(r.limits.maxDocs) + ' văn bản).</div></div>') +
         '<div class="grid g4">' +
           '<div class="stat accent"><span class="v">' + nf.format(r.stats.found) + '</span><span class="l">Văn bản tìm được</span><span class="s">sâu nhất tầng ' + esc(r.stats.maxDepthReached) + '</span></div>' +
           '<div class="stat auto"><span class="v">' + nf.format(counts.IN_FORCE || 0) + '</span><span class="l">Còn hiệu lực</span><span class="s">tại ' + esc(vnDate(L.asOf)) + '</span></div>' +
-          '<div class="stat U3"><span class="v">' + nf.format((counts.EXPIRED || 0) + (counts.CONFLICT || 0)) + '</span><span class="l">Hết hiệu lực / mâu thuẫn</span><span class="s">' + nf.format(counts.PARTIAL || 0) + ' hết hiệu lực một phần · ' + nf.format(counts.NOT_YET || 0) + ' chưa có hiệu lực</span></div>' +
+          '<div class="stat U3"><span class="v">' + nf.format((counts.EXPIRED || 0) + (counts.CONFLICT || 0)) + '</span><span class="l">Hết hiệu lực / mâu thuẫn</span><span class="s">' + nf.format(counts.PARTIAL || 0) + ' hết hiệu lực một phần · ' + nf.format(counts.NOT_YET || 0) + ' chưa có hiệu lực · ' + nf.format(counts.SUSPENDED || 0) + ' ngưng hiệu lực</span></div>' +
           '<div class="stat"><span class="v">' + nf.format(counts.UNVERIFIED || 0) + '</span><span class="l">Chưa xác minh được</span><span class="s">' + nf.format(r.stats.notFound) + ' không tìm thấy · ' + nf.format(r.stats.pending) + ' chưa tra</span></div>' +
         '</div>' +
         '<section class="card"><div class="card-head"><h2>Đồ thị quan hệ</h2><span class="xs muted">Bấm một văn bản để xem chi tiết</span></div><div class="card-body"><div class="legend" aria-hidden="true">' +
@@ -1022,17 +1023,16 @@
   function legalWarnings() {
     const r = ui.legal.result;
     if (!r) return null;
-    return Legal.Status.warnings(r, /^\d{4}-\d{2}-\d{2}$/.test(ui.legal.asOf) ? ui.legal.asOf : todayIso())
-      .filter(w => w.state !== 'UNVERIFIED' || r.nodes.find(n => n.id === w.id && n.resolution === 'found'));
+    return Legal.Status.warnings(r, ui.legal.asOf);
   }
   function legalNotice() {
     const r = ui.legal.result;
     if (!r) return '<p class="xs muted">Chưa kiểm tra hiệu lực văn bản căn cứ. <a href="#/phap-ly">Mở Căn cứ pháp lý</a> để tra trước khi ban hành.</p>';
     const ws = legalWarnings();
-    if (!ws.length) return '<div class="notice ok"><div class="grow small">Văn bản căn cứ của “' + esc(r.startLabel) + '”: không có cảnh báo hiệu lực tại ' + esc(vnDate(ui.legal.asOf)) + (r.state === 'partial' ? ' (kết quả tra cứu chưa đầy đủ)' : '') + '.</div></div>';
+    if (!ws.length) return '<div class="notice ok"><div class="grow small">Không phát hiện cảnh báo hiệu lực trong phạm vi bằng chứng đã xác minh cho “' + esc(r.startLabel) + '” tại ' + esc(vnDate(ui.legal.asOf)) + '. Kết quả này không phải chứng nhận pháp lý.</div></div>';
     return '<div class="notice warn" role="status"><div class="grow small"><b>Cảnh báo hiệu lực văn bản căn cứ</b> (' + esc(r.startLabel) + ', tại ' + esc(vnDate(ui.legal.asOf)) + (r.adapterSynthetic ? ', dữ liệu mô phỏng' : '') + ')<ul>' +
       ws.slice(0, 6).map(w => '<li>' + esc(w.label) + ': ' + esc(w.stateLabel) + (w.reason ? '. ' + esc(w.reason) : '') + '</li>').join('') + (ws.length > 6 ? '<li>… và ' + (ws.length - 6) + ' văn bản khác</li>' : '') + '</ul>' +
-      '<p>Hệ thống không tự kết luận tài liệu nội bộ hết hiệu lực và không đổi kết quả phân xử. Người ban hành cần xem lại căn cứ trước khi bấm Ban hành.</p>' +
+      '<p>Hệ thống không tự kết luận tài liệu nội bộ hết hiệu lực và không đổi kết quả phân xử. Xác nhận đã xem không chứng minh căn cứ hợp lệ. Người ban hành cần xem lại căn cứ trước khi bấm Ban hành.</p>' +
       '<label class="check small"><input type="checkbox" id="legalAck" name="legalAck" data-bind="legalAck"' + (ui.legalAck ? ' checked' : '') + '> Tôi đã xem các cảnh báo hiệu lực này</label></div><a class="btn sm" href="#/phap-ly">Xem chi tiết</a></div>';
   }
   function legalBlocks() { const ws = legalWarnings(); return !!(ws && ws.length && !ui.legalAck); }
@@ -1069,13 +1069,13 @@
     const restoreBtn = r => {
       if (r.current) return '<span class="tag done">Hiện tại</span>';
       const plan = Legal.History.restorePlan(h, r.n);
-      const rights = plan.ok ? plan.undoSeqs.map(s => app.canUndo(s)) : [];
+      const rights = plan.ok ? plan.undoSeqs.map(s => Authz.canUndo(app.member(), S.docs.find(d => d.id === h.docId), S.ledger.find(e => e.seq === s))) : [];
       const denied = rights.find(x => !x.ok);
       return btn('history-restore', 'Khôi phục', { cls: 'sm danger', data: { n: r.n }, disabled: !plan.ok || !!denied || !!S.busy,
-        title: !plan.ok ? plan.reason : denied ? (denied.reason || 'Không đủ thẩm quyền hoàn tác') : 'Hoàn tác ' + plan.undoSeqs.length + ' thay đổi sau phiên bản này; mỗi lần hoàn tác là một bản ghi mới' });
+        title: !plan.ok ? plan.reason : denied ? (denied.reason || 'Không đủ thẩm quyền hoàn tác') : 'Khôi phục toàn bộ trong một giao dịch và ghi thêm lịch sử' });
     };
     return '<section class="card" id="historyPanel" tabindex="-1"><div class="card-head"><h2>Lịch sử phiên bản · ' + esc(H.docId) + '</h2>' + btn('history-close', 'Đóng', { cls: 'sm ghost' }) + '</div><div class="card-body stack">' +
-      '<p class="small muted">' + esc(doc ? doc.title : '') + '. Dựng lại từ sổ kiểm toán: mỗi phiên bản ứng với một bản ghi băm, không có bảng phiên bản riêng nên lịch sử không thể lệch khỏi sổ. Khôi phục = hoàn tác các thay đổi sau phiên bản đó, mỗi lần hoàn tác là một bản ghi mới.</p>' +
+      '<p class="small muted">' + esc(doc ? doc.title : '') + '. Dựng lại từ sổ kiểm toán, đối chiếu nội dung và chuỗi băm trước khi khôi phục. Toàn bộ hoàn tác được ghi trong một giao dịch; lịch sử cũ được giữ nguyên.</p>' +
       (h.integrity.ok ? '<div class="notice ok"><div class="grow small">✓ Lịch sử khớp với nội dung hiện tại và chuỗi băm hợp lệ.</div></div>'
         : '<div class="notice error"><div class="grow small"><b>Lịch sử không khớp.</b> ' + esc((h.integrity.chainOk ? [] : ['Chuỗi băm của sổ không hợp lệ.']).concat(h.integrity.problems).join(' ')) + ' Đã khoá khôi phục.</div></div>') +
       '<div class="tablewrap"><table><thead><tr><th scope="col">Bản</th><th scope="col">Thời điểm</th><th scope="col">Thay đổi</th><th scope="col">Người / hệ thống</th><th scope="col">Phê duyệt</th><th scope="col">Sổ</th><th scope="col"><span class="sr-only">Thao tác</span></th></tr></thead><tbody>' +
@@ -1359,6 +1359,7 @@
   function legalFinish(res, label, adapter) {
     res.startLabel = label; res.adapterSynthetic = !!adapter.synthetic; res.unavailable = adapter.unavailable || null;
     ui.legal.result = res; ui.legal.assess = null; ui.legal.progress = null;
+    ui.legalAck = false;
   }
 
   const actions = {
@@ -1394,15 +1395,12 @@
     },
     'legal-check': () => withBusy('legal-check', async () => { ui.legal.live = legalRemote ? await legalRemote.status() : { configured: false, reason: 'Chế độ Ngoại tuyến.' }; }),
     'legal-save': () => withBusy('legal-save', async () => {
-      const r = ui.legal.result, all = legalAssess();
+      const r = ui.legal.result;
       if (!r || !r.live || !legalRemote) return;
-      const graph = { nodes: r.nodes.map(n => ({ id: n.id, depth: n.depth, direct: n.direct, resolution: n.resolution, label: n.label, reason: n.reason || null,
-        doc: n.doc && n.resolution === 'found' ? { number: n.doc.number, title: n.doc.title, kind: n.doc.kind, issueDate: n.doc.issueDate, effectiveFrom: n.doc.effectiveFrom, expiresOn: n.doc.expiresOn, sources: n.doc.sources } : null })),
-        edges: r.edges.map(e => ({ from: e.from, to: e.to, type: e.type, basis: e.basis, quote: e.quote ? String(e.quote).slice(0, 300) : null, effectiveFrom: e.effectiveFrom || null })) };
-      const assessments = Object.fromEntries(Object.entries(all).map(([k, a]) => [k, { state: a.state, reasons: a.reasons, evidence: a.evidence.map(e => ({ text: e.text, url: e.url, tier: e.tier })) }]));
-      const res = await legalRemote.saveRun({ workspace: S.workspace.id, persona: S.persona, run: { live: true, asOf: ui.legal.asOf, state: r.state, startLabel: r.startLabel,
-        adapter: r.adapter, stopReasons: r.stopReasons, limits: r.limits, stats: r.stats, graph, assessments } });
-      ui.legal.saveMsg = res.ok ? 'Đã lưu.' : (res.data.message || 'Không lưu được.');
+      const start = r.nodes.find(n => n.id === r.startId);
+      const res = await legalRemote.saveRun({ workspace: S.workspace.id, persona: S.persona, run: { asOf: ui.legal.asOf, startLabel: r.startLabel,
+        startText: start?.doc?.text || '', maxDepth: r.limits.maxDepth, maxDocs: r.limits.maxDocs } });
+      ui.legal.saveMsg = res.data.message || (res.ok ? 'Đã lưu kết quả máy chủ xác minh.' : 'Không lưu được.');
     }),
     'doc-history': el => {
       const h = historyOf(el.dataset.doc);
@@ -1418,15 +1416,11 @@
       const n = Number(el.dataset.n);
       const plan = Legal.History.restorePlan(h, n);
       if (!plan.ok) { toast(plan.reason, 'error'); return; }
-      if (!confirm('Khôi phục ' + ui.history.docId + ' về bản ' + n + '? Hệ thống sẽ hoàn tác ' + plan.undoSeqs.length + ' thay đổi (bản ghi ' + plan.undoSeqs.map(s => '#' + s).join(', ') + '), mỗi lần ghi thêm một bản ghi hoàn tác. Lịch sử cũ được giữ nguyên.')) return;
+      if (!confirm('Khôi phục ' + ui.history.docId + ' về bản ' + n + '? Toàn bộ ' + plan.undoSeqs.length + ' hoàn tác được lưu trong một giao dịch. Lịch sử cũ được giữ nguyên.')) return;
       return withBusy('history-restore', async () => {
-        let done = 0;
-        for (const seq of plan.undoSeqs) {
-          const r = await app.undo(seq);
-          if (!r.ok) { toast('Dừng ở bản ghi #' + seq + ': ' + r.message + ' Đã hoàn tác ' + done + '/' + plan.undoSeqs.length + '.', 'error'); return; }
-          done++;
-        }
-        toast('Đã khôi phục ' + ui.history.docId + ' về bản ' + n + ' bằng ' + done + ' bản ghi hoàn tác.');
+        const restored = await app.restore(ui.history.docId, n);
+        if (!restored.ok) { toast(restored.message, 'error'); return; }
+        toast(restored.message);
         ui.history.view = null; ui.history.b = String((historyOf(ui.history.docId) || { revisions: [] }).revisions.length - 1);
       });
     },
@@ -1554,6 +1548,7 @@
       const el = ev.target;
       if (el.id === 'personaSel') { app.setPersona(el.value); return; }
       if (el.dataset && el.dataset.bind) {
+        if (el.dataset.bind.startsWith('legal.') && el.dataset.bind !== 'legalAck') ui.legalAck = false;
         bindValue(el.dataset.bind, el.type === 'checkbox' ? el.checked : el.value);
         if (['form.ruleId', 'form.issuerTier', 'docTier', 'ratify', 'legalAck', 'legal.source', 'legal.mode', 'legal.asOf', 'legal.docId', 'history.a', 'history.b'].includes(el.dataset.bind)) render();
       }
@@ -1617,7 +1612,11 @@
     });
     // Chỉ ghi nhớ workspace dùng chung đã mở được; "ngoại tuyến" chỉ được nhớ khi người dùng tự chọn (go-offline),
     // không nhớ khi máy chủ tạm mất mạng lúc khởi động.
-    app.subscribe(() => { if (!S.busy && S.source === 'remote' && !S.fallbackFrom) writeWorkspace(S.workspace.id); });
+    let legalWorkspace = S.workspace.id;
+    app.subscribe(() => {
+      if (legalWorkspace !== S.workspace.id) { ui.legal.result = null; ui.legal.assess = null; ui.legalAck = false; legalWorkspace = S.workspace.id; }
+      if (!S.busy && S.source === 'remote' && !S.fallbackFrom) writeWorkspace(S.workspace.id);
+    });
     // Thoát minh hoạ bằng bất kỳ đường nào (nút Thoát, đăng nhập, đổi nguồn): trả biểu mẫu về như trước minh hoạ.
     app.subscribe(() => {
       if (ui.savedForm && S.source !== 'sandbox') {

@@ -1,177 +1,95 @@
-# Căn cứ pháp lý, hiệu lực và lịch sử phiên bản
+# Căn cứ pháp lý và lịch sử phiên bản
 
-Yêu cầu bổ sung của BTC ngày 17/10/2026. Tài liệu này ghi những gì đã chạy được, những gì còn bị chặn, và cách bật phần tra cứu trực tuyến.
+Mã cục bộ đã được gia cố ngày 17/10/2026. Chưa triển khai các thay đổi của đợt này; không chạy migration hay sửa dữ liệu production. Trạng thái triển khai trước đó không được kiểm chứng bằng quyền quản trị trong đợt làm việc này.
 
-## 1. Ba tính năng
+## Tra cứu và mức độ đầy đủ
 
-**A. Khám phá văn bản liên quan theo nhiều tầng** (màn hình *Căn cứ pháp lý*, `#/phap-ly`)
+`js/legal-refs.js` trích số hiệu, giữ các thành phần định danh và chuẩn hoá khoảng trắng, dấu tiếng Việt, chữ hoa/thường. `js/legal-discovery.js` duyệt theo chiều rộng qua adapter, chống trùng lượt tra và chu trình. Nội dung nguồn chỉ là dữ liệu; không đưa vào AI để quyết định hiệu lực hay ban hành thay đổi.
 
-1. Đọc văn bản đầu vào. Có ba nguồn: văn bản mẫu, một tài liệu trong kho, hoặc nội dung dán vào. Hệ thống trích mọi số hiệu dạng `08/2021/TT-BGDĐT`, `04/2021/NĐ-CP`, `34/2018/QH14`, `1234/QĐ-ĐHBK` (`js/legal-refs.js`).
-2. Mỗi số hiệu được chuẩn hoá thành một mã: viết hoa, bỏ dấu, nên `NĐ-CP` và `ND-CP` là một. Ngày tháng như `12/05/2024` không bị nhầm là số hiệu.
-3. Với từng số hiệu, một *adapter* tìm và tải văn bản. Văn bản tải về lại được đọc tiếp, theo hai đường:
-   - quan hệ trong metadata của nguồn: sửa đổi bởi, thay thế bởi, bãi bỏ một phần bởi;
-   - số hiệu xuất hiện trong câu chữ.
-   Việc lặp lại theo chiều rộng (BFS) cho tới khi hết văn bản hoặc chạm giới hạn (`js/legal-discovery.js`).
-4. Loại quan hệ: `CITES`, `AMENDS`, `SUPPLEMENTS`, `IMPLEMENTS`, `GUIDES`, `REPLACES`, `REPEALS`, `CONSOLIDATES`, `RELATED_TO`. Mỗi quan hệ chỉ được ghi khi có bằng chứng, và mang theo:
-   - căn cứ (`official_metadata`, `text_cue` hoặc `text_citation`);
-   - câu trích;
-   - điều khoản bị tác động;
-   - ngày hiệu lực, nếu nguồn có ghi.
-   Không dùng mô hình ngôn ngữ để gán quan hệ.
-5. An toàn của vòng lặp:
-   - Có tập đã thăm và chống trùng cạnh, nên đồ thị có chu trình vẫn dừng.
-   - Giới hạn độ sâu nằm trong khoảng 1–8, số văn bản trong khoảng 1–200.
-   - Mỗi lần tra có thời gian chờ.
-   - Mỗi văn bản chỉ đọc tối đa 300.000 ký tự. Trường lạ trong văn bản tải về bị bỏ.
-   - Nếu nguồn trả về văn bản khác số hiệu, hoặc không rõ số hiệu, hệ thống không nhận.
-6. Khi bị cắt giữa chừng, kết quả mang `state: 'partial'` kèm lý do (độ sâu, số lượng, nguồn lỗi) và danh sách `frontier` các văn bản chưa tra. Nút **Tiếp tục khám phá** nới thêm 1 tầng và 10 văn bản, tra tiếp phần còn dở, thử lại các lỗi tạm thời và không tải lại văn bản đã có.
-7. Giao diện gồm:
-   - thẻ số liệu;
-   - đồ thị SVG xếp theo tầng, bấm được, đi được bằng bàn phím;
-   - bảng danh sách: tầng, trực tiếp hay đệ quy, quan hệ, hiệu lực, nguồn;
-   - khung chi tiết từng văn bản;
-   - danh sách tham chiếu chưa giải quyết.
+Giới hạn mỗi lượt khám phá:
 
-**B. Hiệu lực tại một ngày** (`js/legal-status.js`)
+| Giới hạn | Giá trị |
+|---|---|
+| Độ sâu | 1–8 |
+| Tổng lượt resolve, kể cả lỗi, không tìm thấy và thử lại | 1–200, mặc định 25; tính tích luỹ khi tiếp tục |
+| Thử lại một số hiệu | Tối đa 2 lần sau lần đầu, chỉ khi lỗi có thể thử lại |
+| Nút / cạnh | 1.000 văn bản pháp luật cộng nút đầu vào / 4.000 cạnh |
+| Thời gian | Mặc định 45 giây mỗi resolve, tối đa 60 giây; 120 giây cho mỗi lần khám phá hoặc tiếp tục |
+| Nội dung | 300.000 ký tự mỗi văn bản; cắt nội dung hoặc quan hệ luôn làm kết quả chưa đầy đủ |
+| Ứng viên cho một resolve trực tuyến | Tối đa 3 URL duy nhất, tuần tự; không tự thử lại trong cùng resolve |
+| Mỗi trang nguồn | 2 MB, 8 giây cho toàn bộ chuỗi tải và đọc, tối đa 3 chuyển hướng |
+| Phản hồi tìm kiếm | 1 MB, 8 giây, không đi theo chuyển hướng |
 
-Có sáu trạng thái: *Còn hiệu lực*, *Hết hiệu lực một phần*, *Hết hiệu lực / bị thay thế*, *Chưa có hiệu lực*, *Chưa xác minh được*, *Bằng chứng mâu thuẫn*.
+Đường tìm kiếm/tải nguồn của Edge Function còn có deadline 40 giây. Khoảng đợi cùng host có thể huỷ và không xếp hàng quá 6 giây; khi nguồn bận, trả lỗi có thể thử lại. Truy vấn CSDL phụ thuộc timeout của Supabase; không coi deadline mạng nguồn là giao dịch timeout CSDL.
 
-Thứ tự xét:
+Abort được truyền từ bộ khám phá qua adapter tới fetch. Các adapter tự viết phải tôn trọng `context.signal`; bộ khám phá không thể buộc một Promise bên ngoài không hỗ trợ huỷ dừng công việc của nó. Bộ nhớ đệm máy chủ không gọi lại URL do client cung cấp.
 
-1. Không tìm thấy, chưa tra, hoặc không có ngày hiệu lực: **Chưa xác minh được**. Ngày ban hành không bao giờ được dùng thay cho ngày có hiệu lực.
-2. Chỉ có nguồn thứ cấp (thuvienphapluat.vn, luatvietnam.vn): **Chưa xác minh được**, kèm lời nhắc đối chiếu nguồn chính thức.
-3. Ngày có hiệu lực sau ngày đang xét: **Chưa có hiệu lực**. Đã quá ngày hết hiệu lực: **Hết hiệu lực**.
-4. Văn bản khác tác động tới văn bản này, có bằng chứng từ nguồn chính thức và đã có hiệu lực tính tới ngày xét:
-   - thay thế, hoặc bãi bỏ toàn bộ: **Hết hiệu lực / bị thay thế**;
-   - bãi bỏ một phần: **Hết hiệu lực một phần**;
-   - sửa đổi: vẫn **Còn hiệu lực**, kèm chuỗi sửa đổi.
-   Thay đổi chưa tới ngày được liệt kê là "sắp có hiệu lực". Bãi bỏ không rõ ngày, hoặc chỉ thấy ở nguồn thứ cấp, cho kết quả **Chưa xác minh được**, không kết luận hết hiệu lực.
-5. Đối chiếu với tình trạng do nguồn công bố, tại đúng ngày tải trang. Nếu khác nhóm với kết quả suy ra: **Bằng chứng mâu thuẫn**, và hệ thống không tự chọn bên nào.
-6. Kết luận chắc chắn mà không có đường dẫn nguồn sẽ bị hạ xuống **Chưa xác minh được**.
+`complete` chỉ có khi không còn frontier, lỗi, tham chiếu không tìm được, giới hạn cắt nội dung hay khoảng trống quan hệ đã biết. `partial` không đồng nghĩa với không tìm thấy. `unresolved` gồm cả nút chưa tra, không tìm thấy và lỗi; lỗi không thể thử lại vẫn là khoảng trống bằng chứng. Nút Tiếp tục chỉ bật khi còn frontier hoặc lỗi được phép thử lại. Có thể cần sửa cấu hình/nguồn hoặc mở một lần tra mới nếu giới hạn thử lại đã hết.
 
-Mỗi kết quả trả về lý do, danh sách bằng chứng (nguồn, đường dẫn, loại nguồn, thời điểm tải), chuỗi sửa đổi và thay đổi sắp tới.
+## Hiệu lực tại ngày được chọn
 
-Gắn vào quy trình thay đổi: nếu đã tra cứu căn cứ, màn hình *Thay đổi quy định* hiện **Cảnh báo hiệu lực văn bản căn cứ**. Nút **Ban hành** bị khoá tới khi người ban hành đánh dấu đã xem. Cảnh báo không đổi kết quả của động cơ tiền định và prover, và không tự kết luận tài liệu nội bộ hết hiệu lực.
+`js/legal-status.js` trả `IN_FORCE`, `PARTIAL`, `EXPIRED`, `SUSPENDED`, `NOT_YET`, `UNVERIFIED` hoặc `CONFLICT`, cùng lý do, bằng chứng, `limitations` và `evidenceComplete`.
 
-**C. Lịch sử phiên bản tài liệu** (Kho tài liệu → *Lịch sử phiên bản*, `js/doc-history.js`)
+- Không có ngày hiệu lực hợp lệ, nguồn chính thức hoặc bằng chứng có đường dẫn: chưa xác minh được. Ngày ban hành không thay thế ngày hiệu lực.
+- `IN_FORCE` cần phạm vi đầy đủ, không có tham chiếu chưa giải quyết, và bằng chứng phù hợp ngày xét: lịch sử đầy đủ, hoặc tình trạng chính thức được quan sát đúng ngày đó. Không tìm thấy bãi bỏ trong tìm kiếm dang dở không chứng minh còn hiệu lực.
+- Các mốc hiệu lực/hết hạn và quan hệ có ngày được so với ngày người dùng chọn. Tình trạng trên trang ở ngày tải không được kéo ngược hoặc kéo dài sang ngày khác khi không có lịch sử hỗ trợ. Ngày không hợp lệ không tự chuyển thành hôm nay.
+- Ngưng hiệu lực được phân biệt với bãi bỏ/hết hạn. Khoảng thời gian ngưng có dạng `[from, until)`; thiếu mốc hoặc phạm vi thì chưa xác minh được. Giữ nguyên câu nguồn và thời điểm quan sát.
+- Cạnh pháp lý đi từ văn bản tác động tới văn bản bị tác động. Sửa đổi/bổ sung không bãi bỏ toàn bộ; hợp nhất không tự chấm dứt văn bản cũ. Thay thế/bãi bỏ chỉ kết luận toàn bộ khi phạm vi và ngày được chứng minh. Phạm vi chưa rõ cho kết quả chưa xác minh được.
+- Bãi bỏ/thay thế một phần không chứng nhận hiệu lực của phần còn lại: hệ thống chưa dựng lại lịch sử từng điều.
+- Mâu thuẫn đòi hỏi bằng chứng đối lập; thiếu quan hệ trong kết quả chưa đầy đủ không tự tạo mâu thuẫn với tình trạng nguồn.
 
-- **Không có bảng phiên bản mới.** Lịch sử được dựng lại từ sổ kiểm toán SHA-256 sẵn có, đi ngược từ nội dung hiện tại qua các bản ghi `PATCH` và `HOÀN TÁC`. Vì vậy lịch sử không thể lệch khỏi sổ, và sổ không bị ghi lại.
-- Mỗi phiên bản có các thông tin sau:
-  - số thứ tự và số phiên bản tài liệu;
-  - thời điểm;
-  - người hoặc hệ thống thực hiện, gắn nhãn AI hay Người;
-  - cách được duyệt: tự động có prover xác nhận, người có thẩm quyền duyệt (U1/U2/U3), hay người rà soát ngữ nghĩa;
-  - mã hồ sơ `CR-n`;
-  - số bản ghi trong sổ và mã băm;
-  - dấu "đã thu hồi" nếu sau đó bị hoàn tác.
-- Quyết định *giữ nguyên* và *từ chối sửa* được liệt kê riêng, không tính là phiên bản. **Đề xuất của phân tích hiện tại chưa áp dụng** cũng chỉ hiện ở mục riêng, không bao giờ hiện như một phiên bản.
-- Có thể so sánh hai phiên bản bất kỳ, theo dòng và theo từ, và xem toàn văn một phiên bản.
-- **Khôi phục** một phiên bản cũ nghĩa là hoàn tác lần lượt các thay đổi sau nó, mới nhất trước. Mỗi lần hoàn tác vẫn qua kiểm tra quyền và ghi một bản ghi mới, nên lịch sử cũ còn nguyên. Trước khi làm, hệ thống mô phỏng trên bản sao để chắc kết quả trùng đúng phiên bản đích. Khôi phục bị từ chối khi:
-  - phiên bản đích chứa một thay đổi đã bị thu hồi (muốn quay lại phải ban hành lại qua phân tích);
-  - nội dung không khớp với sổ;
-  - chuỗi băm hỏng.
+Màn hình Căn cứ pháp lý, chi tiết, đồ thị và cảnh báo trước Ban hành dùng cùng bộ đánh giá. Cảnh báo không ẩn tham chiếu lỗi hoặc chưa tìm thấy. Đánh dấu đã xem không chứng nhận hiệu lực, không đổi AUTO/U1/U2/U3 và không bỏ qua Prover. Đổi ngày, tiếp tục tra hoặc đổi workspace xoá xác nhận cũ.
 
-## 2. Nguồn tra cứu
+## Định danh và đọc nguồn
 
-| Chế độ | Khi nào | Dữ liệu |
-|---|---|---|
-| **Kho mô phỏng** (mặc định) | Luôn có, kể cả ngoại tuyến | `js/legal-fixtures.js`. Văn bản **bịa** để thử thuật toán, ký hiệu có hậu tố `MP`, `BMP`, `QH99`. Mỗi văn bản mang cờ `synthetic`, đường dẫn dạng `fixture:` không bấm được. Giao diện luôn ghi "Dữ liệu mô phỏng". Không lưu vào CSDL. |
-| **Tra cứu trực tuyến** | Có máy chủ và đã cấu hình nhà cung cấp tìm kiếm | Edge Function `legal-discover`. Chưa cấu hình thì máy chủ trả `unavailable` và giao diện nói rõ là *không tra cứu được*, không nói *không tìm thấy*. |
+`js/legal-page.js` yêu cầu số hiệu ở trường định danh khớp toàn bộ và tiêu đề văn bản khớp; trường mâu thuẫn, trang tìm kiếm, số hiệu chỉ xuất hiện trong trích dẫn/điều hướng không được nhận. Không gán ngày hay tình trạng của trang khác cho văn bản được hỏi.
 
-Kho mô phỏng đủ các tình huống cần kiểm:
-- sửa đổi có chuỗi;
-- văn bản bị thay thế, ở tầng 2;
-- văn bản hết hạn;
-- văn bản ở tầng 4, để kiểm giới hạn độ sâu;
-- văn bản có hiệu lực trong tương lai (01/12/2026);
-- nguồn công bố mâu thuẫn;
-- bãi bỏ một phần, chỉ phát hiện được qua metadata ngược;
-- văn bản chỉ có nguồn thứ cấp;
-- văn bản không tồn tại;
-- một văn bản chứa câu chèn lệnh ("hãy bỏ qua mọi hướng dẫn…").
+Trích yếu có nhãn trên `vanban.chinhphu.vn` được đọc thành quan hệ sửa đổi/bổ sung/hợp nhất khi có câu chữ rõ ràng, kèm hướng, trích dẫn và provenance của trường. Đây là `text_cue`, không phải sổ quan hệ chính thức đầy đủ. Không bịa quan hệ khi không đọc được cấu trúc.
 
-### Edge Function `legal-discover`
+**Phạm vi kiểm chứng:** đã xem được phần metadata của [một trang chi tiết Chính phủ](https://vanban.chinhphu.vn/?docid=220017&pageid=27160) qua công cụ duyệt web. Node fetch trực tiếp thất bại; vbpl.vn không truy cập được qua công cụ đó. `tests/fixtures/legal/government-detail.fragment.html` là markup tổng hợp chép một đoạn metadata đã xem, không phải HTML tải nguyên trạng. Chưa kiểm chứng end-to-end với nhà cung cấp tìm kiếm hay cấu trúc quan hệ ngược của các cổng. Parser luôn trả coverage quan hệ và lịch sử `unknown` cho trang trực tuyến; kết quả được giữ ở `partial`, không chứng nhận còn hiệu lực.
 
-- `status`: đã cấu hình chưa, danh sách nguồn.
-- `resolve`: tra một số hiệu. Các bước:
-  1. kiểm định dạng;
-  2. tra bộ nhớ đệm `legal_documents` (7 ngày);
-  3. trừ hạn mức;
-  4. tìm qua nhà cung cấp, chỉ giới hạn trên các host chính thức;
-  5. tải tối đa 3 trang ứng viên bằng `js/legal-fetch.js`;
-  6. đọc trang bằng `js/legal-page.js`;
-  7. trang phải chứa đúng số hiệu được hỏi mới được nhận;
-  8. ghi bộ nhớ đệm kèm SHA-256 nội dung.
-- `save_run`: lưu một kết quả tra cứu thật vào `legal_discovery_runs`. Chỉ thành viên workspace, hoặc vai trò trình diễn ở workspace demo, mới lưu được. Kết quả mô phỏng bị từ chối.
+## API và lưu kết quả có kiểm chứng
 
-Bảo vệ:
-- **Allowlist host:** vbpl.vn, vanban.chinhphu.vn, congbao.chinhphu.vn, chinhphu.vn, moet.gov.vn (chính thức); thuvienphapluat.vn, luatvietnam.vn (thứ cấp).
-- **Chặn SSRF:** chỉ `https`, cổng 443; không IP, không `localhost`, không thông tin đăng nhập trong URL; không nhận host giả kiểu `vbpl.vn.evil.com`.
-- **Chuyển hướng:** tự xử lý (`redirect: 'manual'`), mỗi bước được kiểm lại với allowlist, tối đa 3 bước.
-- **Giới hạn mỗi trang:** 8 giây, 2 MB (đọc theo luồng, dừng ngay khi vượt), chỉ nhận HTML hoặc văn bản thuần.
-- **Lịch sự với nguồn:** giãn cách 600 ms giữa hai lần gọi cùng một host.
-- **Hạn mức** theo ngày và theo máy khách (băm IP, không lưu IP thô).
-- **Nội dung tải về là dữ liệu không tin cậy:** chỉ bóc chữ và đọc bằng biểu thức chính quy, không đưa vào mô hình, không thực thi.
+Edge Function `legal-discover`:
 
-## 3. Biến môi trường (Secrets của Edge Function, không bao giờ tới trình duyệt)
+- `status`: cấu hình provider và danh sách nguồn, không trả secrets.
+- `resolve`: kiểm số hiệu, thử cache có bằng chứng parser hiện tại, trừ quota, tìm kiếm, tải ứng viên có allowlist và xác minh định danh. Phân biệt không tìm thấy sau tìm kiếm thành công với `unavailable`, HTTP 403/429/5xx, mạng, timeout, huỷ, parse lỗi, định danh chưa xác minh và giới hạn ứng viên.
+- `save_run`: chỉ nhận `{ workspace, persona?, run: { startText, startLabel, asOf, maxDepth, maxDocs } }`. Từ chối `live`, đồ thị, trạng thái, completeness, hash và timestamp do client gửi. Máy chủ tự dựng lại đồ thị từ cache có định danh, parser version, URL, thời điểm và SHA-256 nội dung hợp lệ; tự tính assessments, completeness, hash và thời điểm kiểm. Không có văn bản hợp lệ thì không lưu. Kết quả máy chủ có thể khác bản đang xem nếu cache đã thay đổi.
 
-| Biến | Bắt buộc | Ý nghĩa |
-|---|---|---|
-| `LEGAL_SEARCH_PROVIDER` | có, để bật trực tuyến | `google` (Programmable Search JSON API) hoặc `brave` (Brave Search API) |
-| `LEGAL_SEARCH_API_KEY` | có | khoá của nhà cung cấp |
-| `LEGAL_SEARCH_CX` | với `google` | mã Search Engine |
-| `LEGAL_DAILY_LIMIT` | không | trần lượt tra cứu toàn hệ thống mỗi ngày, mặc định 200 |
-| `LEGAL_CLIENT_LIMIT` | không | trần mỗi máy khách mỗi ngày, mặc định 60 |
+Workspace thật yêu cầu JWT hợp lệ, không ẩn danh, membership đúng workspace, tier 1–3 và danh sách đơn vị có giá trị. Workspace demo cho phép persona demo theo mô hình hiện có. Ghi qua service role; RLS vẫn chỉ cho đọc workspace có quyền. Dữ liệu pháp luật công khai trong cache có policy đọc công khai, không có policy client ghi.
 
-Nhóm tự dán khoá vào *Supabase → Edge Functions → Secrets*. Không đặt khoá vào `js/config.js` hay bất kỳ tệp nào trong kho mã.
+Migration 10 thêm `legal_documents.evidence`, và `trust_version`, `evidence_sha256`, `validated_at`, `created_user` vào kết quả. `trust_version = 0` là bản lưu cũ do client gửi: **không tin là bằng chứng đã kiểm** dù `live = true`. Bản mới có `trust_version = 1` nghĩa là máy chủ đã tái dựng, vẫn chỉ là nghiên cứu tham khảo. Cache cũ có evidence rỗng phải được tải lại; không tự nâng mức tin cậy.
 
-## 4. Migration
+SSRF: chỉ HTTPS/cổng 443 trên allowlist trong `legal-refs.js`; chặn IP, userinfo, localhost và host giả. Mỗi chuyển hướng kiểm lại allowlist. Khoá chỉ ở secrets máy chủ, không có trong responses/logs. Request JSON được đọc theo luồng, đo byte và giới hạn thời gian trước khi parse.
 
-`supabase/migrations/20261017000009_legal_intelligence.sql`
+## Khôi phục lịch sử nguyên tử
 
-- `legal_documents`: bộ nhớ đệm văn bản pháp luật (dữ liệu công khai). Ai cũng đọc được; chỉ service role ghi.
-- `legal_fetch_usage` và hàm `consume_legal_fetch_quota`: hạn mức. Chỉ service role dùng được.
-- `legal_discovery_runs`: kết quả tra cứu theo workspace. RLS đọc bằng `private.can_read_workspace(workspace_id)`, giống các bảng sẵn có. Không có policy ghi cho `anon` hay `authenticated`.
+`doc-history.js` dựng phiên bản từ chuỗi SHA-256 của `audit_log`; đề xuất và quyết định giữ nguyên/từ chối được hiển thị riêng. Không xoá/sửa bản ghi cũ.
 
-Chưa áp migration này và chưa triển khai `legal-discover` lên dự án Supabase đang chạy. Lý do: hôm nay là Demo Day, và việc này cần nhóm đồng ý. Lệnh khi đồng ý:
+`policy-api` nhận `action: restore` cùng `docId`, `targetRevision`, `expectedSeq`, `expectedTail`, `expectedVersion`. `Server.planRestore()` kiểm chuỗi, reconstruct phiên bản đích từ dữ liệu workspace trên máy chủ, kiểm quyền cho tất cả PATCH cần thu hồi, mô phỏng trên bản sao và đối chiếu toàn bộ nội dung đích. Client không quyết định nội dung khôi phục.
 
-```bash
-supabase db push                       # hoặc chạy tệp SQL trong SQL Editor
-supabase functions deploy legal-discover
-```
+Mọi cập nhật dòng và bản ghi HOÀN TÁC được gửi vào **một** `apply_change` RPC hiện có. SQL khoá workspace, kiểm đuôi sổ và từng dòng trong một giao dịch: lỗi bất kỳ làm rollback cả giao dịch. Căn cứ được băm chứa actor, bản nguồn/đích, seq/hash đích, đuôi sổ nguồn và thời điểm chung. Không cần migration riêng cho restore. Cần triển khai lại `policy-api` và module shared trước khi UI trực tuyến dùng action mới.
 
-Nếu chưa triển khai, chế độ *Tra cứu trực tuyến* báo "Máy chủ chưa triển khai chức năng tra cứu"; chế độ mô phỏng vẫn chạy đầy đủ.
+Ngoại tuyến: tính trên bản sao, ghi một snapshot IndexedDB/localStorage, chỉ công bố trạng thái mới sau khi ghi thành công. IndexedDB đợi `transaction.oncomplete`, không chỉ `request.onsuccess`. Ghi thất bại thì nội dung và sổ trong ứng dụng giữ nguyên. Chế độ sandbox chỉ đổi bộ nhớ.
 
-## 5. Kiểm thử
+Khôi phục bị chặn nếu chuỗi/nội dung không khớp, quyền không đủ, dữ liệu đã đổi, hoặc cần phục hồi một PATCH đã thu hồi. Trường hợp cuối phải ban hành lại qua quy trình phân tích và Prover.
 
-- `tests/legal-intelligence.test.cjs` (26 ca):
-  - trích số hiệu và cụm từ báo quan hệ; allowlist và SSRF;
-  - BFS: trực tiếp và đệ quy, metadata ngược, chu trình, giới hạn độ sâu và số lượng, tiếp tục, thời gian chờ, lỗi, ngoại lệ, sai số hiệu;
-  - câu chèn lệnh; văn bản quá lớn; sáu trạng thái hiệu lực; ngày ban hành khác ngày hiệu lực;
-  - bãi bỏ không rõ ngày; thiếu đường dẫn nguồn; cảnh báo;
-  - đọc trang; tải an toàn (chuyển hướng sang 169.254.169.254, quá cỡ, sai loại nội dung, treo, 404, 500);
-  - adapter máy chủ (chưa cấu hình, chưa triển khai, mất mạng);
-  - thoát HTML trong đồ thị;
-  - kiểm tĩnh: khoá chỉ ở máy chủ, RLS và cách ly workspace.
-- `tests/doc-history.test.cjs` (12 ca):
-  - bản gốc;
-  - đề xuất chưa áp dụng không thành phiên bản;
-  - ban hành tạo phiên bản (AI, prover, băm);
-  - người duyệt kèm CR và U1;
-  - từ chối là sự kiện;
-  - hoàn tác giữ lịch sử;
-  - khôi phục về bản gốc qua nhiều lần hoàn tác;
-  - chặn khôi phục khi thay đổi đã thu hồi;
-  - phát hiện sửa ngoài sổ; chuỗi băm hỏng;
-  - tài liệu thêm mới; không lẫn tài liệu khác;
-  - so sánh dòng và từ.
-- `tests/e2e/legal.spec.mjs` (5 ca Playwright): khám phá và tiếp tục; chi tiết và câu chèn lệnh; đổi ngày xét; cảnh báo khoá Ban hành tới khi xác nhận; lịch sử, so sánh và khôi phục.
-- `deno check` cho `legal-discover/index.ts`. Đã chạy thử hàm cục bộ: `status` và `resolve` khi chưa cấu hình đều trả `unavailable` đúng như thiết kế.
+## Cấu hình và triển khai thủ công
 
-## 6. Giới hạn
+| Secret | Khi cần |
+|---|---|
+| `LEGAL_SEARCH_PROVIDER` | `google` hoặc `brave` |
+| `LEGAL_SEARCH_API_KEY` | Khoá provider, chỉ trên máy chủ |
+| `LEGAL_SEARCH_CX` | Chỉ Google Programmable Search |
+| `LEGAL_DAILY_LIMIT` | Tuỳ chọn, mặc định 200 |
+| `LEGAL_CLIENT_LIMIT` | Tuỳ chọn, mặc định 60 |
 
-1. **Chưa kiểm chứng tra cứu thật trên vbpl.vn và các cổng khác.** Môi trường phát triển bị chặn mạng tới các trang này. Bộ đọc trang dựa trên các nhãn thường gặp ("Ngày ban hành", "Ngày có hiệu lực", "Tình trạng hiệu lực") và câu "có hiệu lực thi hành kể từ ngày …". Trường nào không đọc được thì để trống, và văn bản sẽ ở trạng thái *Chưa xác minh được*.
-2. Với nguồn trực tuyến, quan hệ hiện chỉ đọc từ câu chữ. Metadata quan hệ riêng của từng cổng (mục "Văn bản bị sửa đổi", "Văn bản thay thế" của vbpl.vn) chưa được đọc, nên có thể bỏ sót văn bản sửa đổi, thay thế mà văn bản đầu vào không nhắc tới. Kho mô phỏng có metadata này để kiểm thuật toán.
-3. Hiệu lực tính ở mức văn bản. Bãi bỏ hay sửa đổi từng điều được ghi kèm (`affectedProvisions`), nhưng chưa dựng lại nội dung từng điều theo thời gian.
-4. Khôi phục phiên bản đi qua hoàn tác, nên không quay lại được một phiên bản chứa thay đổi đã bị thu hồi. Trường hợp đó cần ban hành lại qua phân tích (có prover).
-5. Lịch sử phiên bản chỉ có từ khi tài liệu vào sổ. Nội dung trước khi tạo workspace hiện là "Bản gốc".
+Không đặt secrets trong config trình duyệt. Sau khi người quản trị xác nhận đúng dự án, chạy migration **theo thứ tự**, gồm `20261017000009_legal_intelligence.sql` rồi `20261017000010_legal_evidence.sql`; kiểm thử trên CSDL local/staging trước. Đồng bộ bằng `npm run sync:edge`, kiểm Deno, rồi triển khai `legal-discover` và `policy-api` cùng frontend tương ứng. Không có lệnh production nào trong đợt khắc phục này đã được thực thi.
+
+Kho mô phỏng luôn ghi nhãn dữ liệu bịa/synthetic, dùng URL `fixture:` không bấm được và không được dùng làm bằng chứng lưu máy chủ.
+
+## Kiểm thử và giới hạn còn lại
+
+Các ca Node kiểm status, định danh, budget, huỷ, provenance, request giả mạo, membership, hash/cache, RLS tĩnh, và restore thành công/thất bại/concurrency. `legal-edge.test.cjs` thực thi HTTP handler TypeScript thật với provider/Supabase giả; không phải integration production. Playwright dùng dữ liệu ngoại tuyến hoặc fake backend.
+
+Xem [báo cáo khắc phục](ENGINEERING-REMEDIATION.md) để biết chính xác lệnh đã chạy và kết quả. Chưa chạy migration/RLS/rollback trên PostgreSQL thật tại máy này: không có PostgreSQL CLI, Docker daemon không chạy. Không suy từ kiểm thử mock rằng deployment hay transaction integration đã được xác minh.

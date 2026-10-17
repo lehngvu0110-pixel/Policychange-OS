@@ -1,7 +1,7 @@
 # Cài đặt backend (Supabase + Gemini)
 
-Dự án Supabase `rsenhrsrzylubjavkqxs` đã có sẵn schema, dữ liệu mẫu và ba Edge Function (`policy-api`,
-`ai-extract`, `ai-discover`). Ứng dụng tự kết nối qua `js/config.js`. Phần dưới là những việc **nhóm tự làm**,
+Theo hồ sơ triển khai trước đây, dự án Supabase `rsenhrsrzylubjavkqxs` có schema, dữ liệu mẫu và ba Edge Function (`policy-api`,
+`ai-extract`, `ai-discover`). Đợt khắc phục 17/10/2026 chưa xác minh lại trạng thái production và không triển khai thay đổi. Ứng dụng kết nối qua `js/config.js`. Phần dưới là những việc **nhóm tự làm**,
 vì liên quan tới khoá bí mật hoặc tài khoản người thật.
 
 ## 1. Bật AI thật: Google Gemini, gói miễn phí (2 phút)
@@ -82,16 +82,16 @@ Cần [Supabase CLI](https://supabase.com/docs/guides/cli) và quyền trên d�
 supabase login
 supabase link --project-ref rsenhrsrzylubjavkqxs
 npm run sync:edge                                    # chép js/*.js dùng chung sang supabase/functions/_shared/
-supabase functions deploy policy-api ai-extract ai-discover
-supabase db push                                     # chỉ khi có migration mới
+supabase db push                                     # sau khi kiểm local/staging và xác nhận đúng dự án
+supabase functions deploy policy-api ai-extract ai-discover legal-discover
 ```
 
 CI kiểm tra `supabase/functions/_shared` luôn khớp với `js/` (bước “Edge Function dùng đúng bản module mới nhất”).
 
 ## 4. Dựng trên một dự án Supabase mới
 
-1. Tạo dự án, rồi `supabase link --project-ref <ref>` và `supabase db push` (chạy 7 migration trong `supabase/migrations/`).
-2. `npm run sync:edge && supabase functions deploy policy-api ai-extract ai-discover`.
+1. Tạo dự án, xác nhận project ref, rồi `supabase link --project-ref <ref>` và `supabase db push` (chạy tất cả migration trong `supabase/migrations/` theo thứ tự; hiện có 10 tệp).
+2. `npm run sync:edge` rồi `supabase functions deploy policy-api ai-extract ai-discover legal-discover`.
 3. Sửa `js/config.js`: `supabaseUrl` = `https://<ref>.supabase.co`, `anonKey` = khoá **anon (legacy JWT)** trong
    Project Settings → API. Edge Function bật `verify_jwt` nên cần khoá dạng JWT.
 4. Dán secret như mục 1; tạo tài khoản như mục 2.
@@ -100,3 +100,9 @@ CI kiểm tra `supabase/functions/_shared` luôn khớp với `js/` (bước “
 
 Trong ứng dụng: thanh bên → **Khôi phục dữ liệu mẫu** (chỉ áp dụng cho workspace `demo`). Workspace thí điểm
 không có nút này để tránh mất dữ liệu thật.
+
+## 6. Căn cứ pháp lý và khôi phục phiên bản
+
+Xem [LEGAL-INTELLIGENCE.md](LEGAL-INTELLIGENCE.md) cho hợp đồng API, secrets `LEGAL_SEARCH_PROVIDER`, `LEGAL_SEARCH_API_KEY`, `LEGAL_SEARCH_CX`, giới hạn tra cứu và mức độ tin cậy. Migration 9 tạo các bảng pháp luật; migration 10 thêm bằng chứng cache và mức tin cậy bản lưu. Cả hai chưa được áp vào production trong đợt làm việc này. Bản lưu cũ có `trust_version = 0` không phải kết quả máy chủ đã kiểm chứng.
+
+Triển khai migration trước Edge Functions và frontend mới. Cần triển khai lại `policy-api` để có action `restore` nguyên tử qua RPC `apply_change` hiện có; không cần thêm RPC hay cấp quyền ghi client. Chưa chạy PostgreSQL local/staging hoặc provider trực tiếp trong đợt này; quản trị cần kiểm migration, RLS, transaction rollback và tra cứu nguồn thật ở môi trường kiểm thử trước khi triển khai production.

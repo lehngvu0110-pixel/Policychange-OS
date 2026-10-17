@@ -62,7 +62,7 @@
    * Số ký hiệu dạng 08/2021/TT-BGDĐT, 04/2021/NĐ-CP, 34/2018/QH14, 1234/QĐ-ĐHBK, 05/VBHN-BGDĐT.
    * Nhóm: số, năm (có thể thiếu), phần ký hiệu.
    */
-  const NUMBER_RE = /(?<![\p{L}\d\/])(\d{1,5})\s*\/\s*(?:(\d{4})\s*\/\s*)?((?:[A-ZĐ]{1,8}\d{0,2})(?:\s*-\s*[A-ZĐ0-9]{1,12}){0,3})(?![\p{L}\d])/gu;
+  const NUMBER_RE = /(?<![\p{L}\d\/])(\d{1,5})\s*\/\s*(?:(\d{4})\s*\/\s*)?((?:[A-ZĐ]{1,8}\d{0,2})(?:\s*-\s*[A-ZĐ0-9]{1,12}){0,3})(?![\p{L}\d])/giu;
 
   /** Phần nối giữa cụm từ báo quan hệ và số hiệu: tên loại văn bản, vài chữ tên, chữ "số". */
   const KIND_WORDS = '(?:Bộ luật|Luật|Nghị định|Thông tư liên tịch|Thông tư|Quyết định|Nghị quyết|Chỉ thị|Pháp lệnh|Văn bản hợp nhất)';
@@ -75,7 +75,7 @@
     { re: cue('sửa đổi,?\\s*bổ sung(?:\\s+(?:một số điều|' + PROV + '))?(?:\\s+(?:của|tại))?'), type: 'AMENDS' },
     { re: cue('sửa đổi(?:\\s+(?:một số điều|' + PROV + '))?(?:\\s+(?:của|tại|theo))?'), type: 'AMENDS' },
     { re: cue('bổ sung(?:\\s+(?:một số điều|' + PROV + '))?(?:\\s+(?:của|cho|vào))?'), type: 'SUPPLEMENTS' },
-    { re: cue('(?:thay thế|thay cho)(?:\\s+(?:cho|bằng))?'), type: 'REPLACES' },
+    { re: cue('(?:thay thế|thay cho)(?:\\s+(?:toàn bộ|một phần|một số điều|các điều|' + PROV + '))?(?:\\s+(?:của|tại|cho))?'), type: 'REPLACES' },
     { re: cue('(?:bãi bỏ|hết hiệu lực|chấm dứt hiệu lực)(?:\\s+(?:toàn bộ|một phần|một số điều|các điều|' + PROV + '))?(?:\\s+(?:của|tại))?'), type: 'REPEALS' },
     { re: cue('(?:quy định chi tiết và hướng dẫn thi hành|quy định chi tiết|hướng dẫn thi hành|hướng dẫn thực hiện)(?:\\s+(?:một số điều|các điều|' + PROV + '))?(?:\\s+(?:của|tại))?'), type: 'IMPLEMENTS' },
     { re: cue('hướng dẫn(?:\\s+(?:về|việc))?'), type: 'GUIDES' },
@@ -100,7 +100,7 @@
    * @param {string} sym ví dụ "TT-BGDĐT", "NĐ-CP", "QH14"
    */
   function parseSymbol(sym) {
-    const parts = sym.replace(/\s+/g, '').split('-');
+    const parts = sym.toUpperCase().replace(/\s+/g, '').split('-');
     const head = parts[0];
     const law = /^QH\d{0,2}$/.test(head);
     const code = law ? 'QH' : head;
@@ -143,7 +143,7 @@
         const cm = before.match(c.re);
         if (cm) {
           relation = c.type; cue = cm[0].trim(); basis = 'text_cue';
-          if (c.type === 'REPEALS') { scope = scopeOf(cue); provisions = provisionsOf(cue); }
+          if (c.type === 'REPEALS' || c.type === 'REPLACES') { scope = scopeOf(cue); provisions = provisionsOf(cue); }
           if (c.type === 'AMENDS' || c.type === 'SUPPLEMENTS') provisions = provisionsOf(cue);
           break;
         }

@@ -163,6 +163,7 @@
 
     /** @param {'remote'|'local'} source @param {string} [workspaceId] */
     async function switchSource(source, workspaceId) {
+      if (S.busy) return result(false, 'Đang lưu thao tác khác; hãy đợi hoàn tất.');
       S.fallbackFrom = null;
       if (S.source === 'sandbox') exitSandbox({ refresh: false });
       S.busy = true; emit();
@@ -209,6 +210,7 @@
       return switchSource('remote', PILOT_WORKSPACE);
     }
     async function signOut() {
+      if (S.busy) return result(false, 'Đang lưu thao tác khác; hãy đợi hoàn tất.');
       await deps.remote.signOut();
       S.liveMember = null;
       return switchSource('remote', 'demo');
@@ -217,6 +219,7 @@
     // ---------- Minh hoạ ----------
     /** @param {{ docs:any[], registry?:any[], label:string }} scenario */
     function enterSandbox(scenario) {
+      if (S.busy) return;
       if (S.source !== 'sandbox') S.saved = { source: S.source, workspace: S.workspace, registry: S.registry, docs: S.docs, ledger: S.ledger, feedback: S.feedback,
         openChanges: S.openChanges, decisions: S.decisions, liveMember: S.liveMember, stale: S.stale, current: S.current, persona: S.persona };
       if (S.source !== 'sandbox' && S.saved) S.saved.revisionAtEnter = S.revision;
@@ -229,6 +232,7 @@
     }
     /** @param {{ refresh?:boolean }} [options] */
     function exitSandbox(options = {}) {
+      if (S.busy) return;
       if (S.source !== 'sandbox' || !S.saved) return;
       const saved = S.saved;
       Object.assign(S, { source: saved.source, workspace: saved.workspace, registry: saved.registry, docs: saved.docs,
@@ -422,6 +426,7 @@
 
     /** @param {string} propId @param {boolean} approve */
     async function reviewSemantic(propId, approve) {
+      if (S.busy) return result(false, 'Đang lưu thao tác khác; hãy đợi hoàn tất.');
       if (!S.current) return result(false, 'Chưa có phân tích.');
       const p = S.current.props.find((/** @type {any} */ x) => x.id === propId);
       if (!p || !p.semanticHold || p.semanticHoldReviewed) return result(false, 'Không có vị trí đang chờ rà soát.');
@@ -447,12 +452,14 @@
 
     /** @param {{ ratify?:boolean, expect?:{ ruleId:string, newValue:string, issuerTier:number|string, requestText?:string } }} [options] */
     async function commit(options = {}) {
+      if (S.busy) return result(false, 'Đang lưu thao tác khác; hãy đợi hoàn tất.');
       if (!S.current) return result(false, 'Chưa có phân tích.');
       if (options.expect && !matchesInput(options.expect)) return result(false, 'Biểu mẫu đã thay đổi sau lần phân tích này; bấm “Phân tích tác động” lại trước khi ban hành.');
       const issue = canIssueCurrent();
       if (!issue.ok) return result(false, issue.reason || 'Không đủ thẩm quyền ban hành.');
       const analysis = S.current, persona = S.persona;
       const review = await ensureSemanticReview();
+      if (S.busy) return result(false, 'Đang lưu thao tác khác; hãy đợi hoàn tất.');
       // Trong lúc chờ AI, người dùng có thể đổi vai trò, phân tích lại hoặc bấm Ban hành lần nữa: không ban hành
       // một phân tích khác với cái vừa được kiểm quyền và rà soát.
       if (S.current !== analysis || S.persona !== persona) return result(false, 'Phân tích hoặc vai trò vừa thay đổi trong lúc AI rà soát; hãy kiểm tra lại rồi bấm Ban hành.');
@@ -519,6 +526,7 @@
 
     /** @param {number} seq */
     async function undo(seq) {
+      if (S.busy) return result(false, 'Đang lưu thao tác khác; hãy đợi hoàn tất.');
       const entry = S.ledger.find(e => e.seq === seq);
       if (!entry) return result(false, 'Không có bản ghi #' + seq + '.');
       const doc = S.docs.find(d => d.id === entry.docId);
@@ -538,6 +546,36 @@
       S.revision++;
       await persist();
       return result(true, res.message);
+    }
+    /** @param {string} docId @param {number} targetRevision */
+    async function restore(docId, targetRevision) {
+      if (S.busy) return result(false, 'Đang lưu thao tác khác; hãy đợi hoàn tất.');
+      const tail = Ledger.tailOf(S.ledger), doc = S.docs.find(d => d.id === docId);
+      const request = { docId, targetRevision, expectedSeq: tail.seq, expectedTail: tail.hash, expectedVersion: doc?.version };
+      const plan = Server.planRestore({ workspace: { ...S.workspace, ledger_seq: tail.seq, ledger_tail: tail.hash }, member: member(),
+        registry: S.registry, docs: S.docs, ledger: S.ledger, now }, request);
+      if (!plan.ok) return result(false, plan.message);
+      S.busy = true; emit();
+      try {
+        if (S.source === 'remote') {
+          const res = await deps.remote.call({ action: 'restore', workspace: S.workspace.id, persona: S.persona, ...request });
+          if (!res.ok) { if (res.status === 409) await reload(); return result(false, res.data.message || 'Máy chủ từ chối khôi phục.'); }
+          for (const rec of res.data.records || []) { const original = S.ledger.find(e => e.seq === rec.revertsSeq); if (original) markUnapplied(original); }
+          const loaded = await reload();
+          if (!loaded.ok) return result(false, 'Máy chủ đã khôi phục nhưng chưa tải lại được nội dung; hãy tải lại trước khi thao tác tiếp.');
+          return result(true, res.data.message);
+        }
+        const docs = Engine.cloneDocs(S.docs);
+        for (const update of plan.rpc.p_doc_updates) { const d = docs.find((/** @type {any} */ x) => x.id === update.id); d.lines[update.lineIndex] = update.to; d.version = update.version; }
+        const ledger = S.ledger.concat(plan.body.records);
+        if (S.source === 'local' && !await deps.localStore.save({ registry: S.registry, docs, ledger, feedback: S.feedback })) {
+          return result(false, 'Không lưu được bản khôi phục; tài liệu và sổ kiểm toán giữ nguyên.');
+        }
+        for (const rec of plan.body.records) { const original = S.ledger.find(e => e.seq === rec.revertsSeq); if (original) markUnapplied(original); }
+        S.docs = docs; S.ledger = ledger; S.revision++;
+        return result(true, plan.body.message);
+      } catch (_) { return result(false, 'Không xác nhận được kết quả khôi phục; hãy tải lại trước khi thử lại.'); }
+      finally { S.busy = false; emit(); }
     }
     /** @param {any} entry */
     function markUnapplied(entry) {
@@ -646,6 +684,7 @@
 
     /** @param {string} ruleId @param {string} phrase @param {string} [reason] @param {'aliases'|'measures'|'both'} [field] */
     async function addAnchor(ruleId, phrase, reason, field) {
+      if (S.busy) return result(false, 'Đang lưu thao tác khác; hãy đợi hoàn tất.');
       const rule = S.registry.find(r => r.id === ruleId);
       const right = Authz.canEditRegistry(member(), rule);
       if (!rule) return result(false, 'Quy định không có trong sổ đăng ký.');
@@ -665,6 +704,7 @@
 
     /** @param {{ title:string, owner:string, tier:number, lines:string[] }} input */
     async function addDocument(input) {
+      if (S.busy) return result(false, 'Đang lưu thao tác khác; hãy đợi hoàn tất.');
       const m = member();
       const tier = Number(input.tier);
       const owner = String(input.owner || '').trim() || ((m && m.units.find((/** @type {string} */ u) => u !== '*')) || 'Do người dùng nhập');
@@ -685,6 +725,7 @@
     }
 
     async function resetWorkspace() {
+      if (S.busy) return result(false, 'Đang lưu thao tác khác; hãy đợi hoàn tất.');
       if (S.source === 'remote') {
         if (S.workspace.mode !== 'demo') return result(false, 'Chỉ khôi phục được workspace trình diễn.');
         const res = await deps.remote.call({ action: 'reset_demo', workspace: S.workspace.id, persona: S.persona });
@@ -707,7 +748,7 @@
       subscribe(/** @type {(state:any) => void} */ fn) { listeners.add(fn); return () => listeners.delete(fn); },
       emit, member, actor, setPersona, init, switchSource, reload, poll, signIn, signOut, checkAI,
       enterSandbox, exitSandbox, resolveRequest, analyze, matchesInput, canIssueCurrent, discoverSemantics, decisionRight,
-      decide, decideGroup, undoDecision, reviewSemantic, recordTiming, timingStats, clearTimings, ensureSemanticReview, committableCount, commit, undo, canUndo, suggestions, addAnchor,
+      decide, decideGroup, undoDecision, reviewSemantic, recordTiming, timingStats, clearTimings, ensureSemanticReview, committableCount, commit, undo, restore, canUndo, suggestions, addAnchor,
       caseItems, caseRight, decideCase, decideCaseGroup, groupKeyOf, caseGroupKeyOf, findCase,
       addDocument, resetWorkspace, clearAnalysis, dismissNotice
     };

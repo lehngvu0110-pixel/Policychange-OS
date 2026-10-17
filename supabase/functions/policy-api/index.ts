@@ -1,7 +1,7 @@
 // PolicyChange OS · policy-api — mọi thao tác GHI đều đi qua đây.
 //
 // POST { action, workspace, persona?, ... }
-//   action = "whoami" | "commit" | "decide" | "undo" | "add_anchor" | "add_document" | "reset_demo"
+//   action = "whoami" | "commit" | "decide" | "undo" | "restore" | "add_anchor" | "add_document" | "reset_demo"
 //
 // Người gọi:
 //   * workspace live  → bắt buộc JWT đăng nhập hợp lệ + có trong bảng members (cấp, đơn vị do quản trị cấp).
@@ -102,6 +102,7 @@ Deno.serve(async (req) => {
   if (action === "commit") plan = Server.planCommit(ctx, body);
   else if (action === "decide") plan = Server.planDecide(ctx, body);
   else if (action === "undo") plan = Server.planUndo(ctx, body);
+  else if (action === "restore") plan = Server.planRestore(ctx, body);
   else if (action === "add_anchor") plan = Server.planAnchor(ctx, body);
   else if (action === "add_document") plan = Server.planAddDocument(ctx, body);
   else return json(400, { error: "unknown_action", message: "Thao tác không hỗ trợ." });

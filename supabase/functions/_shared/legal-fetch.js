@@ -22,64 +22,82 @@
 
   /**
    * @param {string} url
-   * @param {{ fetchImpl:(url:string, init:any) => Promise<any>, allow?:any[], maxBytes?:number, timeoutMs?:number, maxRedirects?:number }} opts
+   * @param {{ fetchImpl:(url:string, init:any) => Promise<any>, allow?:any[], maxBytes?:number, timeoutMs?:number, maxRedirects?:number, signal?:AbortSignal }} opts
    * @returns {Promise<{ ok:true, url:string, source:any, body:string, bytes:number } | { ok:false, reason:string, code:string }>}
    */
   async function safeFetch(url, opts) {
-    const maxBytes = opts.maxBytes || DEFAULTS.maxBytes;
-    const timeoutMs = opts.timeoutMs || DEFAULTS.timeoutMs;
-    const maxRedirects = opts.maxRedirects ?? DEFAULTS.maxRedirects;
+    const clamp = (/** @type {any} */ x, /** @type {number} */ fallback, /** @type {number} */ min) => Number.isFinite(x) ? Math.max(min, Math.min(fallback, Math.floor(x))) : fallback;
+    const maxBytes = clamp(opts.maxBytes, DEFAULTS.maxBytes, 1);
+    const timeoutMs = clamp(opts.timeoutMs, DEFAULTS.timeoutMs, 1);
+    const maxRedirects = clamp(opts.maxRedirects, DEFAULTS.maxRedirects, 0);
     let current = String(url);
-    for (let hop = 0; hop <= maxRedirects; hop++) {
-      const source = Refs.sourceFor(current, opts.allow);
-      if (!source) return { ok: false, code: 'blocked', reason: 'Địa chỉ không thuộc danh sách nguồn được phép.' };
-      const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
-      /** @type {any} */ let timer = null;
-      try {
-        const timeout = new Promise((_, reject) => { timer = setTimeout(() => { if (ctrl) ctrl.abort(); reject(new Error('timeout')); }, timeoutMs); });
-        /** @type {any} */
-        const res = await Promise.race([opts.fetchImpl(current, {
-          method: 'GET', redirect: 'manual', signal: ctrl ? ctrl.signal : undefined,
-          headers: { 'Accept': 'text/html,text/plain;q=0.9', 'User-Agent': 'PolicyChangeOS-LegalDiscover/1.0 (+tra cứu văn bản công khai)' }
-        }), timeout]);
-        if (res.status >= 300 && res.status < 400) {
-          const loc = res.headers && typeof res.headers.get === 'function' ? res.headers.get('location') : null;
-          if (!loc) return { ok: false, code: 'bad_redirect', reason: 'Nguồn chuyển hướng nhưng không cho địa chỉ.' };
-          current = new URL(loc, current).toString();
-          continue;
+    const ctrl = new AbortController();
+    const cancel = () => ctrl.abort();
+    let timedOut = false;
+    /** @type {any} */ let timer;
+    const stopped = new Promise((_, reject) => {
+      const aborted = () => reject(new Error(timedOut ? 'timeout' : 'cancelled'));
+      ctrl.signal.addEventListener('abort', aborted, { once: true });
+      timer = setTimeout(() => { timedOut = true; ctrl.abort(); }, timeoutMs);
+    });
+    void stopped.catch(() => {});
+    opts.signal?.addEventListener('abort', cancel, { once: true });
+    if (opts.signal?.aborted) cancel();
+    try {
+      for (let hop = 0; hop <= maxRedirects; hop++) {
+        if (ctrl.signal.aborted) return { ok: false, code: timedOut ? 'timeout' : 'cancelled', reason: timedOut ? 'Quá thời gian chờ nguồn.' : 'Đã huỷ tải nguồn.' };
+        const source = Refs.sourceFor(current, opts.allow);
+        if (!source) return { ok: false, code: 'blocked', reason: 'Địa chỉ không thuộc danh sách nguồn được phép.' };
+        try {
+          /** @type {any} */
+          const res = await Promise.race([opts.fetchImpl(current, {
+            method: 'GET', redirect: 'manual', signal: ctrl.signal,
+            headers: { 'Accept': 'text/html,text/plain;q=0.9', 'User-Agent': 'PolicyChangeOS-LegalDiscover/1.0 (+tra cứu văn bản công khai)' }
+          }), stopped]);
+          if (res.status >= 300 && res.status < 400) {
+            const loc = res.headers && typeof res.headers.get === 'function' ? res.headers.get('location') : null;
+            if (!loc) return { ok: false, code: 'bad_redirect', reason: 'Nguồn chuyển hướng nhưng không cho địa chỉ.' };
+            current = new URL(loc, current).toString();
+            if (res.body?.cancel) await res.body.cancel();
+            continue;
+          }
+          if (res.status === 404) return { ok: false, code: 'not_found', reason: 'Nguồn trả về 404.' };
+          if (res.status < 200 || res.status >= 300) return { ok: false, code: 'http_' + res.status, reason: 'Nguồn trả về mã ' + res.status + '.' };
+          const type = String(res.headers && res.headers.get ? res.headers.get('content-type') || '' : '').toLowerCase();
+          if (type && !/^(text\/html|text\/plain|application\/xhtml\+xml)/.test(type)) return { ok: false, code: 'bad_type', reason: 'Nguồn trả về loại nội dung không đọc được (' + type.slice(0, 60) + ').' };
+          const declared = Number(res.headers && res.headers.get ? res.headers.get('content-length') : NaN);
+          if (Number.isFinite(declared) && declared > maxBytes) return { ok: false, code: 'too_large', reason: 'Trang lớn hơn giới hạn ' + Math.round(maxBytes / 1024) + ' KB.' };
+          const read = await Promise.race([readLimited(res, maxBytes, ctrl.signal), stopped]);
+          if (!read.ok) return { ok: false, code: 'too_large', reason: 'Trang lớn hơn giới hạn ' + Math.round(maxBytes / 1024) + ' KB.' };
+          return { ok: true, url: current, source, body: read.text, bytes: read.bytes };
+        } catch (err) {
+          return ctrl.signal.aborted
+            ? { ok: false, code: timedOut ? 'timeout' : 'cancelled', reason: timedOut ? 'Quá thời gian chờ nguồn.' : 'Đã huỷ tải nguồn.' }
+            : { ok: false, code: 'network', reason: 'Không kết nối được tới nguồn.' };
         }
-        if (res.status === 404) return { ok: false, code: 'not_found', reason: 'Nguồn trả về 404.' };
-        if (res.status < 200 || res.status >= 300) return { ok: false, code: 'http_' + res.status, reason: 'Nguồn trả về mã ' + res.status + '.' };
-        const type = String(res.headers && res.headers.get ? res.headers.get('content-type') || '' : '').toLowerCase();
-        if (type && !/^(text\/html|text\/plain|application\/xhtml\+xml)/.test(type)) return { ok: false, code: 'bad_type', reason: 'Nguồn trả về loại nội dung không đọc được (' + type.slice(0, 60) + ').' };
-        const declared = Number(res.headers && res.headers.get ? res.headers.get('content-length') : NaN);
-        if (Number.isFinite(declared) && declared > maxBytes) return { ok: false, code: 'too_large', reason: 'Trang lớn hơn giới hạn ' + Math.round(maxBytes / 1024) + ' KB.' };
-        const read = await Promise.race([readLimited(res, maxBytes), timeout]);
-        if (!read.ok) return { ok: false, code: 'too_large', reason: 'Trang lớn hơn giới hạn ' + Math.round(maxBytes / 1024) + ' KB.' };
-        return { ok: true, url: current, source, body: read.text, bytes: read.bytes };
-      } catch (err) {
-        const msg = String((/** @type {any} */ (err)) && (/** @type {any} */ (err)).message || err);
-        return msg === 'timeout' || /abort/i.test(msg)
-          ? { ok: false, code: 'timeout', reason: 'Quá thời gian chờ ' + Math.round(timeoutMs / 1000) + ' giây.' }
-          : { ok: false, code: 'network', reason: 'Không kết nối được tới nguồn.' };
-      } finally { if (timer) clearTimeout(timer); }
-    }
-    return { ok: false, code: 'too_many_redirects', reason: 'Nguồn chuyển hướng quá nhiều lần.' };
+      }
+      return { ok: false, code: 'too_many_redirects', reason: 'Nguồn chuyển hướng quá nhiều lần.' };
+    } finally { clearTimeout(timer); opts.signal?.removeEventListener('abort', cancel); ctrl.abort(); }
   }
 
-  /** @param {any} res @param {number} maxBytes */
-  async function readLimited(res, maxBytes) {
+  /** @param {any} res @param {number} maxBytes @param {AbortSignal} [signal] */
+  async function readLimited(res, maxBytes, signal) {
     if (res.body && typeof res.body.getReader === 'function') {
       const reader = res.body.getReader();
+      const cancel = () => { void reader.cancel().catch(() => {}); };
+      signal?.addEventListener('abort', cancel, { once: true });
       /** @type {Uint8Array[]} */ const chunks = [];
       let bytes = 0;
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        bytes += value.byteLength;
-        if (bytes > maxBytes) { try { await reader.cancel(); } catch (_) { /* bỏ qua */ } return { ok: false, text: '', bytes }; }
-        chunks.push(value);
-      }
+      try {
+        for (;;) {
+          if (signal?.aborted) throw new Error('cancelled');
+          const { done, value } = await reader.read();
+          if (done) break;
+          bytes += value.byteLength;
+          if (bytes > maxBytes) { try { await reader.cancel(); } catch (_) { /* bỏ qua */ } return { ok: false, text: '', bytes }; }
+          chunks.push(value);
+        }
+      } finally { signal?.removeEventListener('abort', cancel); reader.releaseLock?.(); }
       const all = new Uint8Array(bytes);
       let off = 0;
       for (const c of chunks) { all.set(c, off); off += c.byteLength; }
@@ -90,5 +108,8 @@
     return bytes > maxBytes ? { ok: false, text: '', bytes } : { ok: true, text, bytes };
   }
 
-  return { DEFAULTS, safeFetch };
+  /** @param {string} code */
+  function retryable(code) { return ['timeout', 'network', 'http_408', 'http_429', 'http_500', 'http_502', 'http_503', 'http_504'].includes(code); }
+
+  return { DEFAULTS, safeFetch, readLimited, retryable };
 });

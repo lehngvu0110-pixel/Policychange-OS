@@ -7,6 +7,7 @@ import "./semantic-discovery.js";
 import "./policy-prover.js";
 import "./policy-workflow.js";
 import "./policy-authz.js";
+import "./doc-history.js";
 import "./policy-server.js";
 
 // deno-lint-ignore no-explicit-any

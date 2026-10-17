@@ -78,13 +78,15 @@ Lệnh `npm run verify` kiểm từng điều của văn bản này.
   - Quan hệ chỉ được ghi khi có bằng chứng, không dùng AI.
   - Có giới hạn độ sâu và số lượng. Kết quả dang dở được ghi rõ và có nút *Tiếp tục khám phá*.
 - **Hiệu lực tại một ngày**:
-  - Sáu trạng thái, mỗi kết luận kèm bằng chứng và nguồn.
+  - Bảy trạng thái, phân biệt ngưng hiệu lực với hết hiệu lực; mỗi kết luận kèm bằng chứng và giới hạn tra cứu. Kết quả chưa đầy đủ không chứng nhận còn hiệu lực.
   - Nếu văn bản căn cứ có cảnh báo, nút Ban hành khoá tới khi người ban hành xác nhận đã xem. Kết quả của động cơ và prover không đổi.
 - **Lịch sử phiên bản** trong Kho tài liệu:
   - Dựng từ sổ kiểm toán sẵn có. Hiện người làm (AI hay người), cách được duyệt, hồ sơ CR, bản ghi băm.
-  - So sánh theo dòng và theo từ. Khôi phục bằng các bản ghi hoàn tác mới.
+  - So sánh theo dòng và theo từ. Khôi phục nguyên tử qua một giao dịch, giữ các bản ghi cũ và ghi thêm các hoàn tác.
 
 Khi chưa cấu hình nguồn tra cứu trực tuyến, ứng dụng chạy trên **kho văn bản mô phỏng** và luôn gắn nhãn như vậy. Chi tiết, biến môi trường, migration và giới hạn: `docs/LEGAL-INTELLIGENCE.md`.
+
+Mã khắc phục cục bộ ngày 17/10/2026 và các bước kiểm chứng/triển khai còn lại: [báo cáo kỹ thuật](docs/ENGINEERING-REMEDIATION.md). Chưa triển khai thay đổi của đợt này vào production.
 
 ## Chạy thử
 

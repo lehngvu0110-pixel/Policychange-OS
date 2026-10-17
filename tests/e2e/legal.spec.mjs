@@ -25,13 +25,13 @@ test('khám phá nhiều tầng trên văn bản mẫu: nhãn mô phỏng, kết
   await runSample(page);
   await expect(page.locator('.notice.sandbox')).toContainText('Dữ liệu mô phỏng');
   await expect(page.getByText('Kết quả chưa đầy đủ.')).toBeVisible();
-  await expect(page.getByText('Chạm giới hạn độ sâu')).toBeVisible();
+  await expect(page.getByText(/Chạm giới hạn độ sâu/)).toBeVisible();
   // Văn bản tìm qua nhiều tầng và qua metadata ngược.
-  await expect(row(page, '22/2018/QH99')).toContainText('Còn hiệu lực');
-  await expect(row(page, '60/2024/NĐ-MP')).toContainText('Còn hiệu lực');
+  await expect(row(page, '22/2018/QH99')).toContainText('Chưa xác minh được');
+  await expect(row(page, '60/2024/NĐ-MP')).toContainText('Chưa xác minh được');
   await expect(row(page, '50/2021/NĐ-MP')).toContainText('Hết hiệu lực một phần');
   await expect(row(page, '15/2026/TT-BMP')).toContainText('Chưa có hiệu lực');
-  await expect(row(page, '33/2019/TT-BMP')).toContainText('Bằng chứng mâu thuẫn');
+  await expect(row(page, '33/2019/TT-BMP')).toContainText('Chưa xác minh được');
   await expect(row(page, '05/2020/QĐ-BMP')).toContainText('Chưa xác minh được');
   await expect(row(page, '01/2005/TT-BMP')).toContainText('Chưa tra (giới hạn)');
   await expect(page.locator('#legalGraph svg [data-action="legal-node"]').first()).toBeVisible();
@@ -39,7 +39,8 @@ test('khám phá nhiều tầng trên văn bản mẫu: nhãn mô phỏng, kết
   await expect(page.locator('a[href^="fixture:"]')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Tiếp tục khám phá' }).click();
-  await expect(page.getByText(/Đã duyệt hết các quan hệ tìm được/)).toBeVisible();
+  await expect(page.getByText('Kết quả chưa đầy đủ.')).toBeVisible();
+  await expect(page.getByText(/Còn tham chiếu chưa tìm được/)).toBeVisible();
   await expect(row(page, '01/2005/TT-BMP')).not.toContainText('Chưa tra');
   expect(errors).toEqual([]);
 });
@@ -61,7 +62,28 @@ test('đổi ngày xét hiệu lực thì kết luận đổi theo', async ({ pa
   await page.fill('#lgAsOf', '2020-01-01');
   await page.locator('#lgAsOf').dispatchEvent('change');
   await expect(row(page, '08/2021/TT-BMP')).toContainText('Chưa có hiệu lực');
-  await expect(row(page, '10/2016/TT-BMP')).toContainText('Còn hiệu lực');
+  await expect(row(page, '10/2016/TT-BMP')).toContainText('Chưa xác minh được');
+});
+
+test('chi tiết giữ lỗi và trang ứng viên chưa đối chiếu', async ({ page }) => {
+  await open(page, 'phap-ly');
+  await page.evaluate(() => {
+    const original = window.PolicyChangeLegalFixtures.createFixtureAdapter;
+    window.PolicyChangeLegalFixtures.createFixtureAdapter = opts => {
+      const adapter = original(opts), resolve = adapter.resolve;
+      adapter.resolve = async ref => {
+        const result = await resolve(ref);
+        if (result.doc) result.doc.retrievalFailures = [{ code: 'http_403', url: 'https://vbpl.vn/synthetic-candidate', reason: 'Trang ứng viên mô phỏng từ chối truy cập.' }];
+        return result;
+      };
+      return adapter;
+    };
+  });
+  await runSample(page);
+  await row(page, '11/2012/QH99').getByRole('button', { name: 'Chi tiết' }).click();
+  await expect(page.locator('#legalDetail')).toContainText('Trang ứng viên chưa xác minh');
+  await expect(page.locator('#legalDetail')).toContainText('http_403');
+  await expect(page.locator('#legalDetail')).toContainText('từ chối truy cập');
 });
 
 test('cảnh báo hiệu lực chuyển người xem lại trước khi ban hành, không đổi kết quả phân xử', async ({ page }) => {
@@ -73,11 +95,19 @@ test('cảnh báo hiệu lực chuyển người xem lại trước khi ban hàn
   await expect(page.getByRole('heading', { name: /Kết quả phân xử/ })).toBeVisible();
   const before = await page.locator('article.prop').count();
   await expect(page.getByText('Cảnh báo hiệu lực văn bản căn cứ')).toBeVisible();
+  await expect(page.getByText(/Phạm vi tra cứu: Chưa xác minh được/)).toBeVisible();
   const commit = page.getByRole('button', { name: 'Ban hành' });
   await expect(commit).toBeDisabled();
   await page.check('#legalAck');
   await expect(commit).toBeEnabled();
   expect(await page.locator('article.prop').count()).toBe(before);
+  await page.goto(APP + '#/phap-ly');
+  await page.fill('#lgAsOf', '2020-01-01');
+  await page.locator('#lgAsOf').dispatchEvent('change');
+  await page.goto(APP + '#/thay-doi');
+  await expect(page.locator('#legalAck')).not.toBeChecked();
+  await expect(commit).toBeDisabled();
+  await page.check('#legalAck');
   await commit.click();
   await expect(page.getByText(/Đã ban hành \d+ thay đổi/).first()).toBeVisible();
 });

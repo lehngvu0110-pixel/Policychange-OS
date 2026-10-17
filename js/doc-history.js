@@ -6,7 +6,7 @@
  * nội dung trước/sau của dòng. Module này đi ngược từ nội dung hiện tại qua các bản ghi đó để dựng ảnh chụp
  * của từng phiên bản, nên lịch sử không thể lệch khỏi sổ và không cần ghi lại sổ.
  * Đề xuất chưa áp dụng chỉ đọc từ phân tích hiện tại và không bao giờ được trình bày như một phiên bản.
- * Khôi phục một phiên bản cũ = hoàn tác lần lượt các thay đổi sau nó; mỗi lần hoàn tác là một bản ghi mới.
+ * Khôi phục mô phỏng các hoàn tác rồi ghi toàn bộ trong một giao dịch, giữ nguyên sổ cũ.
  */
 (function attachDocHistory(/** @type {any} */ root, /** @type {() => any} */ factory) {
   const api = factory();
@@ -34,7 +34,7 @@
   /** @param {any} r */
   function approvalOf(r) {
     const basis = String(r.basis || '');
-    if (isRevert(r)) return 'Thu hồi thay đổi #' + r.revertsSeq + ' (ghi thêm, bản ghi gốc giữ nguyên)';
+    if (isRevert(r)) return (/khôi phục bản \d+/.test(basis) ? 'Khôi phục phiên bản · ' : '') + 'Thu hồi thay đổi #' + r.revertsSeq + ' (ghi thêm, bản ghi gốc giữ nguyên)';
     if (isCreate(r)) return 'Nạp vào kho có kiểm soát';
     const proof = basis.match(/deterministic proof (\S+)/);
     if (/được con người duyệt sau bằng chứng ngữ nghĩa/.test(basis)) return 'Người rà soát duyệt sau khi xem bằng chứng ngữ nghĩa' + (proof ? ' · prover ' + proof[1] : '');

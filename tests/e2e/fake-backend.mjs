@@ -57,7 +57,7 @@ export function createFakeBackend() {
     const ctx = { workspace: { ...db.workspace }, member, registry: Engine.cloneRegistry(db.registry), docs: Engine.cloneDocs(db.docs),
       ledger: db.ledger.map(e => ({ ...e })), openChanges: db.openChanges.map(c => ({ ...c })), decisions: db.decisions.map(d => ({ ...d })),
       now: () => new Date().toISOString() };
-    const planners = { commit: Server.planCommit, decide: Server.planDecide, undo: Server.planUndo, add_anchor: Server.planAnchor, add_document: Server.planAddDocument };
+    const planners = { commit: Server.planCommit, decide: Server.planDecide, undo: Server.planUndo, restore: Server.planRestore, add_anchor: Server.planAnchor, add_document: Server.planAddDocument };
     const plan = planners[body.action] ? planners[body.action](ctx, body) : null;
     if (!plan) return [400, { error: 'unknown_action', message: 'Thao tác không hỗ trợ.' }];
     if (!plan.ok) return [plan.status, { error: plan.error, message: plan.message, details: plan.details ?? null }];
