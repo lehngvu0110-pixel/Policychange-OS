@@ -136,9 +136,10 @@ test('HTTP search keeps the written Vietnamese number and handles empty Brave re
   for (const provider of ['brave', true]) {
     const h = harness({ cache: false, provider, fetch: async url => {
       const query = new URL(url).searchParams.get('q');
-      assert.match(query, /^08\/2021\/TT-BGDĐT \(/);
+      if (provider === 'brave') assert.equal(query, '08/2021/TT-BGDĐT');
+      else assert.match(query, /^08\/2021\/TT-BGDĐT \(/);
       assert.doesNotMatch(query, /"/);
-      assert.match(query, /site:vbpl.vn/);
+      if (provider !== 'brave') assert.match(query, /site:vbpl.vn/);
       return Response.json(provider === 'brave' ? { query: { original: query } } : { searchInformation: { totalResults: '0' } });
     } });
     const result = await h.request({ action: 'resolve', ref: { canonicalId: id, raw: '08 / 2021 / TT-BGDĐT' } });
@@ -156,6 +157,12 @@ test('HTTP search keeps the written Vietnamese number and handles empty Brave re
 });
 
 test('candidate failures never become not-found; retries, URL duplicates, redirects and candidate budget are bounded', async () => {
+  const headersChecked = await Fetch.safeFetch('https://vbpl.vn/test', { fetchImpl: async (_url, init) => {
+    const headers = new Headers(init.headers);
+    assert.match(headers.get('User-Agent'), /^PolicyChangeOS-LegalDiscover/);
+    return new Response('<html>test</html>', { headers: { 'content-type': 'text/html' } });
+  } });
+  assert.equal(headersChecked.ok, true, 'real Fetch Headers must accept the source request');
   for (const code of [403, 429, 500, 404]) {
     let calls = 0;
     const result = await Research.resolveCandidates(['https://vbpl.vn/x?utm_source=a', 'https://vbpl.vn/x'], id, { now: () => now, fetchImpl: async () => { calls++; return new Response('', { status: code }); } });

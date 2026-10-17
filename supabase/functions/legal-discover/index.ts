@@ -62,7 +62,8 @@ async function politeWait(url: string, signal?: AbortSignal) {
 async function search(p: { name: string; key: string; cx: string }, number: string, signal: AbortSignal): Promise<any> {
   const sites = Refs.SOURCES.filter((s: any) => s.tier === "primary").map((s: any) => "site:" + s.host).join(" OR ");
   // Search the written number without exact-phrase matching; identity is verified on the source page.
-  const q = number + ' (' + sites + ")";
+  // Brave misparses a parenthesized OR list of site operators. Filter its results by SOURCES below.
+  const q = p.name === "brave" ? number : number + ' (' + sites + ")";
   const ctrl = new AbortController();
   const cancel = () => ctrl.abort();
   signal.addEventListener("abort", cancel, { once: true });

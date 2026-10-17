@@ -52,7 +52,7 @@
           /** @type {any} */
           const res = await Promise.race([opts.fetchImpl(current, {
             method: 'GET', redirect: 'manual', signal: ctrl.signal,
-            headers: { 'Accept': 'text/html,text/plain;q=0.9', 'User-Agent': 'PolicyChangeOS-LegalDiscover/1.0 (+tra cứu văn bản công khai)' }
+            headers: { 'Accept': 'text/html,text/plain;q=0.9', 'User-Agent': 'PolicyChangeOS-LegalDiscover/1.0 (public legal research)' }
           }), stopped]);
           if (res.status >= 300 && res.status < 400) {
             const loc = res.headers && typeof res.headers.get === 'function' ? res.headers.get('location') : null;
