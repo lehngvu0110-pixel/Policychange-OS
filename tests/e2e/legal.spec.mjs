@@ -42,6 +42,8 @@ test('khám phá nhiều tầng trên văn bản mẫu: nhãn mô phỏng, kết
   await expect(page.getByText('Kết quả chưa đầy đủ.')).toBeVisible();
   await expect(page.getByText(/Còn tham chiếu chưa tìm được/)).toBeVisible();
   await expect(row(page, '01/2005/TT-BMP')).not.toContainText('Chưa tra');
+  await expect(page.getByText('Đã xử lý hết hàng đợi, nhưng chưa đủ nguồn để xác minh mọi tham chiếu.', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Tiếp tục khám phá' })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

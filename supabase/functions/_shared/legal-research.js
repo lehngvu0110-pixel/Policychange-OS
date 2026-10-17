@@ -67,6 +67,7 @@
   async function resolveCandidates(links, id, opts) {
     if (opts.signal?.aborted) return { status: 'error', code: 'cancelled', reason: 'Đã huỷ tra cứu.', retryable: false, failures: [] };
     const unique = [...new Set(links.map(u => { try { return Refs.normalizeUrl(u); } catch (_) { return u; } }))];
+    if (!unique.length) return { status: 'not_found', code: 'no_candidates', reason: 'Lần tìm kiếm này chưa trả về trang thuộc các nguồn cho phép. Chưa thể xác minh văn bản; kết quả này không có nghĩa là văn bản không tồn tại.', failures: [] };
     /** @type {any[]} */ const failures = [];
     const seen = new Set();
     for (const link of unique.slice(0, 3)) {
@@ -92,7 +93,7 @@
       return { status: 'found', doc: parsed.doc, failures };
     }
     if (unique.length > 3) failures.push({ code: 'candidate_budget', reason: 'Còn trang ứng viên ngoài giới hạn.', retryable: false });
-    if (!failures.length || failures.every(f => f.code === 'not_found')) return { status: 'not_found', code: 'not_found', reason: 'Tìm kiếm hoàn tất nhưng không có trang văn bản xác minh được (các ứng viên trả 404).', failures };
+    if (failures.every(f => f.code === 'not_found')) return { status: 'not_found', code: 'not_found', reason: 'Các trang tìm được đều trả lỗi 404. Chưa thể xác minh văn bản từ nguồn.', failures };
     const failure = failures.find(f => f.code !== 'not_found');
     return { status: 'error', code: failure.code, reason: failure.reason, retryable: failures.some(f => f.retryable), failures };
   }

@@ -53,7 +53,7 @@ function harness(options = {}) {
   const http = compile('supabase/functions/_shared/http.ts', {}, {});
   compile('supabase/functions/legal-discover/index.ts', {
     PolicyChangeLegalRefs: Refs, PolicyChangeLegalPage: Page, PolicyChangeLegalFetch: Fetch, PolicyChangeLegalResearch: Research,
-    Deno: { env: { get: key => ({ LEGAL_SEARCH_PROVIDER: options.provider ? 'google' : '', LEGAL_SEARCH_API_KEY: 'SYNTHETIC_TEST_KEY', LEGAL_SEARCH_CX: 'SYNTHETIC_CX' })[key] }, serve: fn => { handler = fn; } },
+    Deno: { env: { get: key => ({ LEGAL_SEARCH_PROVIDER: options.provider === 'brave' ? 'brave' : options.provider ? 'google' : '', LEGAL_SEARCH_API_KEY: 'SYNTHETIC_TEST_KEY', LEGAL_SEARCH_CX: 'SYNTHETIC_CX' })[key] }, serve: fn => { handler = fn; } },
     fetch: async (url, init) => { calls.push({ url, init }); return options.fetch ? options.fetch(url, init) : new Response('{}'); }
   }, { '../_shared/modules.ts': { Server }, '../_shared/http.ts': http, '../_shared/quota.ts': { adminClient: () => admin, clientKey: async () => 'a'.repeat(64) } });
   return { writes, calls, filters, async request(body, opts = {}) {
@@ -130,6 +130,29 @@ test('HTTP resolve distinguishes provider misconfiguration, HTTP failures, malfo
   assert.equal((await malformed.request({ action: 'resolve', ref: { canonicalId: id } })).data.code, 'provider_parse');
   const empty = harness({ cache: false, provider: true, fetch: async () => Response.json({ searchInformation: { totalResults: '0' } }) });
   assert.equal((await empty.request({ action: 'resolve', ref: { canonicalId: id } })).data.status, 'not_found');
+});
+
+test('HTTP search keeps the written Vietnamese number and handles empty Brave results without claiming 404', async () => {
+  for (const provider of ['brave', true]) {
+    const h = harness({ cache: false, provider, fetch: async url => {
+      const query = new URL(url).searchParams.get('q');
+      assert.match(query, /^08\/2021\/TT-BGDĐT \(/);
+      assert.doesNotMatch(query, /"/);
+      assert.match(query, /site:vbpl.vn/);
+      return Response.json(provider === 'brave' ? { query: { original: query } } : { searchInformation: { totalResults: '0' } });
+    } });
+    const result = await h.request({ action: 'resolve', ref: { canonicalId: id, raw: '08 / 2021 / TT-BGDĐT' } });
+    assert.equal(h.calls.length, 1);
+    assert.equal(result.data.status, 'not_found');
+    assert.equal(result.data.code, 'no_candidates');
+    assert.doesNotMatch(result.data.reason, /404/);
+    assert.match(result.data.reason, /không có nghĩa là văn bản không tồn tại/);
+  }
+  const malformed = harness({ cache: false, provider: 'brave', fetch: async () => Response.json({}) });
+  assert.equal((await malformed.request({ action: 'resolve', ref: { canonicalId: id } })).data.code, 'provider_parse');
+  const mismatch = harness({ cache: false, provider: 'brave' });
+  assert.equal((await mismatch.request({ action: 'resolve', ref: { canonicalId: id, raw: '09/2021/TT-BGDĐT' } })).data.code, 'invalid_id');
+  assert.equal(mismatch.calls.length, 0);
 });
 
 test('candidate failures never become not-found; retries, URL duplicates, redirects and candidate budget are bounded', async () => {

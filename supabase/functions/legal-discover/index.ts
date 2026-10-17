@@ -61,7 +61,8 @@ async function politeWait(url: string, signal?: AbortSignal) {
 
 async function search(p: { name: string; key: string; cx: string }, number: string, signal: AbortSignal): Promise<any> {
   const sites = Refs.SOURCES.filter((s: any) => s.tier === "primary").map((s: any) => "site:" + s.host).join(" OR ");
-  const q = '"' + number + '" (' + sites + ")";
+  // Search the written number without exact-phrase matching; identity is verified on the source page.
+  const q = number + ' (' + sites + ")";
   const ctrl = new AbortController();
   const cancel = () => ctrl.abort();
   signal.addEventListener("abort", cancel, { once: true });
@@ -85,7 +86,7 @@ async function search(p: { name: string; key: string; cx: string }, number: stri
       const read = await Fetch.readLimited(res, 1024 * 1024, ctrl.signal);
       if (!read.ok) return { status: "error", code: "provider_too_large", reason: "Phản hồi tìm kiếm vượt giới hạn.", retryable: false };
       const data = JSON.parse(read.text);
-      if (!Array.isArray(data?.web?.results)) return { status: "error", code: "provider_parse", reason: "Không đọc được danh sách kết quả tìm kiếm.", retryable: false };
+      if (!Array.isArray(data?.web?.results) && !(data?.query?.original && !data.web)) return { status: "error", code: "provider_parse", reason: "Không đọc được danh sách kết quả tìm kiếm.", retryable: false };
       links = Array.isArray(data?.web?.results) ? data.web.results.map((i: any) => String(i?.url || "")) : [];
     }
     // Chỉ giữ link thuộc allowlist; nguồn chính thức trước, theo thứ tự ưu tiên trong SOURCES.
@@ -127,7 +128,8 @@ async function resolve(req: Request, ref: any) {
   if (req.signal.aborted) cancel();
   const timer = setTimeout(() => ctrl.abort(), 40000);
   try {
-    const result = await search(p, id, ctrl.signal);
+    const searchNumber = String(ref?.raw || id).normalize('NFC').toUpperCase().replace(/\s+/g, '').replace(/[–—]/g, '-');
+    const result = await search(p, searchNumber, ctrl.signal);
     if (ctrl.signal.aborted) return { status: "error", code: req.signal.aborted ? "cancelled" : "timeout", reason: "Yêu cầu tra cứu đã dừng.", retryable: !req.signal.aborted };
     if (result.status === "error") return result;
     const resolved = await Research.resolveCandidates(result.links, id, { fetchImpl: fetch, signal: ctrl.signal, beforeFetch: politeWait, now: () => new Date().toISOString() });
