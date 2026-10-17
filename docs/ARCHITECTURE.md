@@ -103,3 +103,18 @@ bắt buộc đăng nhập, cấp và đơn vị lấy từ bảng `members` do 
 ## Vì sao không chuyển sang TypeScript + Vite
 
 Xem `docs/PHAN-HOI-BTC-SPRINT-1.md`, mục 3.
+
+## Căn cứ pháp lý và lịch sử phiên bản (17/10/2026)
+
+- **Module thuần, dùng chung cho trình duyệt, Node và Deno:**
+  - `legal-refs`: trích số hiệu, allowlist nguồn;
+  - `legal-discovery`: BFS có giới hạn;
+  - `legal-status`: hiệu lực tại một ngày;
+  - `legal-page`: đọc trang nguồn;
+  - `legal-fetch`: tải an toàn;
+  - `doc-history`: phiên bản dựng từ sổ kiểm toán.
+- **Edge Function `legal-discover`** là nơi duy nhất gọi ra mạng ngoài. Nó chỉ gọi host trong allowlist và giữ khoá nhà cung cấp tìm kiếm.
+- Không mô-đun nào ở đây thay đổi động cơ, prover hay sổ kiểm toán. Cảnh báo hiệu lực chỉ chặn nút Ban hành tới khi người ban hành xác nhận đã xem.
+
+Chi tiết: `docs/LEGAL-INTELLIGENCE.md`.
+

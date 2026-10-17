@@ -15,6 +15,8 @@
     "js/sha256.js", "js/policy-engine.js", "js/policy-data.js", "js/policy-ledger.js", "js/policy-workflow.js",
     "js/policy-authz.js", "js/policy-server.js", "js/policy-store.js", "js/openai-mapping.js", "js/remote-ai-adapter.js",
     "js/remote-store.js", "js/policy-learning.js", "js/policy-evaluation.js", "js/app-controller.js", "js/app/graph.js",
-    "js/policy-grouping.js", "js/doc-import.js", "js/policy-learning-eval.js"
+    "js/policy-grouping.js", "js/doc-import.js", "js/policy-learning-eval.js",
+    "js/legal-refs.js", "js/legal-discovery.js", "js/legal-status.js", "js/legal-fixtures.js", "js/legal-page.js", "js/legal-fetch.js",
+    "js/legal-remote-adapter.js", "js/doc-history.js", "js/app/legal-graph.js"
   ]
 }

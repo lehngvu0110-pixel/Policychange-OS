@@ -27,7 +27,7 @@ for (const scheme of ['light', 'dark']) {
     await page.emulateMedia({ colorScheme: scheme });
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
-    for (const route of ['huong-dan', 'tong-quan', 'thay-doi', 'hang-doi', 'so-kiem-toan', 'kho-tai-lieu', 'so-dang-ky', 'danh-gia']) {
+    for (const route of ['huong-dan', 'tong-quan', 'thay-doi', 'hang-doi', 'so-kiem-toan', 'kho-tai-lieu', 'phap-ly', 'so-dang-ky', 'danh-gia']) {
       await page.goto('/index.html?offline=1#/' + route);
       await expect(page.locator('main h1')).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
