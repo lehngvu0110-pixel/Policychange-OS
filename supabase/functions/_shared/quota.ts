@@ -7,7 +7,7 @@ export function adminClient() {
 }
 
 /** Mã máy khách = SHA-256 (rút gọn) của IP người gọi; không lưu IP thô. */
-async function clientKey(req: Request): Promise<string | null> {
+export async function clientKey(req: Request): Promise<string | null> {
   const ip = (req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || "").split(",")[0].trim();
   if (!ip) return null;
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("policychange-os:" + ip));

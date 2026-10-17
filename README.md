@@ -71,6 +71,21 @@ Lệnh `npm run verify` kiểm từng điều của văn bản này.
 | Phản hồi thử nghiệm 14/10: nhiều chữ, trưởng phòng lớn tuổi khó dùng; gõ câu rồi bấm Phân tích thì không thấy 5 ngày | Màn hình **Hướng dẫn** đứng đầu: 4 bước bằng lời thường, mỗi bước một nút đưa tới đúng chỗ, giải thích khái niệm, câu hỏi thường gặp. Nút **Aa · Chữ lớn** phóng to toàn bộ giao diện. **Phân tích tác động** tự đọc câu tiếng Việt nếu chưa bấm Hiểu yêu cầu. |
 | Người mới nhìn vào phải hiểu ngay | **Giao diện bằng lời thường** (13/10): kết quả mở đầu bằng một câu tóm tắt ("Máy tự sửa 6 chỗ chắc chắn. Còn 3 câu hỏi cần người trả lời.") kèm danh sách *ai cần trả lời câu nào*; thanh tiến trình 4 bước; việc cần người xếp lên đầu, căn cứ kỹ thuật thu gọn; mỗi câu hỏi có "Vì sao phải hỏi"; bảng giải thích Tự sửa / U1 / U2 / U3 và hộp **Hướng dẫn & thuật ngữ**; Tổng quan tính lại độ chính xác trên cả hai tập mù. |
 
+## Bổ sung theo yêu cầu BTC (17/10)
+
+- **Căn cứ pháp lý** (`#/phap-ly`):
+  - Trích số hiệu văn bản pháp luật trong một tài liệu, tìm cả văn bản chưa tải lên, rồi lần tiếp nhiều tầng: văn bản sửa đổi, thay thế, bãi bỏ, hướng dẫn.
+  - Quan hệ chỉ được ghi khi có bằng chứng, không dùng AI.
+  - Có giới hạn độ sâu và số lượng. Kết quả dang dở được ghi rõ và có nút *Tiếp tục khám phá*.
+- **Hiệu lực tại một ngày**:
+  - Sáu trạng thái, mỗi kết luận kèm bằng chứng và nguồn.
+  - Nếu văn bản căn cứ có cảnh báo, nút Ban hành khoá tới khi người ban hành xác nhận đã xem. Kết quả của động cơ và prover không đổi.
+- **Lịch sử phiên bản** trong Kho tài liệu:
+  - Dựng từ sổ kiểm toán sẵn có. Hiện người làm (AI hay người), cách được duyệt, hồ sơ CR, bản ghi băm.
+  - So sánh theo dòng và theo từ. Khôi phục bằng các bản ghi hoàn tác mới.
+
+Khi chưa cấu hình nguồn tra cứu trực tuyến, ứng dụng chạy trên **kho văn bản mô phỏng** và luôn gắn nhãn như vậy. Chi tiết, biến môi trường, migration và giới hạn: `docs/LEGAL-INTELLIGENCE.md`.
+
 ## Chạy thử
 
 **Trực tuyến:** mở đường dẫn ở trên → bấm **Xem minh hoạ 3 phút**, hoặc vào **Thay đổi quy định**.
@@ -167,9 +182,10 @@ js/app-controller.js          trạng thái + thao tác nghiệp vụ (không đ
 js/policy-*.js, js/sha256.js  lõi dùng chung trình duyệt / Node / Deno: động cơ, sổ, workflow, phân quyền, máy chủ,
                               học từ phản hồi, đánh giá, lưu trữ cục bộ
 js/remote-store.js, js/remote-ai-adapter.js   máy khách REST Supabase và adapter AI
+js/legal-*.js, js/doc-history.js, js/app/legal-graph.js   căn cứ pháp lý, hiệu lực, lịch sử phiên bản
 js/semantic-discovery.js, js/policy-prover.js, js/policy-ai.js, js/policy-impact-graph.js   (từ Sprint 1)
 supabase/migrations/          schema, RLS, hàm SQL giao dịch, hạn mức AI
-supabase/functions/           policy-api, ai-extract, ai-discover (+ _shared: bản sao module, `npm run sync:edge`)
+supabase/functions/           policy-api, ai-extract, ai-discover, legal-discover (+ _shared: bản sao module, `npm run sync:edge`)
 tests/                        unit test Node; tests/e2e: Playwright
 bench/                        benchmark 26 fixture, tập phát triển holdout.csv, tập mù blind.csv, mô phỏng học, kiểm thử tải
 scripts/verify.cjs            kiểm chứng theo từng điều của QT-KSTL-01

@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const SHARED = ['sha256.js', 'policy-engine.js', 'policy-data.js', 'policy-ledger.js', 'semantic-discovery.js',
-  'policy-prover.js', 'policy-workflow.js', 'policy-authz.js', 'policy-server.js', 'openai-mapping.js'];
+  'policy-prover.js', 'policy-workflow.js', 'policy-authz.js', 'policy-server.js', 'openai-mapping.js',
+  'legal-refs.js', 'legal-page.js', 'legal-fetch.js'];
 
 for (const file of SHARED) {
   copyFileSync(join(root, 'js', file), join(root, 'supabase', 'functions', '_shared', file));

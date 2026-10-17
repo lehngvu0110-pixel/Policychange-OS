@@ -277,7 +277,7 @@ input[readonly]{background:var(--sunken);color:var(--ink-2)}
 }
 
 /* ---------- Bảng ---------- */
-.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-sm)}
+.tablewrap{position:relative;overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-sm)}
 table{width:100%;border-collapse:collapse;font-size:13.5px}
 th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
 th{font-size:12px;font-weight:700;color:var(--muted);background:var(--panel-2);letter-spacing:.02em;white-space:nowrap}
